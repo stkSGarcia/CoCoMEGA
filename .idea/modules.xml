@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/../MLCSHE/.idea/MLCSHE.iml" filepath="$PROJECT_DIR$/../MLCSHE/.idea/MLCSHE.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../SAMOTA/.idea/SAMOTA.iml" filepath="$PROJECT_DIR$/../SAMOTA/.idea/SAMOTA.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/automatic-potato.iml" filepath="$PROJECT_DIR$/.idea/automatic-potato.iml" />
+    </modules>
+  </component>
+</project>
