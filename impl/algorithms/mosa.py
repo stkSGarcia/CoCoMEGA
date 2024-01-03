@@ -1,3 +1,4 @@
+import random
 import time
 from collections import defaultdict
 from operator import attrgetter
@@ -104,10 +105,28 @@ class MOSA(BaseAlgorithm):
     def _generate_offspring(self, population, uncovered_objectives):
         offspring = [self.toolbox.clone(ind) for ind in population]
         while len(offspring) < len(population):
-            parent1 = tools.selTournamentDCD(offspring, k=10, tournsize=2)
-            # if self.random.uniform(0, 1) <= self.cxpb:
-
+            parent1 = self._tournament_selection(offspring, 10, uncovered_objectives)
+            parent2 = self._tournament_selection(offspring, 10, uncovered_objectives)
+            if random.uniform(0, 1) <= self.cxpb:
+                tools.cxOnePoint(parent1, parent2)
+            # TODO mutation and so on
         return offspring
+
+    @staticmethod
+    def _tournament_selection(population, size, uncovered_objectives):
+        candidates = []
+        for i in range(size):
+            idx = random.randint(0, len(population) - 1)
+            candidates.append(population[idx])
+
+        best = candidates[0]
+        for i in range(size):
+            candidate1 = candidates[i]
+            for j in range(size):
+                candidate2 = candidates[j]
+                if candidate1.fitness.dominates(candidate2.fitness, uncovered_objectives):
+                    best = candidate1
+        return best
 
     def _preference_sorting(self, population, uncovered_objectives):
         population = [self.toolbox.clone(ind) for ind in population]
@@ -165,9 +184,3 @@ class MOSA(BaseAlgorithm):
             next_front = []
 
         return fronts
-
-    def _assign_crowding_distance(self, population):
-        if len(population) == 0:
-            return
-
-        distances = [0.0] * len
