@@ -29,12 +29,12 @@ class BaseAlgorithm:
 
         random.seed(seed)
 
-        creator.create("Fitness", base.Fitness, weight=(1.0,) * len(objectives))  # maximize the fitness
-        creator.create("Individual", list, fitness=creator.Fitness, covered_objectives=list)
+        creator.create("FitnessMax", base.Fitness, weights=(1.0,) * len(objectives))  # maximize the fitness
+        creator.create("Individual", list, fitness=creator.FitnessMax, covered_objectives=list)
 
         # Replace the original `dominates` function.
-        if getattr(creator.Fitness, "dominates", None) is not None:
-            setattr(creator.Fitness, "dominates", self._dominates)
+        if getattr(creator.FitnessMax, "dominates", None) is not None:
+            setattr(creator.FitnessMax, "dominates", BaseAlgorithm._dominates)
 
         self.toolbox = base.Toolbox()
         self.toolbox.register("individual", tools.initIterate, creator.Individual, self._initialize_vector)
@@ -59,19 +59,21 @@ class BaseAlgorithm:
         return vector
 
     def _evaluate_population(self, population):
-        self.toolbox.map(self.evaluator, population)
+        fitnesses = self.toolbox.map(self.evaluator, population)
+        for individual, fitness in zip(population, fitnesses):
+            individual.fitness.values = fitness
 
     def _update_archive(self, archive, population, uncovered_objectives):
         for individual in population:
             for idx, (fitness, objective) in enumerate(zip(individual.fitness.values, self.objectives)):
-                if fitness > objective:
+                if fitness < objective:
                     continue
-                archive_individual, archive_idx = next(
+                archive_idx, archive_individual = next(
                     ((i, ind) for i, ind in enumerate(archive) if idx in ind.covered_objectives),
                     (None, None)
                 )
                 if archive_individual is not None and archive_idx is not None:  # individual already in the archive
-                    if archive_individual.fitness.values[idx] > objective:
+                    if archive_individual.fitness.values[idx] < fitness:
                         individual.covered_objectives.append(idx)
                         archive[archive_idx] = individual
                         if idx in uncovered_objectives:
@@ -82,14 +84,17 @@ class BaseAlgorithm:
                     if idx in uncovered_objectives:
                         uncovered_objectives.remove(idx)
 
-    def _dominates(self, other, obj):
+    @staticmethod
+    def _dominates(this, other, obj):
         """DO NOT USE THIS FUNCTION.
         It is used to replace the original `dominates` function in `deap`.
 
         :param obj: Indices indicating on which objectives the domination is tested.
         """
+        if not obj:
+            obj = slice(None)
         not_equal = False
-        for self_wvalue, other_wvalue in zip(np.array(self.wvalues)[obj], np.array(other.wvalues)[obj]):
+        for self_wvalue, other_wvalue in zip(np.array(this.wvalues)[obj], np.array(other.wvalues)[obj]):
             if self_wvalue > other_wvalue:
                 not_equal = True
             elif self_wvalue < other_wvalue:

@@ -6,7 +6,7 @@ from operator import attrgetter
 import numpy as np
 from deap import tools
 
-from base import BaseAlgorithm
+from .base import BaseAlgorithm
 
 
 class MOSA(BaseAlgorithm):
@@ -103,13 +103,15 @@ class MOSA(BaseAlgorithm):
             execution_time = time.perf_counter() - start_time
 
     def _generate_offspring(self, population, uncovered_objectives):
-        offspring = [self.toolbox.clone(ind) for ind in population]
+        population = [self.toolbox.clone(ind) for ind in population]
+        offspring = []
         while len(offspring) < len(population):
-            parent1 = self._tournament_selection(offspring, 10, uncovered_objectives)
-            parent2 = self._tournament_selection(offspring, 10, uncovered_objectives)
+            parent1 = self._tournament_selection(population, 10, uncovered_objectives)
+            parent2 = self._tournament_selection(population, 10, uncovered_objectives)
             if random.uniform(0, 1) <= self.cxpb:
                 tools.cxOnePoint(parent1, parent2)
             # TODO mutation and so on
+            offspring.extend([parent1, parent2])
         return offspring
 
     @staticmethod
@@ -140,7 +142,8 @@ class MOSA(BaseAlgorithm):
                     best = individual
             F.append(best)
             population.remove(best)
-        if len(F) > self.pop_size:
+        F = [F]
+        if len(F[0]) > self.pop_size:
             return F
         if len(population) > 0:
             E = self._fast_nondominated_sort(population, uncovered_objectives)
