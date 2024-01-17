@@ -3,7 +3,6 @@ import time
 from collections import defaultdict
 from operator import attrgetter
 
-import numpy as np
 from deap import tools
 
 from .base import BaseAlgorithm
@@ -38,16 +37,6 @@ class MOSA(BaseAlgorithm):
         self.toolbox.register("breed", self._generate_offspring)
 
     def solve(self):
-        # Initialize statistics object
-        stats = tools.Statistics(lambda ind: ind.fitness.values)
-        stats.register("avg", np.mean, axis=0)
-        stats.register("std", np.std, axis=0)
-        stats.register("min", np.min, axis=0)
-        stats.register("max", np.max, axis=0)
-
-        logbook = tools.Logbook()
-        logbook.header = "gen", "evals", "std", "min", "avg", "max"
-
         # Initialize the uncovered objectives
         uncovered_objectives = list(range(len(self.objectives)))
 
@@ -94,13 +83,11 @@ class MOSA(BaseAlgorithm):
             remain_len = self.pop_size - len(next_population)
             next_population.extend(sorted_front[:remain_len])
 
-            # Compile statistics about the new population
-            record = stats.compile(next_population)
-            logbook.record(gen=gen, evals=len(next_population), **record)
-            print(logbook.stream)
-
+            self._record_statistics(next_population, gen)
             gen += 1
             execution_time = time.perf_counter() - start_time
+
+        return archive
 
     def _generate_offspring(self, population, uncovered_objectives):
         population = [self.toolbox.clone(ind) for ind in population]

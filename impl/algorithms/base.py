@@ -1,27 +1,32 @@
 import random
 from abc import abstractmethod
+from typing import Callable, List
 
 import numpy as np
 from deap import base, creator, tools
+
+from impl.mr import MR
 
 
 class BaseAlgorithm:
     def __init__(
             self,
             pop_size,  # initial population size
-            evaluator,  # function for evaluating a population
-            objectives,  # objective thresholds
-            bounds,  # lower bound and upper bound of an individual
+            evaluator: Callable,  # function for evaluating a population
+            objectives: List[List],  # objective thresholds
+            bounds: List[List],  # lower bound and upper bound of an individual
+            mrs: List[MR],  # metamorphic relations
             cxpb,  # the probability of mating two individuals
             mutpb,  # the probability of mutating an individual
             time_budget,  # maximum execution time
             max_iter,  # maximum number of iterations
-            seed  # random seed
-    ) -> None:
+            seed=None  # random seed
+    ):
         self.pop_size = pop_size
         self.evaluator = evaluator
         self.objectives = objectives
         self.bounds = bounds
+        self.mrs = mrs
         self.cxpb = cxpb
         self.mutpb = mutpb
         self.time_budget = time_budget
@@ -40,6 +45,16 @@ class BaseAlgorithm:
         self.toolbox.register("individual", tools.initIterate, creator.Individual, self._initialize_vector)
         self.toolbox.register("evaluate", self._evaluate_population)
         self.toolbox.register("archive", self._update_archive)
+
+        # Initialize statistics object
+        self.stats = tools.Statistics(lambda ind: ind.fitness.values)
+        self.stats.register("avg", np.mean, axis=0)
+        self.stats.register("std", np.std, axis=0)
+        self.stats.register("min", np.min, axis=0)
+        self.stats.register("max", np.max, axis=0)
+
+        self.logbook = tools.Logbook()
+        self.logbook.header = "gen", "evals", "std", "min", "avg", "max"
 
     @abstractmethod
     def solve(self):
@@ -83,6 +98,11 @@ class BaseAlgorithm:
                     archive.append(individual)
                     if idx in uncovered_objectives:
                         uncovered_objectives.remove(idx)
+
+    def _record_statistics(self, population, generation):
+        record = self.stats.compile(population)
+        self.logbook.record(gen=generation, evals=len(population), **record)
+        print(self.logbook.stream)
 
     @staticmethod
     def _dominates(this, other, obj):
