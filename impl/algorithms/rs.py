@@ -1,37 +1,9 @@
 import time
 
-from deap import tools
-
 from .base import BaseAlgorithm
 
 
 class RandomSearch(BaseAlgorithm):
-    def __init__(
-            self,
-            pop_size,
-            evaluator,
-            objectives,
-            bounds,
-            cxpb,
-            mutpb,
-            time_budget,
-            max_iter,
-            seed
-    ):
-        super().__init__(
-            pop_size,
-            evaluator,
-            objectives,
-            bounds,
-            cxpb,
-            mutpb,
-            time_budget,
-            max_iter,
-            seed
-        )
-        # Define the problem
-        self.toolbox.register("population", tools.initRepeat, list, self.toolbox.individual)
-
     def solve(self):
         # Initialize the uncovered objectives
         uncovered_objectives = list(range(len(self.objectives)))
@@ -51,8 +23,7 @@ class RandomSearch(BaseAlgorithm):
             # Update archive
             self.toolbox.archive(archive, population, uncovered_objectives)
 
-            if len(uncovered_objectives) == 0:
-                break
+            if len(uncovered_objectives) == 0: break
 
             self._record_statistics(archive, gen)
             gen += 1

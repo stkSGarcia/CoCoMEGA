@@ -2,6 +2,7 @@ import random
 import time
 from collections import defaultdict
 from operator import attrgetter
+from typing import List
 
 from deap import tools
 
@@ -9,33 +10,6 @@ from .base import BaseAlgorithm
 
 
 class MOSA(BaseAlgorithm):
-    def __init__(
-            self,
-            pop_size,
-            evaluator,
-            objectives,
-            bounds,
-            cxpb,
-            mutpb,
-            time_budget,
-            max_iter,
-            seed
-    ) -> None:
-        super().__init__(
-            pop_size,
-            evaluator,
-            objectives,
-            bounds,
-            cxpb,
-            mutpb,
-            time_budget,
-            max_iter,
-            seed
-        )
-        # Define the problem
-        self.toolbox.register("population", tools.initRepeat, list, self.toolbox.individual)
-        self.toolbox.register("breed", self._generate_offspring)
-
     def solve(self):
         # Initialize the uncovered objectives
         uncovered_objectives = list(range(len(self.objectives)))
@@ -55,7 +29,7 @@ class MOSA(BaseAlgorithm):
         execution_time = 0
         while gen < self.max_iter and execution_time < self.time_budget:
             # Generate offsprings
-            offspring = self.toolbox.breed(population, uncovered_objectives)
+            offspring = self._generate_offspring(population, uncovered_objectives)
 
             # Evaluate the offsprings
             self.toolbox.evaluate(offspring)
@@ -66,14 +40,12 @@ class MOSA(BaseAlgorithm):
             # Preference sort
             F = self._preference_sorting(population + offspring, uncovered_objectives)
 
-            if len(uncovered_objectives) == 0:
-                break
+            if len(uncovered_objectives) == 0: break
 
             next_population = []
             index = 0
             while len(next_population) <= self.pop_size:
-                if len(next_population) + len(F[index]) > self.pop_size:
-                    break
+                if len(next_population) + len(F[index]) > self.pop_size: break
                 next_population.extend(F[index])
                 index += 1
 
@@ -89,7 +61,7 @@ class MOSA(BaseAlgorithm):
 
         return archive
 
-    def _generate_offspring(self, population, uncovered_objectives):
+    def _generate_offspring(self, population: List, uncovered_objectives: List) -> List:
         population = [self.toolbox.clone(ind) for ind in population]
         offspring = []
         while len(offspring) < len(population):
@@ -97,48 +69,42 @@ class MOSA(BaseAlgorithm):
             parent2 = self._tournament_selection(population, 10, uncovered_objectives)
             if random.uniform(0, 1) <= self.cxpb:
                 tools.cxOnePoint(parent1, parent2)
-            # TODO mutation and so on
+            self.mrs.mutate(self.mutpb, parent1, parent2)
             offspring.extend([parent1, parent2])
         return offspring
 
     @staticmethod
-    def _tournament_selection(population, size, uncovered_objectives):
+    def _tournament_selection(population: List, size: int, uncovered_objectives: List):
         candidates = []
         for i in range(size):
             idx = random.randint(0, len(population) - 1)
             candidates.append(population[idx])
 
         best = candidates[0]
-        for i in range(size):
-            candidate1 = candidates[i]
-            for j in range(size):
-                candidate2 = candidates[j]
-                if candidate1.fitness.dominates(candidate2.fitness, uncovered_objectives):
-                    best = candidate1
+        for candidate in candidates:
+            if candidate.fitness.dominates(best.fitness, uncovered_objectives):
+                best = candidate
         return best
 
-    def _preference_sorting(self, population, uncovered_objectives):
+    def _preference_sorting(self, population: List, uncovered_objectives: List):
         population = [self.toolbox.clone(ind) for ind in population]
         F = []
         for idx in uncovered_objectives:
-            max_fitness = -1  # TODO
             best = population[0]
             for individual in population:
-                if individual.fitness.values[idx] > max_fitness:
-                    max_fitness = individual.fitness.values[idx]
+                if individual.fitness.dominates(best.fitness, [idx]):
                     best = individual
             F.append(best)
             population.remove(best)
         F = [F]
-        if len(F[0]) > self.pop_size:
-            return F
+        if len(F[0]) > self.pop_size: return F
         if len(population) > 0:
             E = self._fast_nondominated_sort(population, uncovered_objectives)
             F += E
         return F
 
     @staticmethod
-    def _fast_nondominated_sort(population, uncovered_objectives):
+    def _fast_nondominated_sort(population: List, uncovered_objectives: List):
         map_fit_ind = defaultdict(list)
         for ind in population:
             map_fit_ind[ind.fitness].append(ind)
