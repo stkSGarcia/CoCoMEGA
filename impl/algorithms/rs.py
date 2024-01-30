@@ -1,6 +1,6 @@
 import time
 
-from .base import BaseAlgorithm
+from impl.algorithms.base import BaseAlgorithm
 
 
 class RandomSearch(BaseAlgorithm):

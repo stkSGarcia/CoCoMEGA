@@ -4,12 +4,17 @@ from collections import defaultdict
 from operator import attrgetter
 from typing import List
 
-from deap import tools
+from deap import tools, base
 
-from .base import BaseAlgorithm
+from impl.algorithms.base import BaseAlgorithm
 
 
 class MOSA(BaseAlgorithm):
+    def __init__(self, objectives, toolbox: base.Toolbox, pop_size=10, cxpb=0.8, mutpb=0.6, time_budget=3600,
+                 max_iter=100, seed=None):
+        super().__init__(toolbox, pop_size, cxpb, mutpb, time_budget, max_iter, seed)
+        self.objectives = objectives
+
     def solve(self):
         # Initialize the uncovered objectives
         uncovered_objectives = list(range(len(self.objectives)))
@@ -19,23 +24,27 @@ class MOSA(BaseAlgorithm):
         archive = []
 
         # Evaluate the first generation
-        self.toolbox.evaluate(population)
+        fitnesses = self.toolbox.evaluate(population)
+        for individual, fitness in zip(population, fitnesses):
+            individual.fitness.values = fitness
 
         # Update archive
-        self.toolbox.archive(archive, population, uncovered_objectives)
+        self._update_archive(archive, population, uncovered_objectives)
 
         gen = 0
         start_time = time.perf_counter()
-        execution_time = 0
-        while gen < self.max_iter and execution_time < self.time_budget:
+        while gen < self.max_iter and time.perf_counter() - start_time < self.time_budget:
             # Generate offsprings
             offspring = self._generate_offspring(population, uncovered_objectives)
 
             # Evaluate the offsprings
-            self.toolbox.evaluate(offspring)
+            invalid_individuals = [ind for ind in offspring if not ind.fitness.valid]
+            fitnesses = self.toolbox.evaluate(invalid_individuals)
+            for individual, fitness in zip(invalid_individuals, fitnesses):
+                individual.fitness.values = fitness
 
             # Update archive
-            self.toolbox.archive(archive, offspring, uncovered_objectives)
+            self._update_archive(archive, offspring, uncovered_objectives)
 
             # Preference sort
             F = self._preference_sorting(population + offspring, uncovered_objectives)
@@ -55,22 +64,44 @@ class MOSA(BaseAlgorithm):
             remain_len = self.pop_size - len(next_population)
             next_population.extend(sorted_front[:remain_len])
 
-            self._record_statistics(next_population, gen)
             gen += 1
-            execution_time = time.perf_counter() - start_time
+            self._record_statistics(next_population, gen)
 
         return archive
+
+    def _update_archive(self, archive: List, population: List, uncovered_objectives: List):
+        """Add individual meeting the objective to the archive."""
+        for individual in population:
+            for idx, (fitness, objective) in enumerate(zip(individual.fitness.values, self.objectives)):
+                if not objective(fitness): continue
+                archive_idx, archive_individual = next(
+                    ((i, ind) for i, ind in enumerate(archive) if idx in ind.covered_objectives),
+                    (None, None)
+                )
+                if archive_individual is not None and archive_idx is not None:  # individual already in the archive
+                    if individual.fitness.dominates(archive_individual.fitness, [idx]):
+                        individual.covered_objectives.append(idx)
+                        archive[archive_idx] = individual
+                        if idx in uncovered_objectives:
+                            uncovered_objectives.remove(idx)
+                else:
+                    individual.covered_objectives.append(idx)
+                    archive.append(individual)
+                    if idx in uncovered_objectives:
+                        uncovered_objectives.remove(idx)
 
     def _generate_offspring(self, population: List, uncovered_objectives: List) -> List:
         population = [self.toolbox.clone(ind) for ind in population]
         offspring = []
         while len(offspring) < len(population):
-            parent1 = self._tournament_selection(population, 10, uncovered_objectives)
-            parent2 = self._tournament_selection(population, 10, uncovered_objectives)
-            if random.uniform(0, 1) <= self.cxpb:
-                tools.cxOnePoint(parent1, parent2)
-            self.mrs.mutate(self.mutpb, parent1, parent2)
-            offspring.extend([parent1, parent2])
+            ind1 = self._tournament_selection(population, 10, uncovered_objectives)
+            ind2 = self._tournament_selection(population, 10, uncovered_objectives)
+            if random.random() <= self.cxpb:
+                self.toolbox.mate(ind1, ind2)
+            self.toolbox.mutate(ind1)
+            self.toolbox.mutate(ind2)
+            del ind1.fitness.values, ind2.fitness.values
+            offspring.extend([ind1, ind2])
         return offspring
 
     @staticmethod

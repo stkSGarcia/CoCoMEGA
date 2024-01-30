@@ -1,7 +1,7 @@
 import random
 from abc import abstractmethod, ABC
 from collections import defaultdict
-from typing import List, Callable
+from typing import List
 
 from impl.scenario import Scenario, Actor
 
@@ -12,6 +12,7 @@ class Perturbation(ABC):
 
     @abstractmethod
     def perturb(self, scenario: Scenario):
+        """Perturb the given scenario in place."""
         raise NotImplementedError
 
 
@@ -98,51 +99,49 @@ class EnvPerturbationFactory(PerturbationFactory):
 
 
 class Relation(ABC):
-    def __init__(self, field):
+    def __init__(self, field, weight):
         self.field = field
+        self.weight = weight
 
     @abstractmethod
-    def to_objective(self, source_result) -> Callable:
+    def is_violated(self, source, result) -> (bool, float):
+        """Determine if this relation is violated.
+
+        @param source: source result
+        @param result: follow-up result
+        @return: the float value denotes the extent to which this relation is violated
+        """
         raise NotImplementedError
 
 
 class Invariance(Relation):
-    def __init__(self, field, threshold=0.01):
-        super().__init__(field)
+    def __init__(self, field, weight=1.0, threshold=0.01):
+        super().__init__(field, weight)
         self.threshold = threshold
 
-    def to_objective(self, source_result) -> (Callable, float):
-        def fitness(result):
-            diff = abs(result - source_result)
-            return diff > self.threshold, diff
-
-        return fitness, 1.0
+    def is_violated(self, source, result) -> (bool, float):
+        diff = abs(result - source)
+        return diff > self.threshold, diff
 
 
 class Decreasing(Relation):
-    def __init__(self, field, threshold=0.1):
-        super().__init__(field)
+    def __init__(self, field, weight=-1.0, threshold=0.1):
+        super().__init__(field, weight)
         self.threshold = threshold
 
-    def to_objective(self, source_result) -> (Callable, float):
-        def fitness(result):
-            diff = source_result - result
-            return diff < source_result * self.threshold, diff
-
-        return fitness, -1.0
+    def is_violated(self, source, result) -> (bool, float):
+        diff = source - result
+        return diff < source * self.threshold, diff
 
 
 class Increasing(Relation):
-    def __init__(self, field, threshold=0.1):
-        super().__init__(field)
+    def __init__(self, field, weight=-1.0, threshold=0.1):
+        super().__init__(field, weight)
         self.threshold = threshold
 
-    def to_objective(self, source_result) -> (Callable, float):
-        def fitness(result):
-            diff = result - source_result
-            return diff < source_result * self.threshold, diff
-
-        return fitness, -1.0
+    def is_violated(self, source, result) -> (bool, float):
+        diff = result - source
+        return diff < source * self.threshold, diff
 
 
 class MR:
@@ -167,32 +166,5 @@ class MRSet:
         for relation_list in relation_dict.values():
             pass  # TODO
 
-    def to_objectives(self, source_results: List) -> (List, List):
-        """Transform the set of metamorphic relations into fitness functions.
-
-        @param source_results: simulation results of the source scenarios
-        @return: (fitness functions, weights)
-        """
-        assert len(source_results) == len(self.relations)
-        fitness_functions = []
-        weights = []
-        for relation, source_result in zip(self.relations, source_results):
-            fitness, weight = relation.to_objectives(source_result)
-            fitness_functions.append(fitness)
-            weights.append(weight)
-        return fitness_functions, weights
-
-    def mutate(self, mutpb, *individuals):
-        """Mutates individuals according to the probability `mutpb`.
-
-        @param mutpb: mutation probability
-        """
-        for individual in individuals:
-            # add perturbations
-            times = 1
-            while random.uniform(0, 1) < mutpb ** times:
-                perturbation = random.choice(self.mrs).generate_perturbation()
-                individual.append(perturbation)
-                times += 1
-
-            # TODO: Squash perturbations
+    def is_violated(self):
+        pass  # TODO

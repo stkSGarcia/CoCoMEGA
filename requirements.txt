@@ -1,0 +1,4 @@
+deap~=1.4.1
+numpy~=1.21.6
+argformat~=0.0.3
+PyYAML~=6.0.1
