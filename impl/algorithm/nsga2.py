@@ -3,7 +3,7 @@ import time
 
 from deap import tools
 
-from impl.algorithms.base import BaseAlgorithm
+from impl.algorithm.base import BaseAlgorithm
 
 
 class NSGA2(BaseAlgorithm):

@@ -1,6 +1,6 @@
 import random
 
-from impl.algorithms.mosa import MOSA
+from impl.algorithm.mosa import MOSA
 
 
 def evaluator(individual):

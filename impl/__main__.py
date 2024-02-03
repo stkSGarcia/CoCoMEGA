@@ -6,8 +6,8 @@ import os
 import argformat
 import yaml
 
-from impl.algorithms.nsga2 import NSGA2
-from impl.problems import *
+from impl.algorithm.nsga2 import NSGA2
+from impl.problem import *
 
 logger = logging.getLogger("impl")
 CONFIG = None
@@ -57,7 +57,6 @@ def init_config():
     else:
         logger.warning("Cannot find log configuration file.")
 
-
 def scenario(algorithm: str):
     if algorithm == "nsga2":
         solver = NSGA2(
@@ -69,7 +68,6 @@ def scenario(algorithm: str):
     else:
         raise ValueError(f"Unsupported algorithm: {algorithm}.")
     solver.solve()
-
 
 if __name__ == "__main__":
     # Configuration initialization

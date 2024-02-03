@@ -1,9 +1,8 @@
 import random
 from abc import abstractmethod, ABC
-from collections import defaultdict
 from typing import List
 
-from impl.scenario import Scenario, Actor
+from impl.scenario.scenario import Scenario
 
 
 class Perturbation(ABC):
@@ -17,24 +16,31 @@ class Perturbation(ABC):
 
 
 class ActorPerturbation(Perturbation):
-    def __init__(self, uid, blueprint, x, y, z, pitch, yaw, roll, velocity):
+    def __init__(self, uid, loc_x=None, loc_y=None, yaw=None, pitch=None, speed_x=None, speed_y=None, typ=None,
+                 freeze_time=None, acc_x=None, acc_y=None):
         super().__init__(uid)
-        self.blueprint = blueprint
-        self.x = x
-        self.y = y
-        self.z = z
-        self.pitch = pitch
+        self.loc_x = loc_x
+        self.loc_y = loc_y
         self.yaw = yaw
-        self.roll = roll
-        self.velocity = velocity
+        self.pitch = pitch
+        self.speed_x = speed_x
+        self.speed_y = speed_y
+        self.typ = typ
+        self.freeze_time = freeze_time
+        self.acc_x = acc_x
+        self.acc_y = acc_y
 
     def perturb(self, scenario: Scenario):
-        if self.uid not in scenario.actors:
-            scenario.actors[self.uid] = Actor(self.uid, self.blueprint, self.x, self.y, self.z, self.pitch, self.yaw,
-                                              self.roll, self.velocity)
+        if self.uid == "pedestrian":
+            scenario.update_pedestrian(self.loc_x, self.loc_y, self.yaw, self.pitch, self.speed_x, self.speed_y,
+                                       self.typ, self.freeze_time)
+        elif self.uid == "vehicle":
+            scenario.update_vehicle(self.loc_x, self.loc_y, self.yaw, self.pitch, self.speed_x, self.speed_y, self.typ,
+                                    self.freeze_time)
+        elif self.uid == "object":
+            scenario.update_object(self.loc_x, self.loc_y, self.yaw, self.pitch)
         else:
-            scenario.actors[self.uid].update(blueprint=self.blueprint, x=self.x, y=self.y, z=self.z, pitch=self.pitch,
-                                             yaw=self.yaw, roll=self.roll, velocity=self.velocity)
+            raise ValueError(f"Unsupported actor type: {self.uid}.")
 
 
 class EnvPerturbation(Perturbation):
@@ -43,7 +49,12 @@ class EnvPerturbation(Perturbation):
         self.value = value
 
     def perturb(self, scenario: Scenario):
-        setattr(scenario, self.uid, self.value)
+        if self.uid == "weather":
+            scenario.update_weather(self.value)
+        elif self.uid == "darkness":
+            scenario.update_darkness(self.value)
+        else:
+            raise ValueError(f"Unsupported env type: {self.uid}.")
 
 
 class PerturbationFactory(ABC):
@@ -51,57 +62,66 @@ class PerturbationFactory(ABC):
     def spawn(self) -> Perturbation:
         raise NotImplementedError
 
+    @staticmethod
+    def _random(value_range):
+        if value_range is None:
+            return None
+        if type(value_range[0]) is not type(value_range[1]):
+            raise ValueError(f"Unmatched boundary types: [{type(value_range[0])}, {type(value_range[1])}].")
+        if isinstance(value_range[0], float):
+            return None if random.random() < 0.1 else random.uniform(value_range[0], value_range[1])
+        elif isinstance(value_range[0], int):
+            return None if random.random() < 0.1 else random.randint(value_range[0], value_range[1])
+        else:
+            raise ValueError(f"Unsupported boundary type: {type(value_range[0])}.")
+
 
 class ActorPerturbationFactory(PerturbationFactory):
-    def __init__(self, blueprint, x_range, y_range, z_range, pitch_range, yaw_range, roll_range, velocity_range=None):
-        self.blueprint = blueprint
-        self.x_range = x_range
-        self.y_range = y_range
-        self.z_range = z_range
+    def __init__(self, category, loc_x_range=None, loc_y_range=None, yaw_range=None, pitch_range=None,
+                 speed_x_range=None, speed_y_range=None, typ_range=None, freeze_time=None, acc_x_range=None,
+                 acc_y_range=None):
+        self.category = category
+        self.loc_x_range = loc_x_range
+        self.loc_y_range = loc_y_range
         self.pitch_range = pitch_range
         self.yaw_range = yaw_range
-        self.roll_range = roll_range
-        self.velocity_range = velocity_range
-        self.last_uid = 0
+        self.speed_x_range = speed_x_range
+        self.speed_y_range = speed_y_range
+        self.typ_range = typ_range
+        self.freeze_time = freeze_time
+        self.acc_x_range = acc_x_range
+        self.acc_y_range = acc_y_range
 
     def spawn(self) -> ActorPerturbation:
-        uid = f"{self.last_uid}{self.blueprint}"
-        self.last_uid += 1
         return ActorPerturbation(
-            uid,
-            self.blueprint,
-            random.uniform(self.x_range[0], self.x_range[1]),
-            random.uniform(self.y_range[0], self.y_range[1]),
-            random.uniform(self.z_range[0], self.z_range[1]),
-            random.uniform(self.pitch_range[0], self.pitch_range[1]),
-            random.uniform(self.yaw_range[0], self.yaw_range[1]),
-            random.uniform(self.roll_range[0], self.roll_range[1]),
-            random.uniform(self.velocity_range[0], self.velocity_range[1]) if self.velocity_range is not None else None,
+            self.category,
+            self._random(self.loc_x_range),
+            self._random(self.loc_y_range),
+            self._random(self.yaw_range),
+            self._random(self.pitch_range),
+            self._random(self.speed_x_range),
+            self._random(self.speed_y_range),
+            self._random(self.typ_range),
+            self._random(self.freeze_time),
+            self._random(self.acc_x_range),
+            self._random(self.acc_y_range),
         )
 
 
 class EnvPerturbationFactory(PerturbationFactory):
-    def __init__(self, field, dtype, lower_bound=None, upper_bound=None):
-        self.field = field
-        self.dtype = dtype
-        self.lower_bound = lower_bound
-        self.upper_bound = upper_bound
+    def __init__(self, category, value_range):
+        self.category = category
+        self.value_range = value_range
 
     def spawn(self) -> EnvPerturbation:
-        if self.dtype == float:
-            return EnvPerturbation(self.field, random.uniform(self.lower_bound, self.upper_bound))
-        elif self.dtype == int:
-            return EnvPerturbation(self.field, random.randint(self.lower_bound, self.upper_bound))
-        elif self.dtype == bool:
-            return EnvPerturbation(self.field, bool(random.getrandbits(1)))
-        else:
-            raise ValueError(f"Unsupported dtype: {self.dtype}.")
+        return EnvPerturbation(self.category, self._random(self.value_range))
 
 
 class Relation(ABC):
-    def __init__(self, field, weight):
+    def __init__(self, field, weight, threshold):
         self.field = field
         self.weight = weight
+        self.threshold = threshold
 
     @abstractmethod
     def is_violated(self, source, result) -> (bool, float):
@@ -113,11 +133,16 @@ class Relation(ABC):
         """
         raise NotImplementedError
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.field == other.field and self.weight == other.weight and self.threshold == other.threshold
+        else:
+            return False
+
 
 class Invariance(Relation):
     def __init__(self, field, weight=1.0, threshold=0.01):
-        super().__init__(field, weight)
-        self.threshold = threshold
+        super().__init__(field, weight, threshold)
 
     def is_violated(self, source, result) -> (bool, float):
         diff = abs(result - source)
@@ -126,8 +151,7 @@ class Invariance(Relation):
 
 class Decreasing(Relation):
     def __init__(self, field, weight=-1.0, threshold=0.1):
-        super().__init__(field, weight)
-        self.threshold = threshold
+        super().__init__(field, weight, threshold)
 
     def is_violated(self, source, result) -> (bool, float):
         diff = source - result
@@ -136,8 +160,7 @@ class Decreasing(Relation):
 
 class Increasing(Relation):
     def __init__(self, field, weight=-1.0, threshold=0.1):
-        super().__init__(field, weight)
-        self.threshold = threshold
+        super().__init__(field, weight, threshold)
 
     def is_violated(self, source, result) -> (bool, float):
         diff = result - source
@@ -145,9 +168,9 @@ class Increasing(Relation):
 
 
 class MR:
-    def __init__(self, perturbation_factories: List[PerturbationFactory], relations: List[Relation]):
+    def __init__(self, perturbation_factories: List[PerturbationFactory], relation: Relation):
         self.perturbation_factories = perturbation_factories
-        self.relations = relations
+        self.relation = relation
 
     def generate_perturbation(self) -> Perturbation:
         return random.choice(self.perturbation_factories).spawn()
@@ -155,16 +178,12 @@ class MR:
 
 class MRSet:
     def __init__(self, mrs: List[MR]):
+        # Check relations
+        assert len(mrs) > 0
+        assert all(mr.relation == mrs[0].relation for mr in mrs)
+
         self.mrs = mrs
+        self.relation = mrs[0].relation
 
-        # merge relations
-        self.relations = []
-        relations = [relation for mr in self.mrs for relation in mr.relations]
-        relation_dict = defaultdict(list)
-        for relation in relations:
-            relation_dict[relation.field].append(relation)
-        for relation_list in relation_dict.values():
-            pass  # TODO
-
-    def is_violated(self):
-        pass  # TODO
+    def is_violated(self, source, result) -> (bool, float):
+        return self.relation.is_violated(source, result)

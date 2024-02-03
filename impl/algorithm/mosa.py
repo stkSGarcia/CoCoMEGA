@@ -6,7 +6,7 @@ from typing import List
 
 from deap import tools, base
 
-from impl.algorithms.base import BaseAlgorithm
+from impl.algorithm.base import BaseAlgorithm
 
 
 class MOSA(BaseAlgorithm):
