@@ -1,3 +1,4 @@
+import logging
 import random
 import time
 from collections import defaultdict
@@ -8,6 +9,8 @@ from deap import tools, base
 
 from impl.algorithm.base import BaseAlgorithm
 
+logger = logging.getLogger(__name__)
+
 
 class MOSA(BaseAlgorithm):
     def __init__(self, objectives, toolbox: base.Toolbox, pop_size=10, cxpb=0.8, mutpb=0.6, time_budget=3600,
@@ -16,37 +19,41 @@ class MOSA(BaseAlgorithm):
         self.objectives = objectives
 
     def solve(self):
-        # Initialize the uncovered objectives
+        logger.info("CCEA started.")
+        logger.info(f"Time budget: {self.time_budget}.")
+        logger.info(f"Max iteration: {self.max_iter}.")
+
+        # Initialize the uncovered objectives.
         uncovered_objectives = list(range(len(self.objectives)))
 
-        # Initialize the first generation and an archive
+        # Initialize the first generation and an archive.
         population = self.toolbox.population(n=self.pop_size)
         archive = []
 
-        # Evaluate the first generation
+        # Evaluate the first generation.
         fitnesses = self.toolbox.evaluate(population)
         for individual, fitness in zip(population, fitnesses):
             individual.fitness.values = fitness
 
-        # Update archive
+        # Update archive.
         self._update_archive(archive, population, uncovered_objectives)
 
         gen = 0
         start_time = time.perf_counter()
         while gen < self.max_iter and time.perf_counter() - start_time < self.time_budget:
-            # Generate offsprings
+            # Generate offsprings.
             offspring = self._generate_offspring(population, uncovered_objectives)
 
-            # Evaluate the offsprings
+            # Evaluate the offsprings.
             invalid_individuals = [ind for ind in offspring if not ind.fitness.valid]
             fitnesses = self.toolbox.evaluate(invalid_individuals)
             for individual, fitness in zip(invalid_individuals, fitnesses):
                 individual.fitness.values = fitness
 
-            # Update archive
+            # Update archive.
             self._update_archive(archive, offspring, uncovered_objectives)
 
-            # Preference sort
+            # Preference sort.
             F = self._preference_sorting(population + offspring, uncovered_objectives)
 
             if len(uncovered_objectives) == 0: break
@@ -58,7 +65,7 @@ class MOSA(BaseAlgorithm):
                 next_population.extend(F[index])
                 index += 1
 
-            # Crowding distance
+            # Assign crowding distance.
             tools.emo.assignCrowdingDist(F[index])
             sorted_front = sorted(F[index], key=attrgetter("fitness.crowding_dist"), reverse=True)
             remain_len = self.pop_size - len(next_population)
@@ -91,7 +98,7 @@ class MOSA(BaseAlgorithm):
                         uncovered_objectives.remove(idx)
 
     def _generate_offspring(self, population: List, uncovered_objectives: List) -> List:
-        population = [self.toolbox.clone(ind) for ind in population]
+        population = self.toolbox.clone(population)
         offspring = []
         while len(offspring) < len(population):
             ind1 = self._tournament_selection(population, 10, uncovered_objectives)
@@ -118,7 +125,7 @@ class MOSA(BaseAlgorithm):
         return best
 
     def _preference_sorting(self, population: List, uncovered_objectives: List):
-        population = [self.toolbox.clone(ind) for ind in population]
+        population = self.toolbox.clone(population)
         F = []
         for idx in uncovered_objectives:
             best = population[0]

@@ -10,17 +10,23 @@ logger = logging.getLogger(__name__)
 
 
 class BaseAlgorithm:
-    def __init__(self, toolbox: base.Toolbox, pop_size=10, cxpb=0.8, mutpb=0.6, time_budget=3600, max_iter=100,
+    def __init__(self,
+                 toolbox: base.Toolbox,
+                 pop_size=10,
+                 cxpb=0.8,
+                 mutpb=0.6,
+                 time_budget=3600,
+                 max_iter=100,
                  seed=None):
         """Constructor.
 
-        @param toolbox: base.Toolbox that defines the problem
-        @param pop_size: initial population size
-        @param cxpb: the probability of mating two individuals
-        @param mutpb: the probability of mutating an individual
-        @param time_budget: maximum execution time
-        @param max_iter: maximum number of iterations
-        @param seed: random seed
+        @param toolbox: `base.Toolbox` that defines the problem.
+        @param pop_size: The size of the initial population.
+        @param cxpb: The probability of mating two individuals.
+        @param mutpb: The probability of mutating an individual.
+        @param time_budget: The maximum execution time for the search.
+        @param max_iter: The maximum number of iterations for the search.
+        @param seed: Random seed.
         """
         self.toolbox = toolbox
         self.pop_size = pop_size
@@ -35,7 +41,7 @@ class BaseAlgorithm:
             logger.info("Replace `dominates` function of fitness.")
             setattr(creator.Fitness, "dominates", BaseAlgorithm._dominates)
 
-        # Initialize statistics object
+        # Initialize statistics object.
         self.stats = tools.Statistics(lambda ind: ind.fitness.values)
         self.stats.register("avg", np.mean, axis=0)
         self.stats.register("std", np.std, axis=0)
@@ -43,18 +49,17 @@ class BaseAlgorithm:
         self.stats.register("max", np.max, axis=0)
 
         self.logbook = tools.Logbook()
-        self.logbook.header = "gen", "evals", "std", "min", "avg", "max"
+        self.logbook.header = "pop", "gen", "evals", "std", "min", "avg", "max"
 
     @abstractmethod
     def solve(self):
         """Run the algorithm."""
         raise NotImplementedError
 
-    def _record_statistics(self, population: List, num_of_generation: int):
+    def _record_statistics(self, population: List, num_of_generation: int, pop_name: str = ""):
         """Record the statistics of the population."""
         record = self.stats.compile(population)
-        self.logbook.record(gen=num_of_generation, evals=len(population), **record)
-        logger.info(self.logbook.stream)
+        self.logbook.record(pop=pop_name, gen=num_of_generation, evals=len(population), **record)
 
     @staticmethod
     def _dominates(this, other, obj: List = None):

@@ -1,1 +1,2 @@
-log: logs
+out: out
+log: out/logs
