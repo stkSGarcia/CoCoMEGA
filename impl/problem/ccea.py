@@ -154,7 +154,8 @@ def _evaluate_individual(individual, index, complete_solutions):
     for solution in complete_solutions:
         if solution[index] == individual:
             involved.append(solution.fitness.values[0])
-    return max(involved), len(individual)
+    individual.fitness.values = max(involved), len(individual)
+    return individual
 
 
 toolbox.register("evaluate_joint", _evaluate_complete_solution)

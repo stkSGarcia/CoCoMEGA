@@ -12,26 +12,17 @@ logger = logging.getLogger(__name__)
 class BaseAlgorithm:
     def __init__(self,
                  toolbox: base.Toolbox,
-                 pop_size=10,
-                 cxpb=0.8,
-                 mutpb=0.6,
-                 time_budget=3600,
-                 max_iter=100,
+                 time_budget,
+                 max_iter,
                  seed=None):
         """Constructor.
 
         @param toolbox: `base.Toolbox` that defines the problem.
-        @param pop_size: The size of the initial population.
-        @param cxpb: The probability of mating two individuals.
-        @param mutpb: The probability of mutating an individual.
         @param time_budget: The maximum execution time for the search.
         @param max_iter: The maximum number of iterations for the search.
         @param seed: Random seed.
         """
         self.toolbox = toolbox
-        self.pop_size = pop_size
-        self.cxpb = cxpb
-        self.mutpb = mutpb
         self.time_budget = time_budget
         self.max_iter = max_iter
         random.seed(seed)

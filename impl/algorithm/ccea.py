@@ -14,18 +14,15 @@ class CCEA(BaseAlgorithm):
                  min_num_evals,
                  archive_size,
                  toolbox: base.Toolbox,
-                 pop_size=10,
-                 cxpb=0.8,
-                 mutpb=0.6,
-                 time_budget=3600,
-                 max_iter=100,
+                 time_budget,
+                 max_iter,
                  seed=None):
         """Constructor.
 
         @param min_num_evals: The minimum number of joint fitness evaluations per individual.
         @param archive_size: The maximum number of individuals allowed in the archive.
         """
-        super().__init__(toolbox, pop_size, cxpb, mutpb, time_budget, max_iter, seed)
+        super().__init__(toolbox, time_budget, max_iter, seed)
         self.min_num_evals = min_num_evals
         self.archive_size = archive_size
 
@@ -113,10 +110,10 @@ class CCEA(BaseAlgorithm):
 
         # Evaluate individual fitness.
         for scenario in pop_scenario:
-            scenario.fitness.values = self.toolbox.evaluate_individual(scenario, 0, archive_solution)
+            self.toolbox.evaluate_individual(scenario, 0, archive_solution)
 
         for perturbation in pop_perturbation:
-            perturbation.fitness.values = self.toolbox.evaluate_individual(perturbation, 1, archive_solution)
+            self.toolbox.evaluate_individual(perturbation, 1, archive_solution)
 
         return archive_solution
 

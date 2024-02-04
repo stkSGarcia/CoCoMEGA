@@ -7,6 +7,7 @@ import argformat
 import yaml
 
 from impl.algorithm.ccea import CCEA
+from impl.algorithm.mosa import MOSA
 from impl.algorithm.nsga2 import NSGA2
 
 logger = logging.getLogger("impl")
@@ -61,28 +62,42 @@ def init_config():
 
 
 def ccea():
-    from impl.problem import ccea as problem_ccea
+    from impl.problem import ccea as problem
     solver = CCEA(
-        min_num_evals=problem_ccea.MIN_NUM_EVALS,
-        archive_size=problem_ccea.ARCHIVE_SIZE,
-        toolbox=problem_ccea.toolbox,
-        time_budget=problem_ccea.TIME_BUDGET,
-        max_iter=problem_ccea.MAX_ITERATIONS,
+        min_num_evals=problem.MIN_NUM_EVALS,
+        archive_size=problem.ARCHIVE_SIZE,
+        toolbox=problem.toolbox,
+        time_budget=problem.TIME_BUDGET,
+        max_iter=problem.MAX_ITERATIONS,
     )
-    solution = solver.solve()
+    solver.solve()
 
 
 def scenario(algorithm: str):
-    from impl.problem import scenario as problem_scenario
+    from impl.problem import scenario as problem
     if algorithm == "nsga2":
         solver = NSGA2(
-            toolbox=problem_scenario.toolbox,
-            pop_size=problem_scenario.POP_SIZE,
-            cxpb=problem_scenario.CXPB,
-            mutpb=problem_scenario.MUTPB
+            toolbox=problem.toolbox,
+            time_budget=problem.TIME_BUDGET,
+            max_iter=problem.MAX_ITERATIONS,
         )
     else:
         raise ValueError(f"Unsupported algorithm: {algorithm}.")
+    solver.solve()
+
+
+def mr(algorithm: str):
+    from impl.problem import mr as problem
+    if algorithm == "mosa":
+        solver = MOSA(
+            objectives=problem,
+            pop_size=problem.POP_SIZE,
+            toolbox=problem.toolbox,
+            time_budget=problem.TIME_BUDGET,
+            max_iter=problem.MAX_ITERATIONS,
+        )
+    else:
+        raise ValueError(f"Unsupported algorithm {algorithm}.")
     solver.solve()
 
 
@@ -110,6 +125,11 @@ if __name__ == "__main__":
     parser_scenario.add_argument("-a", "--algorithm", required=False, choices=("nsga2", "mosa"),
                                  default="nsga2", help="")
     parser_scenario.set_defaults(func=lambda args: scenario(algorithm=args.algorithm))
+
+    parser_mr = subparsers.add_parser("mr", help="")
+    parser_mr.add_argument("-a", "--algorithm", required=False, choices=("nsga2", "mosa"),
+                           default="mosa", help="")
+    parser_mr.set_defaults(func=lambda args: mr(algorithm=args.algorithm))
 
     arguments = parser.parse_args()
     arguments.func(arguments)
