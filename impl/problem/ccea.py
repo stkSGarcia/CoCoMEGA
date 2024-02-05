@@ -129,7 +129,7 @@ toolbox.register("mutate_perturbation", _mutate_perturbation)
 def _evaluate_complete_solution(solution):
     """Evaluate the joint fitness of a complete solution.
 
-    @param solution: The complete solution (`creator.Individual`) to evaluate.
+    @param solution: The complete solutions (`creator.Individual`) to be evaluated.
     @return: The complete solution with fitness evaluated.
     """
     source_results = []  # TODO: run simulation

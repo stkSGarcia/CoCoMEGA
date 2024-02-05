@@ -1,64 +1,14 @@
 import argparse
-import collections.abc
 import logging.config
-import os
 
 import argformat
-import yaml
 
+from impl import config
 from impl.algorithm.ccea import CCEA
 from impl.algorithm.mosa import MOSA
 from impl.algorithm.nsga2 import NSGA2
 
 logger = logging.getLogger("impl")
-CONFIG = None
-
-
-def load_yaml(path):
-    with open(path, "r") as f:
-        return yaml.safe_load(f.read())
-
-
-def init_config():
-    """Load configurations."""
-    default_config_base = "conf"
-    config_name = "config.yaml"
-    log_config_name = "log.yaml"
-
-    # General configurations.
-    global CONFIG
-    default_config_path = os.path.join(default_config_base, config_name)
-    if os.path.isfile(default_config_path):
-        default_config = load_yaml(default_config_path)
-    else:
-        raise ValueError("Cannot find default configuration file.")
-    custom_config = load_yaml(config_name) if os.path.isfile(config_name) else {}
-    CONFIG = {**default_config, **custom_config}
-
-    # Create out and log directories.
-    module_dir = os.path.dirname(os.path.dirname(__file__))
-    out_dir = os.path.join(module_dir, CONFIG["out"])
-    os.makedirs(out_dir, exist_ok=True)
-    log_dir = os.path.join(module_dir, CONFIG["log"])
-    os.makedirs(log_dir, exist_ok=True)
-
-    # Log configurations.
-    def update_log_dir(dictionary):
-        for k, v in dictionary.items():
-            if isinstance(v, collections.abc.Mapping):
-                update_log_dir(v)
-            elif k == "filename":
-                dictionary[k] = os.path.join(log_dir, dictionary[k])
-
-    default_log_config_path = os.path.join(default_config_base, log_config_name)
-    default_log_config = load_yaml(default_log_config_path) if os.path.isfile(default_log_config_path) else {}
-    custom_log_config = load_yaml(log_config_name) if os.path.isfile(log_config_name) else {}
-    log_config = {**default_log_config, **custom_log_config}
-    if log_config:
-        update_log_dir(log_config)
-        logging.config.dictConfig(log_config)
-    else:
-        logger.warning("Cannot find log configuration file.")
 
 
 def ccea():
@@ -103,7 +53,7 @@ def mr(algorithm: str):
 
 if __name__ == "__main__":
     # Configuration initialization.
-    init_config()
+    config.init_config()
 
     # Parse command line.
     parser = argparse.ArgumentParser(

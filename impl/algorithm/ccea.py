@@ -1,9 +1,11 @@
 import logging
 import random
 import time
+from concurrent.futures import ProcessPoolExecutor
 
 from deap import base, tools
 
+from impl import config
 from impl.algorithm.base import BaseAlgorithm
 
 logger = logging.getLogger(__name__)
@@ -104,7 +106,8 @@ class CCEA(BaseAlgorithm):
 
         # Evaluate joint fitness.
         candidates = [ind for ind in unique_solutions if ind not in evaluated_solutions]
-        candidates = list(self.toolbox.map(self.toolbox.evaluate_joint, candidates))
+        with ProcessPoolExecutor(max_workers=config.CONFIG["max_workers"]) as executor:
+            candidates = executor.map(self.toolbox.evaluate_joint, candidates)
         evaluated_solutions.extend(candidates)
         archive_solution = [self.toolbox.clone(ind) for ind in evaluated_solutions if ind in unique_solutions]
 
