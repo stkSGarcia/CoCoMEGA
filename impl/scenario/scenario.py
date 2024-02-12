@@ -38,6 +38,10 @@ class Scenario:
         5- Darkness (Numerical or Categorical)
         """
         self.vector = vector
+        self.ego_vehicle = self._get_ego_vehicle()
+        self.other_vehicles = self._get_other_vehicles()
+        self.walkers = self._get_walkers()
+        self.traffic_signs = self._get_traffic_signs()
 
     def update_pedestrian(self, loc_x, loc_y, yaw, pitch, speed_x, speed_y, typ, freeze_time):
         self._update_vector(range(0, 8), loc_x, loc_y, yaw, pitch, speed_x, speed_y, typ, freeze_time)
@@ -58,6 +62,77 @@ class Scenario:
         for index, candidate in zip(index_range, args):
             if candidate is not None:
                 self.vector[index] = candidate
+
+    def _get_ego_vehicle(self):
+        return {
+            "spawn_point": {
+                "x": 200.0,
+                "y": -2.0,
+                "z": 0.5,
+                "roll": 0.0,
+                "pitch": 0.0,
+                "yaw": 0.0
+            }
+        }
+
+    def _get_other_vehicles(self):
+        return [
+            {
+                "type": "vehicle.tesla.model3",
+                "id": "vehicle_nearby",
+                "spawn_point": {
+                    "x": 250.0,
+                    "y": -2.0,
+                    "z": 0.5,
+                    "roll": 0.0,
+                    "pitch": 0.0,
+                    "yaw": 0.0
+                }
+            },
+            {
+                "type": "vehicle.tesla.model3",
+                "id": "vehicle_nearby2",
+                "spawn_point": {
+                    "x": 270.0,
+                    "y": -2.0,
+                    "z": 0.5,
+                    "roll": 0.0,
+                    "pitch": 0.0,
+                    "yaw": 0.0
+                }
+            },
+        ]
+
+    def _get_walkers(self):
+        return [
+            {
+                "type": "walker.pedestrian.0001",  # Adult
+                "id": "pedestrian1",
+                "spawn_point": {
+                    "x": 215.0,
+                    "y": -5.0,
+                    "z": 1.0,
+                    "roll": 0.0,
+                    "pitch": 0.0,
+                    "yaw": 90.0
+                }
+            },
+            {
+                "type": "walker.pedestrian.0011",  # Child
+                "id": "pedestrian2",
+                "spawn_point": {
+                    "x": 220.0,
+                    "y": -5.0,
+                    "z": 1.0,
+                    "roll": 0.0,
+                    "pitch": 0.0,
+                    "yaw": 90.0,
+                }
+            },
+        ]
+
+    def _get_traffic_signs(self):
+        return {}
 
     @staticmethod
     def generate_random_scenario():
