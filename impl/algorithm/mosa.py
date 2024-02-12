@@ -1,3 +1,4 @@
+import logging
 import random
 import time
 from collections import defaultdict
@@ -8,45 +9,59 @@ from deap import tools, base
 
 from impl.algorithm.base import BaseAlgorithm
 
+logger = logging.getLogger(__name__)
+
 
 class MOSA(BaseAlgorithm):
-    def __init__(self, objectives, toolbox: base.Toolbox, pop_size=10, cxpb=0.8, mutpb=0.6, time_budget=3600,
-                 max_iter=100, seed=None):
-        super().__init__(toolbox, pop_size, cxpb, mutpb, time_budget, max_iter, seed)
+    def __init__(self,
+                 objectives,
+                 pop_size,
+                 toolbox: base.Toolbox,
+                 time_budget,
+                 max_iter,
+                 seed=None):
+        """Constructor.
+
+        @param objectives: TODO
+        @param pop_size: The size of the population.
+        """
+        super().__init__(toolbox, time_budget, max_iter, seed)
         self.objectives = objectives
+        self.pop_size = pop_size
 
     def solve(self):
-        # Initialize the uncovered objectives
+        logger.info("MOSA started.")
+        logger.info(f"Time budget: {self.time_budget}.")
+        logger.info(f"Max iteration: {self.max_iter}.")
+
+        # Initialize the uncovered objectives.
         uncovered_objectives = list(range(len(self.objectives)))
 
-        # Initialize the first generation and an archive
+        # Initialize the first generation and an archive.
         population = self.toolbox.population(n=self.pop_size)
         archive = []
 
-        # Evaluate the first generation
-        fitnesses = self.toolbox.evaluate(population)
-        for individual, fitness in zip(population, fitnesses):
-            individual.fitness.values = fitness
+        # Evaluate the first generation.
+        self.toolbox.evaluate(population)
 
-        # Update archive
+        # Update archive.
         self._update_archive(archive, population, uncovered_objectives)
 
         gen = 0
+        self._record_statistics(population, gen)
         start_time = time.perf_counter()
         while gen < self.max_iter and time.perf_counter() - start_time < self.time_budget:
-            # Generate offsprings
+            # Generate offsprings.
             offspring = self._generate_offspring(population, uncovered_objectives)
 
-            # Evaluate the offsprings
+            # Evaluate the offsprings.
             invalid_individuals = [ind for ind in offspring if not ind.fitness.valid]
-            fitnesses = self.toolbox.evaluate(invalid_individuals)
-            for individual, fitness in zip(invalid_individuals, fitnesses):
-                individual.fitness.values = fitness
+            self.toolbox.evaluate(invalid_individuals)
 
-            # Update archive
+            # Update archive.
             self._update_archive(archive, offspring, uncovered_objectives)
 
-            # Preference sort
+            # Preference sort.
             F = self._preference_sorting(population + offspring, uncovered_objectives)
 
             if len(uncovered_objectives) == 0: break
@@ -58,7 +73,7 @@ class MOSA(BaseAlgorithm):
                 next_population.extend(F[index])
                 index += 1
 
-            # Crowding distance
+            # Assign crowding distance.
             tools.emo.assignCrowdingDist(F[index])
             sorted_front = sorted(F[index], key=attrgetter("fitness.crowding_dist"), reverse=True)
             remain_len = self.pop_size - len(next_population)
@@ -70,7 +85,12 @@ class MOSA(BaseAlgorithm):
         return archive
 
     def _update_archive(self, archive: List, population: List, uncovered_objectives: List):
-        """Add individual meeting the objective to the archive."""
+        """Add individuals meeting the objectives to the archive.
+
+        @param archive: The list of archived individuals.
+        @param population: The list of individuals to be archived.
+        @param uncovered_objectives: The indices of uncovered objectives.
+        """
         for individual in population:
             for idx, (fitness, objective) in enumerate(zip(individual.fitness.values, self.objectives)):
                 if not objective(fitness): continue
@@ -78,7 +98,7 @@ class MOSA(BaseAlgorithm):
                     ((i, ind) for i, ind in enumerate(archive) if idx in ind.covered_objectives),
                     (None, None)
                 )
-                if archive_individual is not None and archive_idx is not None:  # individual already in the archive
+                if archive_individual is not None and archive_idx is not None:  # Individuals already in the archive.
                     if individual.fitness.dominates(archive_individual.fitness, [idx]):
                         individual.covered_objectives.append(idx)
                         archive[archive_idx] = individual
@@ -91,13 +111,18 @@ class MOSA(BaseAlgorithm):
                         uncovered_objectives.remove(idx)
 
     def _generate_offspring(self, population: List, uncovered_objectives: List) -> List:
-        population = [self.toolbox.clone(ind) for ind in population]
+        """Perform selection, crossover and mutation on individuals.
+
+        @param population: The list of parent individuals.
+        @param uncovered_objectives: The indices of uncovered objectives.
+        @return: The list of offsprings.
+        """
+        population = self.toolbox.clone(population)
         offspring = []
         while len(offspring) < len(population):
             ind1 = self._tournament_selection(population, 10, uncovered_objectives)
             ind2 = self._tournament_selection(population, 10, uncovered_objectives)
-            if random.random() <= self.cxpb:
-                self.toolbox.mate(ind1, ind2)
+            self.toolbox.mate(ind1, ind2)
             self.toolbox.mutate(ind1)
             self.toolbox.mutate(ind2)
             del ind1.fitness.values, ind2.fitness.values
@@ -106,6 +131,13 @@ class MOSA(BaseAlgorithm):
 
     @staticmethod
     def _tournament_selection(population: List, size: int, uncovered_objectives: List):
+        """Tournament selection.
+
+        @param population: The list of individuals to be selected.
+        @param size: Tournament size.
+        @param uncovered_objectives: The indices of uncovered objectives.
+        @return: The best individual.
+        """
         candidates = []
         for i in range(size):
             idx = random.randint(0, len(population) - 1)
@@ -118,7 +150,7 @@ class MOSA(BaseAlgorithm):
         return best
 
     def _preference_sorting(self, population: List, uncovered_objectives: List):
-        population = [self.toolbox.clone(ind) for ind in population]
+        population = self.toolbox.clone(population)
         F = []
         for idx in uncovered_objectives:
             best = population[0]

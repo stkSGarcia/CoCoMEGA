@@ -42,6 +42,22 @@ class ActorPerturbation(Perturbation):
         else:
             raise ValueError(f"Unsupported actor type: {self.uid}.")
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return (self.uid == other.uid and
+                    self.loc_x == other.loc_x and
+                    self.loc_y == other.loc_y and
+                    self.yaw == other.yaw and
+                    self.pitch == other.pitch and
+                    self.speed_x == other.speed_x and
+                    self.speed_y == other.speed_y and
+                    self.typ == other.typ and
+                    self.freeze_time == other.freeze_time and
+                    self.acc_x == other.acc_x and
+                    self.acc_y == other.acc_y)
+        else:
+            return False
+
 
 class EnvPerturbation(Perturbation):
     def __init__(self, uid, value):
@@ -55,6 +71,12 @@ class EnvPerturbation(Perturbation):
             scenario.update_darkness(self.value)
         else:
             raise ValueError(f"Unsupported env type: {self.uid}.")
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.uid == other.uid and self.value == other.value
+        else:
+            return False
 
 
 class PerturbationFactory(ABC):

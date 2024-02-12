@@ -1,4 +1,5 @@
 import random
+from typing import List
 
 
 class Scenario:
@@ -135,33 +136,13 @@ class Scenario:
         return {}
 
     @staticmethod
-    def generate_random_scenario():
-        return Scenario([
-            random.uniform(0.0, 1000.0),
-            random.uniform(0.0, 1000.0),
-            random.uniform(0.0, 360.0),
-            random.uniform(0.0, 360.0),
-            random.uniform(0.0, 100.0),
-            random.uniform(0.0, 100.0),
-            random.randint(0, 1),
-            random.uniform(0.0, 100.0),
-
-            random.uniform(0.0, 1000.0),
-            random.uniform(0.0, 1000.0),
-            random.uniform(0.0, 360.0),
-            random.uniform(0.0, 360.0),
-            random.uniform(0.0, 100.0),
-            random.uniform(0.0, 100.0),
-            random.randint(0, 2),
-            random.uniform(0.0, 100.0),
-            random.uniform(0.0, 100.0),
-            random.uniform(0.0, 100.0),
-
-            random.uniform(0.0, 1000.0),
-            random.uniform(0.0, 1000.0),
-            random.uniform(0.0, 360.0),
-            random.uniform(0.0, 360.0),
-
-            random.randint(0, 10),
-            random.randint(0, 5),
-        ])
+    def generate_random_scenario(boundary: List[List]):
+        vector = []
+        for lower, upper in boundary:
+            if isinstance(lower, float):
+                vector.append(random.uniform(lower, upper))
+            elif isinstance(lower, int):
+                vector.append(random.randint(lower, upper))
+            else:
+                raise ValueError(f"Invalid boundary type: {type(lower)}.")
+        return Scenario(vector)

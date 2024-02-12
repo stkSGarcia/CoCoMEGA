@@ -6,8 +6,9 @@ import os
 import argformat
 import yaml
 
+from impl.algorithm.ccea import CCEA
+from impl.algorithm.mosa import MOSA
 from impl.algorithm.nsga2 import NSGA2
-from impl.problem import *
 
 logger = logging.getLogger("impl")
 CONFIG = None
@@ -24,7 +25,7 @@ def init_config():
     config_name = "config.yaml"
     log_config_name = "log.yaml"
 
-    # General configurations
+    # General configurations.
     global CONFIG
     default_config_path = os.path.join(default_config_base, config_name)
     if os.path.isfile(default_config_path):
@@ -34,12 +35,14 @@ def init_config():
     custom_config = load_yaml(config_name) if os.path.isfile(config_name) else {}
     CONFIG = {**default_config, **custom_config}
 
-    # Create log directory
+    # Create out and log directories.
     module_dir = os.path.dirname(os.path.dirname(__file__))
+    out_dir = os.path.join(module_dir, CONFIG["out"])
+    os.makedirs(out_dir, exist_ok=True)
     log_dir = os.path.join(module_dir, CONFIG["log"])
     os.makedirs(log_dir, exist_ok=True)
 
-    # Log configurations
+    # Log configurations.
     def update_log_dir(dictionary):
         for k, v in dictionary.items():
             if isinstance(v, collections.abc.Mapping):
@@ -57,23 +60,52 @@ def init_config():
     else:
         logger.warning("Cannot find log configuration file.")
 
+
+def ccea():
+    from impl.problem import ccea as problem
+    solver = CCEA(
+        min_num_evals=problem.MIN_NUM_EVALS,
+        archive_size=problem.ARCHIVE_SIZE,
+        toolbox=problem.toolbox,
+        time_budget=problem.TIME_BUDGET,
+        max_iter=problem.MAX_ITERATIONS,
+    )
+    solver.solve()
+
+
 def scenario(algorithm: str):
+    from impl.problem import scenario as problem
     if algorithm == "nsga2":
         solver = NSGA2(
-            toolbox=scenario.toolbox,
-            pop_size=scenario.POP_SIZE,
-            cxpb=scenario.CXPB,
-            mutpb=scenario.MUTPB
+            toolbox=problem.toolbox,
+            time_budget=problem.TIME_BUDGET,
+            max_iter=problem.MAX_ITERATIONS,
         )
     else:
         raise ValueError(f"Unsupported algorithm: {algorithm}.")
     solver.solve()
 
+
+def mr(algorithm: str):
+    from impl.problem import mr as problem
+    if algorithm == "mosa":
+        solver = MOSA(
+            objectives=problem,
+            pop_size=problem.POP_SIZE,
+            toolbox=problem.toolbox,
+            time_budget=problem.TIME_BUDGET,
+            max_iter=problem.MAX_ITERATIONS,
+        )
+    else:
+        raise ValueError(f"Unsupported algorithm {algorithm}.")
+    solver.solve()
+
+
 if __name__ == "__main__":
-    # Configuration initialization
+    # Configuration initialization.
     init_config()
 
-    # Parse command line
+    # Parse command line.
     parser = argparse.ArgumentParser(
         prog="mtcg",
         description="Test case generator for metamorphic testing.",
@@ -86,10 +118,18 @@ if __name__ == "__main__":
         help="subcommand help"
     )
 
+    parser_ccea = subparsers.add_parser("ccea", help="")
+    parser_ccea.set_defaults(func=lambda args: ccea())
+
     parser_scenario = subparsers.add_parser("scenario", aliases=["scen"], help="")
     parser_scenario.add_argument("-a", "--algorithm", required=False, choices=("nsga2", "mosa"),
                                  default="nsga2", help="")
     parser_scenario.set_defaults(func=lambda args: scenario(algorithm=args.algorithm))
+
+    parser_mr = subparsers.add_parser("mr", help="")
+    parser_mr.add_argument("-a", "--algorithm", required=False, choices=("nsga2", "mosa"),
+                           default="mosa", help="")
+    parser_mr.set_defaults(func=lambda args: mr(algorithm=args.algorithm))
 
     arguments = parser.parse_args()
     arguments.func(arguments)

@@ -1,5 +1,7 @@
 from impl.mr.mr import Decreasing, Invariance, MR, ActorPerturbationFactory, EnvPerturbationFactory, MRSet
 
+__all__ = ["mr_set1"]
+
 relation_slow = Decreasing("speed")
 relation_slow_30 = Decreasing("speed", threshold=0.3)
 relation_steer = Invariance("steering")
@@ -45,5 +47,3 @@ mr7 = MR([EnvPerturbationFactory("darkness", [1, 1])], relation_slow)
 mr8 = MR([EnvPerturbationFactory("weather", [5, 9])], relation_steer)
 
 mr_set1 = MRSet([mr1, mr2, mr7])
-
-__all__ = ["mr_set1"]
