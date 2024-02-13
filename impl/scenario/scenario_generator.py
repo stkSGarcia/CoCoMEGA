@@ -7,6 +7,7 @@ from carla.libcarla import Vector3D
 from impl.scenario.scenario import Scenario
 
 BRIDGE_CONTAINER = 'carla_cyber_0.9.14'
+APOLLO_CONTAINER = 'apollo_dev_hossein'
 BRIDGE_HOME = '/home/hossein/carla_apollo_bridge'
 
 
@@ -15,6 +16,7 @@ class ScenarioRunner:
         self.scenario = scenario
         self.carla_client = carla.Client('localhost', 2000)
         self.world = self.carla_client.get_world()
+        self.docker_client = docker.from_env()
 
     def run_scenario(self):
         """
@@ -23,10 +25,11 @@ class ScenarioRunner:
         - apply freeze time logic
         - retrieve, process and save measures
         """
+        apollo_modules = ['routing', 'control', 'localization', 'perception', 'prediction', 'planning']
         self.setup_carla()
         file_name = self.generate_object_json()
         self.spawn_objects(file_name)
-        self.activate_apollo_modules()
+        self.activate_apollo_modules(apollo_modules)
         while True:
             # TODO keep track of time, apply controls to Actors after freeze time, and measure throttle, break, steering angle of ego_vehicle
             self.world.tick()
@@ -39,14 +42,14 @@ class ScenarioRunner:
         settings.synchronous_mode = False
         settings.fixed_delta_seconds = 0.05
         self.world.apply_settings(settings)
-        self.carla_client.reload_world(False)
+        # self.carla_client.reload_world(False)
 
     def generate_object_json(self):
         """
         Generates a json file containing type, location and rotation of all objects to spawn.
         """
         file_name = 'objects2.json'
-        save_path = os.path.join(BRIDGE_HOME, 'src', 'carla_spawn_objects', 'config', f'{file_name}.json')
+        save_path = os.path.join(BRIDGE_HOME, 'src', 'carla_spawn_objects', 'config', f'{file_name}')
         with open('apollo_modules.json') as handle:
             modules = json.loads(handle.read())
         objects = modules['objects']
@@ -68,9 +71,8 @@ class ScenarioRunner:
         """
         Spawns objects including the ego vehicle via carla-apollo bridge
         """
-        docker_client = docker.from_env()
         try:
-            bridge = docker_client.containers.get(BRIDGE_CONTAINER)
+            bridge = self.docker_client.containers.get(BRIDGE_CONTAINER)
             response = bridge.exec_run(
                 f'bash -c "source /apollo/cyber/setup.bash && python /apollo/cyber/carla_bridge/carla_spawn_objects/new_carla_spawn_objects.py {object_file_name}"',
                 detach=False,
@@ -84,11 +86,17 @@ class ScenarioRunner:
         except NotFound:
             raise Exception(f'Error: Container "{BRIDGE_CONTAINER}" is not running.')
 
-    def activate_apollo_modules(self):
+    def activate_apollo_modules(self, modules):
         """
         activate necessary modules for apollo using CyberRT API
         """
-        pass
+        apollo = self.docker_client.containers.get(APOLLO_CONTAINER)
+        for module in modules:
+            response = apollo.exec_run(
+                f'bash -c "source /apollo/scripts/{module}.sh"'
+            )
+            output = response.output.decode("utf-8")
+            print(output)
 
     def apply_control(self, actor, direction, speed):
         """
