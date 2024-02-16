@@ -3,8 +3,9 @@ deap~=1.4.1
 #numpy~=1.21.6
 argformat~=0.0.3
 #PyYAML~=6.0.1
-carla~=0.9.15
+carla~=0.9.14
 docker
+
 
 
 # Interfuser Requirements
