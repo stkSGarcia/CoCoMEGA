@@ -114,7 +114,7 @@ traitlets==4.3.3
 typing_extensions==4.1.1
 torch
 torchvision
-urllib3==1.25.8
+urllib3==1.26.18
 wandb==0.8.29
 watchdog==0.10.2
 wcwidth==0.1.9
