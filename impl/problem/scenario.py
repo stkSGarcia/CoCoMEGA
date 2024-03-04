@@ -2,7 +2,7 @@ import random
 
 from deap import base, creator, tools
 
-from impl.scenario.scenario import Scenario
+from impl.scenario.scenario import ScenarioDefinition
 
 TIME_BUDGET = 3600
 MAX_ITERATIONS = 20
@@ -51,7 +51,7 @@ creator.create("Individual", list, fitness=creator.Fitness, covered_objectives=l
 
 toolbox = base.Toolbox()
 toolbox.register("individual", tools.initIterate, creator.Individual,
-                 lambda: Scenario.generate_random_scenario(SCENARIO_BOUNDARY).vector)
+                 lambda: ScenarioDefinition.generate_random_scenario(SCENARIO_BOUNDARY).vector)
 toolbox.register("population", tools.initRepeat, list, toolbox.individual, n=POP_SIZE)
 toolbox.register("mate", tools.cxUniform, indpb=CXPB)
 toolbox.register("select", tools.selNSGA2, k=POP_SIZE)

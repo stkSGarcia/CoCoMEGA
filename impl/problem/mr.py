@@ -3,7 +3,7 @@ import random
 from deap import creator, base, tools
 
 from impl.mr.predefined import *
-from impl.scenario.scenario import Scenario
+from impl.scenario.scenario import ScenarioDefinition
 
 TIME_BUDGET = 3600
 MAX_ITERATIONS = 20
@@ -41,7 +41,7 @@ SCENARIO_BOUNDARY = [
     (0, 5),
 ]
 
-source_scenarios = [Scenario.generate_random_scenario(SCENARIO_BOUNDARY) for _ in range(SOURCE_SCENARIO_SIZE)]
+source_scenarios = [ScenarioDefinition.generate_random_scenario(SCENARIO_BOUNDARY) for _ in range(SOURCE_SCENARIO_SIZE)]
 mr_set = mr_set1
 
 # Fitness functions:

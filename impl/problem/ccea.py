@@ -3,7 +3,7 @@ import random
 from deap import creator, base, tools
 
 from impl.mr.predefined import *
-from impl.scenario.scenario import Scenario
+from impl.scenario.scenario import ScenarioDefinition
 
 TIME_BUDGET = 3600
 MAX_ITERATIONS = 20
@@ -62,8 +62,8 @@ creator.create("Scenario", list, fitness=creator.Fitness)
 creator.create("Perturbation", list, fitness=creator.Fitness)
 
 toolbox = base.Toolbox()
-toolbox.register("scenario", tools.initIterate, creator.Scenario,
-                 lambda: Scenario.generate_random_scenario(SCENARIO_BOUNDARY).vector)
+toolbox.register("scenario", tools.initIterate, creator.ScenarioDefinition,
+                 lambda: ScenarioDefinition.generate_random_scenario(SCENARIO_BOUNDARY).vector)
 toolbox.register("perturbation", tools.initIterate, creator.Perturbation,
                  lambda: [random.choice(mr_set.mrs).generate_perturbation()])
 toolbox.register("pop_scenario", tools.initRepeat, list, toolbox.scenario, n=SCENARIO_POP_SIZE)
@@ -133,7 +133,7 @@ def _evaluate_complete_solution(solution):
     @return: The complete solution with fitness evaluated.
     """
     source_results = []  # TODO: run simulation
-    scenario = Scenario(toolbox.clone(solution[0]))
+    scenario = ScenarioDefinition(toolbox.clone(solution[0]))
     for perturbation in solution[1]:
         perturbation.perturb(scenario)
     follow_up_results = []  # TODO: run simulation

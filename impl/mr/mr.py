@@ -2,7 +2,7 @@ import random
 from abc import abstractmethod, ABC
 from typing import List
 
-from impl.scenario.scenario import Scenario
+from impl.scenario.scenario import ScenarioDefinition
 
 
 class Perturbation(ABC):
@@ -10,7 +10,7 @@ class Perturbation(ABC):
         self.uid = uid
 
     @abstractmethod
-    def perturb(self, scenario: Scenario):
+    def perturb(self, scenario: ScenarioDefinition):
         """Perturb the given scenario in place."""
         raise NotImplementedError
 
@@ -30,7 +30,7 @@ class ActorPerturbation(Perturbation):
         self.acc_x = acc_x
         self.acc_y = acc_y
 
-    def perturb(self, scenario: Scenario):
+    def perturb(self, scenario: ScenarioDefinition):
         if self.uid == "pedestrian":
             scenario.update_pedestrian(self.loc_x, self.loc_y, self.yaw, self.pitch, self.speed_x, self.speed_y,
                                        self.typ, self.freeze_time)
@@ -64,7 +64,7 @@ class EnvPerturbation(Perturbation):
         super().__init__(uid)
         self.value = value
 
-    def perturb(self, scenario: Scenario):
+    def perturb(self, scenario: ScenarioDefinition):
         if self.uid == "weather":
             scenario.update_weather(self.value)
         elif self.uid == "darkness":
