@@ -119,7 +119,7 @@ wandb==0.8.29
 watchdog==0.10.2
 wcwidth==0.1.9
 webencodings==0.5.1
-Werkzeug==1.0.0
+Werkzeug==2.3.8
 widgetsnbextension==3.5.1
 xmlschema==1.0.18
 zipp==3.1.0
