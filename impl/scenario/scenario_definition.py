@@ -109,40 +109,12 @@ class ScenarioDefinition:
         return [
             {
                 "model": "vehicle.tesla.model3",
-                "id": "vehicle_nearby",
-                "speed": 2,
-                "color": "green",
-                "spawn_point": {
-                    "x": 250.0,
-                    "y": -2.0,
-                    "z": 0.5,
-                    "roll": 0.0,
-                    "pitch": 0.0,
-                    "yaw": 0.0
-                }
-            },
-            {
-                "model": "vehicle.tesla.model3",
-                "id": "vehicle_nearby2",
-                "speed": 2,
-                "color": "green",
-                "spawn_point": {
-                    "x": 270.0,
-                    "y": -2.0,
-                    "z": 0.5,
-                    "roll": 0.0,
-                    "pitch": 0.0,
-                    "yaw": 0.0
-                }
-            },
-            {
-                "model": "vehicle.tesla.model3",
-                "id": "vehicle_nearby3",
+                "id": "vehicle_nearby1",
                 "speed": 2,
                 "color": "(20, 240, 20)",
                 "spawn_point": {
-                    "x": -188.0,
-                    "y": 125.0,
+                    "x": -195.0,
+                    "y": 120.0,
                     "z": 0.0,
                     "roll": 0.0,
                     "pitch": 0.0,
@@ -151,7 +123,7 @@ class ScenarioDefinition:
             },
             {
                 "model": "vehicle.tesla.model3",
-                "id": "vehicle_nearby3",
+                "id": "vehicle_nearby2",
                 "speed": 20,
                 "autopilot": True,
                 "color": "(20, 20, 240)",
@@ -171,27 +143,27 @@ class ScenarioDefinition:
             {
                 "model": "walker.pedestrian.0001",  # Adult
                 "id": "pedestrian1",
-                "speed": 2,
+                "speed": 1,
                 "spawn_point": {
-                    "x": -184.0,
+                    "x": -182.0,
                     "y": 100.0,
                     "z": 0.0,
                     "roll": 0.0,
                     "pitch": 0.0,
-                    "yaw": 90.0
+                    "yaw": 180.0
                 }
             },
             {
                 "model": "walker.pedestrian.0011",  # Child
                 "id": "pedestrian2",
-                "speed": 2,
+                "speed": 1.5,
                 "spawn_point": {
-                    "x": -184.0,
-                    "y": 95.0,
+                    "x": -182.0,
+                    "y": 102.0,
                     "z": 0.0,
                     "roll": 0.0,
                     "pitch": 0.0,
-                    "yaw": 90.0,
+                    "yaw": 180.0,
                 }
             },
         ]

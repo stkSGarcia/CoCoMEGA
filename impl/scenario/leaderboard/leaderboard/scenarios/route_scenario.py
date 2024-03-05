@@ -35,6 +35,7 @@ from srunner.scenarios.object_crash_intersection import VehicleTurningRoute
 from srunner.scenarios.other_leading_vehicle import OtherLeadingVehicle
 from srunner.scenarios.maneuver_opposite_direction import ManeuverOppositeDirection
 from srunner.scenarios.junction_crossing_route import SignalJunctionCrossingRoute, NoSignalJunctionCrossingRoute
+from srunner.scenariomanager.scenarioatomics.atomic_behaviors import AccelerateToVelocity
 
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import (CollisionTest,
                                                                      InRouteTest,
@@ -194,7 +195,7 @@ class RouteScenario(BasicScenario):
         """
         # self.config = config
         self.route = None
-        # self.sampled_scenarios_definitions = None
+        self.scenario_definition = scenario_definition
         self.agent_instance = agent_instance
         trajectory = [Location(loc['x'], loc['y'], loc['z']) for loc in scenario_definition.get_trajectory()]
         self._update_route(world, trajectory, debug_mode > 0)
@@ -517,10 +518,15 @@ class RouteScenario(BasicScenario):
         """
         scenario_trigger_distance = 1.5  # Max trigger distance between route and scenario
 
-        behavior = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+        behavior = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL)
+        actor_definitions = self.scenario_definition.get_other_actors()
+        for i, other_actor in enumerate(self.other_actors):
+            if 'speed' in actor_definitions[i]:
+                behavior.add_child(
+                    AccelerateToVelocity(other_actor, throttle_value=1, target_velocity=actor_definitions[i]['speed']))
 
         # subbehavior = py_trees.composites.Parallel(name="Behavior",
-        #                                            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL)
+        #                                            # policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL)
         #
         # scenario_behaviors = []
         # blackboard_list = []
