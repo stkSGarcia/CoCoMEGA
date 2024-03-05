@@ -108,8 +108,10 @@ class ScenarioDefinition:
     def _get_other_vehicles(self):
         return [
             {
-                "type": "vehicle.tesla.model3",
+                "model": "vehicle.tesla.model3",
                 "id": "vehicle_nearby",
+                "speed": 2,
+                "color": "green",
                 "spawn_point": {
                     "x": 250.0,
                     "y": -2.0,
@@ -120,8 +122,10 @@ class ScenarioDefinition:
                 }
             },
             {
-                "type": "vehicle.tesla.model3",
+                "model": "vehicle.tesla.model3",
                 "id": "vehicle_nearby2",
+                "speed": 2,
+                "color": "green",
                 "spawn_point": {
                     "x": 270.0,
                     "y": -2.0,
@@ -132,11 +136,13 @@ class ScenarioDefinition:
                 }
             },
             {
-                "type": "vehicle.tesla.model3",
+                "model": "vehicle.tesla.model3",
                 "id": "vehicle_nearby3",
+                "speed": 2,
+                "color": "(20, 240, 20)",
                 "spawn_point": {
-                    "x": -195.0,
-                    "y": 111.0,
+                    "x": -188.0,
+                    "y": 125.0,
                     "z": 0.0,
                     "roll": 0.0,
                     "pitch": 0.0,
@@ -144,11 +150,14 @@ class ScenarioDefinition:
                 }
             },
             {
-                "type": "vehicle.tesla.model3",
+                "model": "vehicle.tesla.model3",
                 "id": "vehicle_nearby3",
+                "speed": 20,
+                "autopilot": True,
+                "color": "(20, 20, 240)",
                 "spawn_point": {
-                    "x": -180.0,
-                    "y": 111.0,
+                    "x": -188.0,
+                    "y": 100.0,
                     "z": 0.0,
                     "roll": 0.0,
                     "pitch": 0.0,
@@ -160,24 +169,26 @@ class ScenarioDefinition:
     def _get_walkers(self):
         return [
             {
-                "type": "walker.pedestrian.0001",  # Adult
+                "model": "walker.pedestrian.0001",  # Adult
                 "id": "pedestrian1",
+                "speed": 2,
                 "spawn_point": {
-                    "x": 215.0,
-                    "y": -5.0,
-                    "z": 1.0,
+                    "x": -184.0,
+                    "y": 100.0,
+                    "z": 0.0,
                     "roll": 0.0,
                     "pitch": 0.0,
                     "yaw": 90.0
                 }
             },
             {
-                "type": "walker.pedestrian.0011",  # Child
+                "model": "walker.pedestrian.0011",  # Child
                 "id": "pedestrian2",
+                "speed": 2,
                 "spawn_point": {
-                    "x": 220.0,
-                    "y": -5.0,
-                    "z": 1.0,
+                    "x": -184.0,
+                    "y": 95.0,
+                    "z": 0.0,
                     "roll": 0.0,
                     "pitch": 0.0,
                     "yaw": 90.0,

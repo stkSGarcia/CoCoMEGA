@@ -119,8 +119,15 @@ def convert_json_to_actor(actor_dict):
     node.set('y', sp['y'])
     node.set('z', sp['z'])
     node.set('yaw', sp['yaw'])
+    node.set('model', actor_dict.get('model', 'vehicle.*'))
+    node.set('speed', actor_dict.get('speed', 0))
+    node.set('color', actor_dict.get('color', None))
+    if actor_dict.get('autopilot', False):
+        node.set('autopilot', 'true')
+    if actor_dict.get('random_location', False):
+        node.set('random_location', 'true')
 
-    return ActorConfigurationData.parse_from_node(node, 'simulation')
+    return ActorConfigurationData.parse_from_node(node, sp.get('rolename', 'simulation'))
 
 
 def convert_transform_to_location(transform_vec):
@@ -487,23 +494,22 @@ class RouteScenario(BasicScenario):
     #
     #     amount = town_amount[config.town] if config.town in town_amount else 0
 
-        # new_actors = CarlaDataProvider.request_new_batch_actors('vehicle.*',
-        #                                                         amount,
-        #                                                         carla.Transform(),
-        #                                                         autopilot=True,
-        #                                                         random_location=True,
-        #                                                         rolename='background')
-        #
-        # if new_actors is None:
-        #     raise Exception("Error: Unable to add the background activity, all spawn points were occupied")
-        #
-        # for _actor in new_actors:
-        #     self.other_actors.append(_actor)
+    # new_actors = CarlaDataProvider.request_new_batch_actors('vehicle.*',
+    #                                                         amount,
+    #                                                         carla.Transform(),
+    #                                                         autopilot=True,
+    #                                                         random_location=True,
+    #                                                         rolename='background')
+    #
+    # if new_actors is None:
+    #     raise Exception("Error: Unable to add the background activity, all spawn points were occupied")
+    #
+    # for _actor in new_actors:
+    #     self.other_actors.append(_actor)
 
-        # Add all the actors of the specific scenarios to self.other_actors
-        # for scenario in self.list_scenarios:
-        #     self.other_actors.extend(scenario.other_actors)
-
+    # Add all the actors of the specific scenarios to self.other_actors
+    # for scenario in self.list_scenarios:
+    #     self.other_actors.extend(scenario.other_actors)
 
     def _create_behavior(self):
         """
