@@ -21,6 +21,7 @@ import carla
 from carla.libcarla import Location
 
 from agents.navigation.local_planner import RoadOption
+from impl.scenario.criterions import VehicleMeasurementTest
 
 # pylint: disable=line-too-long
 from srunner.scenarioconfigs.scenario_configuration import ScenarioConfiguration, ActorConfigurationData
@@ -567,6 +568,9 @@ class RouteScenario(BasicScenario):
         criteria = []
         route = convert_transform_to_location(self.route)
 
+        brake_test = VehicleMeasurementTest(self.ego_vehicles[0], measures=['brake', 'throttle', 'steer'],
+                                            measurement_interval=10)
+
         collision_criterion = CollisionTest(self.ego_vehicles[0], terminate_on_failure=False)
 
         route_criterion = InRouteTest(self.ego_vehicles[0],
@@ -587,7 +591,7 @@ class RouteScenario(BasicScenario):
                                                          below_threshold_max_time=180.0,
                                                          terminate_on_failure=True,
                                                          name="AgentBlockedTest")
-
+        criteria.append(brake_test)
         criteria.append(completion_criterion)
         criteria.append(outsidelane_criterion)
         criteria.append(collision_criterion)
