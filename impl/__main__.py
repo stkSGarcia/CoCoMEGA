@@ -14,7 +14,6 @@ logger = logging.getLogger("impl")
 def ccea():
     from impl.problem import ccea as problem
     solver = CCEA(
-        min_num_evals=problem.MIN_NUM_EVALS,
         archive_size=problem.ARCHIVE_SIZE,
         toolbox=problem.toolbox,
         time_budget=problem.TIME_BUDGET,

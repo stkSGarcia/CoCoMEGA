@@ -1,9 +1,40 @@
-import random
 import hashlib
-from typing import List
+import math
+import random
 
 
 class ScenarioDefinition:
+    BOUNDARY = [
+        (0.0, 1000.0),
+        (0.0, 1000.0),
+        (0.0, 360.0),
+        (0.0, 360.0),
+        (0.0, 100.0),
+        (0.0, 100.0),
+        (0, 1),
+        (0.0, 100.0),
+
+        (0.0, 1000.0),
+        (0.0, 1000.0),
+        (0.0, 360.0),
+        (0.0, 360.0),
+        (0.0, 100.0),
+        (0.0, 100.0),
+        (0, 2),
+        (0.0, 100.0),
+        (0.0, 100.0),
+        (0.0, 100.0),
+
+        (0.0, 1000.0),
+        (0.0, 1000.0),
+        (0.0, 360.0),
+        (0.0, 360.0),
+
+        (0, 10),
+        (0, 5),
+    ]
+    RANGES = [upper - lower if isinstance(lower, float) else None for lower, upper in BOUNDARY]
+
     def __init__(self, vector):
         """Constructor.
 
@@ -52,25 +83,24 @@ class ScenarioDefinition:
     def decode(self):
         pass
 
-    def update_pedestrian(self, loc_x, loc_y, yaw, pitch, speed_x, speed_y, typ, freeze_time):
-        self._update_vector(range(0, 8), loc_x, loc_y, yaw, pitch, speed_x, speed_y, typ, freeze_time)
+    def update(self, values):
+        for i, value in enumerate(values):
+            if value is not None:
+                self.vector[i] += value
+                self.vector[i] = max(ScenarioDefinition.BOUNDARY[i][0], self.vector[i])
+                self.vector[i] = min(ScenarioDefinition.BOUNDARY[i][1], self.vector[i])
 
-    def update_vehicle(self, loc_x, loc_y, yaw, pitch, speed_x, speed_y, typ, freeze_time):
-        self._update_vector(range(8, 18), loc_x, loc_y, yaw, pitch, speed_x, speed_y, typ, freeze_time)
-
-    def update_object(self, loc_x, loc_y, yaw, pitch):
-        self._update_vector(range(18, 22), loc_x, loc_y, yaw, pitch)
-
-    def update_weather(self, value):
-        self.vector[22] = value
-
-    def update_darkness(self, value):
-        self.vector[23] = value
-
-    def _update_vector(self, index_range, *args):
-        for index, candidate in zip(index_range, args):
-            if candidate is not None:
-                self.vector[index] = candidate
+    def heterogeneous_distance(self, other):
+        assert len(self.vector) == len(other.vector)
+        dist = 0
+        for this_attr, other_attr, attr_range in zip(self.vector, other.vector, ScenarioDefinition.RANGES):
+            if attr_range is not None:
+                if this_attr is None: this_attr = 0
+                if other_attr is None: other_attr = 0
+                dist += pow(abs(this_attr - other_attr) / attr_range, 2)
+            else:
+                dist += 0 if this_attr == other_attr else 1
+        return math.sqrt(dist)
 
     def _get_ego_vehicle(self):
         return {
@@ -185,9 +215,9 @@ class ScenarioDefinition:
         return {}
 
     @staticmethod
-    def generate_random_scenario(boundary: List[List]):
+    def generate_random_scenario():
         vector = []
-        for lower, upper in boundary:
+        for lower, upper in ScenarioDefinition.BOUNDARY:
             if isinstance(lower, float):
                 vector.append(random.uniform(lower, upper))
             elif isinstance(lower, int):

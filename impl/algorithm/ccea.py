@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 class CCEA(BaseAlgorithm):
     def __init__(self,
-                 min_num_evals,
                  archive_size,
                  toolbox: base.Toolbox,
                  time_budget,
@@ -21,11 +20,9 @@ class CCEA(BaseAlgorithm):
                  seed=None):
         """Constructor.
 
-        @param min_num_evals: The minimum number of joint fitness evaluations per individual.
         @param archive_size: The maximum number of individuals allowed in the archive.
         """
         super().__init__(toolbox, time_budget, max_iter, seed)
-        self.min_num_evals = min_num_evals
         self.archive_size = archive_size
 
     def solve(self):
@@ -87,16 +84,16 @@ class CCEA(BaseAlgorithm):
                                for scenario in archive_scenario for perturbation in pop_perturbation])
 
         # If the size of archives doesn't reach the min_num_evals, then generate complete solutions from populations.
-        if self.min_num_evals > len(archive_scenario):
-            complete_solutions += [
-                self.toolbox.collaborate(self.toolbox.clone(scenario), self.toolbox.clone(perturbation))
-                for scenario in [ind for ind in pop_scenario if ind not in archive_scenario]
-                for perturbation in pop_perturbation]
-        if self.min_num_evals > len(archive_perturbation):
-            complete_solutions += [
-                self.toolbox.collaborate(self.toolbox.clone(scenario), self.toolbox.clone(perturbation))
-                for scenario in pop_scenario for perturbation in
-                [ind for ind in pop_perturbation if ind not in archive_perturbation]]
+        # if self.min_num_evals > len(archive_scenario):
+        #     complete_solutions += [
+        #         self.toolbox.collaborate(self.toolbox.clone(scenario), self.toolbox.clone(perturbation))
+        #         for scenario in [ind for ind in pop_scenario if ind not in archive_scenario]
+        #         for perturbation in pop_perturbation]
+        # if self.min_num_evals > len(archive_perturbation):
+        #     complete_solutions += [
+        #         self.toolbox.collaborate(self.toolbox.clone(scenario), self.toolbox.clone(perturbation))
+        #         for scenario in pop_scenario for perturbation in
+        #         [ind for ind in pop_perturbation if ind not in archive_perturbation]]
 
         # Remove repetitive complete solutions.
         unique_solutions = []
@@ -105,6 +102,7 @@ class CCEA(BaseAlgorithm):
                 unique_solutions.append(ind)
 
         # Evaluate joint fitness.
+        # TODO: avoid evaluating similar scenarios
         candidates = [ind for ind in unique_solutions if ind not in evaluated_solutions]
         with ProcessPoolExecutor(max_workers=config.CONFIG["max_workers"]) as executor:
             candidates = executor.map(self.toolbox.evaluate_joint, candidates)
@@ -114,9 +112,11 @@ class CCEA(BaseAlgorithm):
         # Evaluate individual fitness.
         for scenario in pop_scenario:
             self.toolbox.evaluate_individual(scenario, 0, archive_solution)
+        self.toolbox.fitness_sharing(pop_scenario, 0)
 
         for perturbation in pop_perturbation:
             self.toolbox.evaluate_individual(perturbation, 1, archive_solution)
+        self.toolbox.fitness_sharing(pop_perturbation, 1)
 
         return archive_solution
 
@@ -124,6 +124,7 @@ class CCEA(BaseAlgorithm):
         """Update the archive using the `best random` strategy."""
         population = self.toolbox.clone(population)
         best = tools.selBest(population, 1)
+        # TODO: calculate diversity
         random_individuals = tools.selRandom(population, self.archive_size - 1)  # TODO: avoid similar individuals
         return best + random_individuals
 
@@ -142,6 +143,10 @@ class CCEA(BaseAlgorithm):
             parents = self.toolbox.mate(parents[0], parents[1])
             offspring = random.choice(parents)
             offspring = mutate_operator(offspring)
+            # TODO
             del offspring.fitness.values
             offsprings.append(offspring)
         return offsprings
+
+    def _calculate_diversity(self, population):
+        pass

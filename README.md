@@ -10,6 +10,6 @@
 
 ## Usage
 
-## Scenario encoding for Apollo
+## Scenario encoding
 
 ## License

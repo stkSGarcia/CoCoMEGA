@@ -2,79 +2,39 @@ import random
 from abc import abstractmethod, ABC
 from typing import List
 
-from impl.scenario.scenario import ScenarioDefinition
+from impl.scenario.scenario_definition import ScenarioDefinition
 
 
-class Perturbation(ABC):
-    def __init__(self, uid):
-        self.uid = uid
+class Perturbation:
+    def __init__(self, vector):
+        self.vector = vector
 
-    @abstractmethod
     def perturb(self, scenario: ScenarioDefinition):
         """Perturb the given scenario in place."""
-        raise NotImplementedError
+        scenario.update(self.vector)
 
+    @staticmethod
+    def squash(perturbations: List):
+        """Squash the given perturbations into one perturbation."""
+        assert len(perturbations) > 0
+        res = [None] * len(perturbations[0].vector)
+        for perturbation in perturbations:
+            for i, attr in enumerate(perturbation.vector):
+                if attr is None: continue
+                if isinstance(res[i], float):
+                    res[i] += attr
+                else:
+                    res[i] = attr
+        return Perturbation(res)
 
-class ActorPerturbation(Perturbation):
-    def __init__(self, uid, loc_x=None, loc_y=None, yaw=None, pitch=None, speed_x=None, speed_y=None, typ=None,
-                 freeze_time=None, acc_x=None, acc_y=None):
-        super().__init__(uid)
-        self.loc_x = loc_x
-        self.loc_y = loc_y
-        self.yaw = yaw
-        self.pitch = pitch
-        self.speed_x = speed_x
-        self.speed_y = speed_y
-        self.typ = typ
-        self.freeze_time = freeze_time
-        self.acc_x = acc_x
-        self.acc_y = acc_y
-
-    def perturb(self, scenario: ScenarioDefinition):
-        if self.uid == "pedestrian":
-            scenario.update_pedestrian(self.loc_x, self.loc_y, self.yaw, self.pitch, self.speed_x, self.speed_y,
-                                       self.typ, self.freeze_time)
-        elif self.uid == "vehicle":
-            scenario.update_vehicle(self.loc_x, self.loc_y, self.yaw, self.pitch, self.speed_x, self.speed_y, self.typ,
-                                    self.freeze_time)
-        elif self.uid == "object":
-            scenario.update_object(self.loc_x, self.loc_y, self.yaw, self.pitch)
-        else:
-            raise ValueError(f"Unsupported actor type: {self.uid}.")
+    def heterogeneous_distance(self, other):
+        assert len(self.vector) == len(other.vector)
+        scenario1, scenario2 = ScenarioDefinition(self.vector), ScenarioDefinition(other.vector)
+        return scenario1.heterogeneous_distance(scenario2)
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            return (self.uid == other.uid and
-                    self.loc_x == other.loc_x and
-                    self.loc_y == other.loc_y and
-                    self.yaw == other.yaw and
-                    self.pitch == other.pitch and
-                    self.speed_x == other.speed_x and
-                    self.speed_y == other.speed_y and
-                    self.typ == other.typ and
-                    self.freeze_time == other.freeze_time and
-                    self.acc_x == other.acc_x and
-                    self.acc_y == other.acc_y)
-        else:
-            return False
-
-
-class EnvPerturbation(Perturbation):
-    def __init__(self, uid, value):
-        super().__init__(uid)
-        self.value = value
-
-    def perturb(self, scenario: ScenarioDefinition):
-        if self.uid == "weather":
-            scenario.update_weather(self.value)
-        elif self.uid == "darkness":
-            scenario.update_darkness(self.value)
-        else:
-            raise ValueError(f"Unsupported env type: {self.uid}.")
-
-    def __eq__(self, other):
-        if isinstance(other, self.__class__):
-            return self.uid == other.uid and self.value == other.value
+            return self.vector == other.vector
         else:
             return False
 
@@ -114,9 +74,8 @@ class ActorPerturbationFactory(PerturbationFactory):
         self.acc_x_range = acc_x_range
         self.acc_y_range = acc_y_range
 
-    def spawn(self) -> ActorPerturbation:
-        return ActorPerturbation(
-            self.category,
+    def spawn(self) -> Perturbation:
+        vector = [
             self._random(self.loc_x_range),
             self._random(self.loc_y_range),
             self._random(self.yaw_range),
@@ -127,7 +86,15 @@ class ActorPerturbationFactory(PerturbationFactory):
             self._random(self.freeze_time),
             self._random(self.acc_x_range),
             self._random(self.acc_y_range),
-        )
+        ]
+        if self.category == "pedestrian":
+            return Perturbation(vector[:8] + [None] * 16)
+        elif self.category == "vehicle":
+            return Perturbation([None] * 8 + vector[:] + [None] * 6)
+        elif self.category == "object":
+            return Perturbation([None] * 18 + vector[:4] + [None] * 2)
+        else:
+            raise ValueError(f"Unsupported actor category: {self.category}.")
 
 
 class EnvPerturbationFactory(PerturbationFactory):
@@ -135,58 +102,67 @@ class EnvPerturbationFactory(PerturbationFactory):
         self.category = category
         self.value_range = value_range
 
-    def spawn(self) -> EnvPerturbation:
-        return EnvPerturbation(self.category, self._random(self.value_range))
+    def spawn(self) -> Perturbation:
+        vector = [self._random(self.value_range)]
+        if self.category == "weather":
+            return Perturbation([None] * 22 + vector + [None])
+        elif self.category == "darkness":
+            return Perturbation([None] * 23 + vector)
+        else:
+            raise ValueError(f"Unsupported env category: {self.category}.")
 
 
 class Relation(ABC):
-    def __init__(self, field, weight, threshold):
+    def __init__(self, field, threshold):
         self.field = field
-        self.weight = weight
         self.threshold = threshold
 
     @abstractmethod
     def is_violated(self, source, result) -> (bool, float):
-        """Determine if this relation is violated.
+        """Determine if this relation is violated and quantify the extent of violation.
 
-        @param source: source result
-        @param result: follow-up result
-        @return: the float value denotes the extent to which this relation is violated
+        @param source: The value of source result.
+        @param result: The value of follow-up result.
+        @return: The `bool` value indicates whether the relation is violated.
+        The `float` value denotes the extent to which this relation is violated.
         """
         raise NotImplementedError
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            return self.field == other.field and self.weight == other.weight and self.threshold == other.threshold
+            return self.field == other.field and self.threshold == other.threshold
         else:
             return False
 
 
 class Invariance(Relation):
-    def __init__(self, field, weight=1.0, threshold=0.01):
-        super().__init__(field, weight, threshold)
+    def __init__(self, field, threshold=0.01):
+        super().__init__(field, threshold)
 
     def is_violated(self, source, result) -> (bool, float):
         diff = abs(result - source)
-        return diff > self.threshold, diff
+        extent = min(abs(result - source * (1 + self.threshold)), abs(result - source * (1 - self.threshold)))
+        return diff > self.threshold, extent
 
 
 class Decreasing(Relation):
-    def __init__(self, field, weight=-1.0, threshold=0.1):
-        super().__init__(field, weight, threshold)
+    def __init__(self, field, threshold=0.1):
+        super().__init__(field, threshold)
 
     def is_violated(self, source, result) -> (bool, float):
         diff = source - result
-        return diff < source * self.threshold, diff
+        extent = result - source * (1 - self.threshold)
+        return diff < source * self.threshold, extent
 
 
 class Increasing(Relation):
-    def __init__(self, field, weight=-1.0, threshold=0.1):
-        super().__init__(field, weight, threshold)
+    def __init__(self, field, threshold=0.1):
+        super().__init__(field, threshold)
 
     def is_violated(self, source, result) -> (bool, float):
         diff = result - source
-        return diff < source * self.threshold, diff
+        extent = source * (1 + self.threshold) - result
+        return diff < source * self.threshold, extent
 
 
 class MR:
