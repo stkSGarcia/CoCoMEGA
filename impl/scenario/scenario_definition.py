@@ -1,4 +1,5 @@
 import random
+import hashlib
 from typing import List
 
 
@@ -39,6 +40,7 @@ class ScenarioDefinition:
         5- Darkness (Numerical or Categorical)
         """
         self.vector = vector
+        self.definition_id = self._generate_def_id()
         self.ego_vehicle = self._get_ego_vehicle()
         self.other_vehicles = self._get_other_vehicles()
         self.walkers = self._get_walkers()
@@ -193,3 +195,6 @@ class ScenarioDefinition:
             else:
                 raise ValueError(f"Invalid boundary type: {type(lower)}.")
         return ScenarioDefinition(vector)
+
+    def _generate_def_id(self):
+        return hashlib.sha256(str(self.vector).encode()).hexdigest()[:32]

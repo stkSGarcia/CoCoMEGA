@@ -495,7 +495,8 @@ def main():
     arguments = parser.parse_args()
 
     # statistics_manager = StatisticsManager()
-    scenario_definition = ScenarioDefinition(None)
+    vector = ['1', 1, '10', 2.3, 34.21]
+    scenario_definition = ScenarioDefinition(vector)
 
     try:
         leaderboard_evaluator = ScenarioEvaluator(scenario_definition, arguments)

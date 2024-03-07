@@ -15,12 +15,14 @@ class VehicleMeasurementTest(Criterion):
     - optional [optional]: If True, the result is not considered for an overall pass/fail result
     """
 
-    def __init__(self, actor, measures, measurement_interval, optional=False, name="VehicleMeasurement"):
+    def __init__(self, actor, measures, measurement_interval, scenario_def_id, optional=False,
+                 name="VehicleMeasurement"):
         """
         Setup actor and measures
         """
         self.measures = measures
         self.measurement_interval = measurement_interval
+        self.scenario_def_id = scenario_def_id
         self.values = []
         self.ticks = 0
         super(VehicleMeasurementTest, self).__init__(name, actor, 1, None, optional)
@@ -67,7 +69,7 @@ class VehicleMeasurementTest(Criterion):
 
     def _write_to_file(self):
         keys = self.values[0].keys()
-        with open('results/scenario_results.csv', 'w', newline='') as output_file:
+        with open(f'results/{self.scenario_def_id}.csv', 'w', newline='') as output_file:
             dict_writer = csv.DictWriter(output_file, keys)
             dict_writer.writeheader()
             dict_writer.writerows(self.values)
