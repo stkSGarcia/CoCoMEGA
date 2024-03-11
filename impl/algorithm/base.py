@@ -5,6 +5,7 @@ from typing import List
 
 import numpy as np
 from deap import base, creator, tools
+from scipy.spatial.distance import pdist, squareform
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,37 @@ class BaseAlgorithm:
         """Record the statistics of the population."""
         record = self.stats.compile(population)
         self.logbook.record(pop=pop_name, gen=num_of_generation, evals=len(population), **record)
+
+    @staticmethod
+    def population_diversity(population):
+        """Calculate the Pure Diversity (PD) of the given population."""
+        n = len(population)
+        connected = np.eye(n, dtype=bool)
+        dist_matrix = squareform(pdist(population, lambda x, y: x[0].heterogeneous_distance(y[0])))
+        np.fill_diagonal(dist_matrix, np.inf)
+        pd = 0
+        for _ in range(n - 1):
+            while True:
+                d, indices = np.min(dist_matrix, axis=1), np.argmin(dist_matrix, axis=1)
+                i = np.argmax(d)
+                j = indices[i]
+                if dist_matrix[j, i] != np.inf:
+                    dist_matrix[j, i] = np.inf
+                if dist_matrix[i, j] != np.inf:
+                    dist_matrix[i, j] = np.inf
+                p = connected[i, :]
+                while not p[j]:
+                    new_p = np.any(connected[p, :], axis=0)
+                    if np.all(new_p == p):
+                        break
+                    else:
+                        p = new_p
+                if not p[j]: break
+            connected[i, j] = True
+            connected[j, i] = True
+            dist_matrix[i, :] = -np.inf
+            pd += d[i]
+        return pd
 
     @staticmethod
     def _dominates(this, other, obj: List = None):

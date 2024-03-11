@@ -147,6 +147,3 @@ class CCEA(BaseAlgorithm):
             del offspring.fitness.values
             offsprings.append(offspring)
         return offsprings
-
-    def _calculate_diversity(self, population):
-        pass
