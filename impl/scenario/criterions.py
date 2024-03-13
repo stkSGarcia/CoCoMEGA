@@ -3,6 +3,8 @@ from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 import py_trees
 import csv
 
+from impl.config import CONFIG
+
 
 class VehicleMeasurementTest(Criterion):
     """
@@ -69,7 +71,7 @@ class VehicleMeasurementTest(Criterion):
 
     def _write_to_file(self):
         keys = self.values[0].keys()
-        with open(f'results/{self.scenario_def_id}.csv', 'w', newline='') as output_file:
+        with open(f'{CONFIG["result"]}/{self.scenario_def_id}.csv', 'w', newline='') as output_file:
             dict_writer = csv.DictWriter(output_file, keys)
             dict_writer.writeheader()
             dict_writer.writerows(self.values)

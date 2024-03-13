@@ -1,3 +1,205 @@
-out: out
-log: out/logs
+workspace: out
+log: logs
+result: results
+
+max_time: 3600
+max_iteration: 20
 max_workers: 10
+
+scenario:
+  pop_size: 10
+  tournament: 3
+  cxpb: 0.8
+  eta: 10.0
+  mutpb: 0.9
+
+perturbation:
+  pop_size: 10
+  tournament: 3
+  cxpb: 0.8
+  mutadd: 0.6
+  mutdel: 0.2
+
+archive_size: 3
+punishment: 1.0
+scaling: 1.5
+dist_scaling: 0.4
+
+boundary:
+  vehicle:
+    x: [ -300.0, 300.0 ]
+    y: [ -300.0, 300.0 ]
+    z: [ -300.0, 300.0 ]
+    pitch: [ -360.0, 360.0 ]
+    yaw: [ -360.0, 360.0 ]
+    roll: [ -360.0, 360.0 ]
+    speed: [ 0.0, 100.0 ]
+    model: [ 0, 26 ]
+    color: [ 0, 2 ]
+    autopilot: [ 0, 1 ]
+  walker:
+    x: [ -300.0, 300.0 ]
+    y: [ -300.0, 300.0 ]
+    z: [ -300.0, 300.0 ]
+    pitch: [ -360.0, 360.0 ]
+    yaw: [ -360.0, 360.0 ]
+    roll: [ -360.0, 360.0 ]
+    speed: [ 0.0, 10.0 ]
+    model: [ 0, 14 ]
+  static:
+    x: [ -300.0, 300.0 ]
+    y: [ -300.0, 300.0 ]
+    z: [ -300.0, 300.0 ]
+    pitch: [ -360.0, 360.0 ]
+    yaw: [ -360.0, 360.0 ]
+    roll: [ -360.0, 360.0 ]
+    model: [ 0, 89 ]
+    size: [ 0.0, 100.0 ]
+  env:
+    weather: [ 0, 14 ]
+    darkness: [ 0, 9 ]
+
+blueprint:
+  vehicle:
+    model:
+      - "vehicle.audi.a2"
+      - "vehicle.audi.etron"
+      - "vehicle.audi.tt"
+      - "vehicle.bh.crossbike"
+      - "vehicle.bmw.grandtourer"
+      - "vehicle.bmw.isetta"
+      - "vehicle.carlamotors.carlacola"
+      - "vehicle.chevrolet.impala"
+      - "vehicle.citroen.c3"
+      - "vehicle.diamondback.century"
+      - "vehicle.dodge_charger.police"
+      - "vehicle.gazelle.omafiets"
+      - "vehicle.harley-davidson.low_rider"
+      - "vehicle.jeep.wrangler_rubicon"
+      - "vehicle.kawasaki.ninja"
+      - "vehicle.lincoln.mkz2017"
+      - "vehicle.mercedes-benz.coupe"
+      - "vehicle.mini.cooperst"
+      - "vehicle.mustang.mustang"
+      - "vehicle.nissan.micra"
+      - "vehicle.nissan.patrol"
+      - "vehicle.seat.leon"
+      - "vehicle.tesla.cybertruck"
+      - "vehicle.tesla.model3"
+      - "vehicle.toyota.prius"
+      - "vehicle.volkswagen.t2"
+      - "vehicle.yamaha.yzf"
+    color:
+      - "(240, 20, 20)"
+      - "(20, 240, 20)"
+      - "(20, 20, 240)"
+  walker:
+    model:
+      - "walker.pedestrian.0001"
+      - "walker.pedestrian.0002"
+      - "walker.pedestrian.0003"
+      - "walker.pedestrian.0004"
+      - "walker.pedestrian.0005"
+      - "walker.pedestrian.0006"
+      - "walker.pedestrian.0007"
+      - "walker.pedestrian.0008"
+      - "walker.pedestrian.0009"
+      - "walker.pedestrian.0010"
+      - "walker.pedestrian.0011"
+      - "walker.pedestrian.0012"
+      - "walker.pedestrian.0013"
+      - "walker.pedestrian.0014"
+      - "walker.pedestrian.0015"
+  static:
+    model:
+      - "static.prop.advertisement"
+      - "static.prop.atm"
+      - "static.prop.barbeque"
+      - "static.prop.barrel"
+      - "static.prop.bench01"
+      - "static.prop.bench02"
+      - "static.prop.bench03"
+      - "static.prop.bike helmet"
+      - "static.prop.bikeparking"
+      - "static.prop.bin"
+      - "static.prop.box01"
+      - "static.prop.box02"
+      - "static.prop.box03"
+      - "static.prop.briefcase"
+      - "static.prop.brokentile01"
+      - "static.prop.brokentile02"
+      - "static.prop.brokentile03"
+      - "static.prop.brokentile04"
+      - "static.prop.busstop"
+      - "static.prop.chainbarrier"
+      - "static.prop.chainbarrierend"
+      - "static.prop.clothcontainer"
+      - "static.prop.clothesline"
+      - "static.prop.colacan"
+      - "static.prop.constructioncone"
+      - "static.prop.container"
+      - "static.prop.creasedbox01"
+      - "static.prop.creasedbox02"
+      - "static.prop.creasedbox03"
+      - "static.prop.dirtdebris01"
+      - "static.prop.dirtdebris02"
+      - "static.prop.dirtdebris03"
+      - "static.prop.doghouse"
+      - "static.prop.fountain"
+      - "static.prop.garbage01"
+      - "static.prop.garbage02"
+      - "static.prop.garbage03"
+      - "static.prop.garbage04"
+      - "static.prop.garbage05"
+      - "static.prop.garbage06"
+      - "static.prop.gardenlamp"
+      - "static.prop.glasscontainer"
+      - "static.prop.gnome"
+      - "static.prop.guitarcase"
+      - "static.prop.ironplank"
+      - "static.prop.kiosk_01"
+      - "static.prop.mailbox"
+      - "static.prop.maptable"
+      - "static.prop.mobile"
+      - "static.prop.motorhelmet"
+      - "static.prop.pergola"
+      - "static.prop.plantpot01"
+      - "static.prop.plantpot02"
+      - "static.prop.plantpot03"
+      - "static.prop.plantpot04"
+      - "static.prop.plantpot05"
+      - "static.prop.plantpot06"
+      - "static.prop.plantpot07"
+      - "static.prop.plantpot08"
+      - "static.prop.plasticbag"
+      - "static.prop.plasticchair"
+      - "static.prop.plastictable"
+      - "static.prop.platformgarbage01"
+      - "static.prop.purse"
+      - "static.prop.shop01"
+      - "static.prop.shoppingbag"
+      - "static.prop.shoppingcart"
+      - "static.prop.shoppingtrolley"
+      - "static.prop.slide"
+      - "static.prop.streetbarrier"
+      - "static.prop.streetfountain"
+      - "static.prop.streetsign"
+      - "static.prop.streetsign01"
+      - "static.prop.streetsign04"
+      - "static.prop.swing"
+      - "static.prop.swingcouch"
+      - "static.prop.table"
+      - "static.prop.trafficcone01"
+      - "static.prop.trafficcone02"
+      - "static.prop.trafficwarning"
+      - "static.prop.trampoline"
+      - "static.prop.trashbag"
+      - "static.prop.trashcan01"
+      - "static.prop.trashcan02"
+      - "static.prop.trashcan03"
+      - "static.prop.trashcan04"
+      - "static.prop.trashcan05"
+      - "static.prop.travelcase"
+      - "static.prop.vendingmachine"
+      - "static.prop.wateringcan"
+      - "static.trigger.friction"

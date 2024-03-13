@@ -6,7 +6,7 @@ from docker.errors import NotFound
 import docker
 import carla
 from carla.libcarla import Vector3D
-from impl.scenario.scenario import ScenarioDefinition
+from impl.scenario.scenario_definition import ScenarioDefinition
 import subprocess
 
 USER = os.environ["USER"]
@@ -80,11 +80,11 @@ class ScenarioRunner:
         objects = modules['objects']
         ego_vehicle_index, ego_vehicle_object = [(i, v) for i, v in enumerate(objects) if v['id'] == 'ego_vehicle'][0]
         objects[ego_vehicle_index]['spawn_point'] = self.scenario.ego_vehicle['spawn_point']
-        for vehicle in self.scenario.other_vehicles:
+        for vehicle in self.scenario.vehicles:
             objects.append(vehicle)
         for walker in self.scenario.walkers:
             objects.append(walker)
-        for traffic_sign in self.scenario.traffic_signs:
+        for traffic_sign in self.scenario.statics:
             objects.append(traffic_sign)
 
         with open(save_path, 'w') as handle:

@@ -198,7 +198,7 @@ class RouteScenario(BasicScenario):
         self.route = None
         self.scenario_definition = scenario_definition
         self.agent_instance = agent_instance
-        trajectory = [Location(loc['x'], loc['y'], loc['z']) for loc in scenario_definition.get_trajectory()]
+        trajectory = [Location(loc['x'], loc['y'], loc['z']) for loc in scenario_definition.trajectory]
         self._update_route(world, trajectory, debug_mode > 0)
         ego_vehicle = self._update_ego_vehicle()
         scenario_config = self._build_scenario_configuration(scenario_definition, ego_vehicle, agent_instance)
@@ -569,7 +569,7 @@ class RouteScenario(BasicScenario):
         route = convert_transform_to_location(self.route)
 
         brake_test = VehicleMeasurementTest(self.ego_vehicles[0], measures=['brake', 'throttle', 'steer'],
-                                            measurement_interval=10, scenario_def_id=self.scenario_definition.definition_id)
+                                            measurement_interval=10, scenario_def_id=self.scenario_definition.id_)
 
         collision_criterion = CollisionTest(self.ego_vehicles[0], terminate_on_failure=False)
 

@@ -23,6 +23,13 @@ import sys
 import gc
 import pkg_resources
 import sys
+# _carla_root = "/home/stk/projects/automatic-potato/impl/scenario/carla"
+# sys.path.append(os.path.join(_carla_root, "PythonAPI"))
+# sys.path.append(os.path.join(_carla_root, "PythonAPI", "carla"))
+# sys.path.append(os.path.join(_carla_root, "PythonAPI", "carla", "dist", "carla-0.9.10-py3.7-linux-x86_64.egg"))
+# sys.path.append("leaderboard")
+# sys.path.append("leaderboard/team_code")
+# sys.path.append("scenario_runner")
 import carla
 import copy
 import signal
@@ -496,7 +503,7 @@ def main():
 
     # statistics_manager = StatisticsManager()
     vector = ['1', 1, '10', 2.3, 34.21]
-    scenario_definition = ScenarioDefinition(vector)
+    scenario_definition = ScenarioDefinition.mock()
 
     try:
         leaderboard_evaluator = ScenarioEvaluator(scenario_definition, arguments)

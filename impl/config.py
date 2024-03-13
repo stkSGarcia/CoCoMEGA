@@ -29,12 +29,13 @@ def init_config():
     custom_config = load_yaml(config_name) if os.path.isfile(config_name) else {}
     CONFIG = {**default_config, **custom_config}
 
-    # Create out and log directories.
-    module_dir = os.path.dirname(os.path.dirname(__file__))
-    out_dir = os.path.join(module_dir, CONFIG["out"])
-    os.makedirs(out_dir, exist_ok=True)
-    log_dir = os.path.join(module_dir, CONFIG["log"])
-    os.makedirs(log_dir, exist_ok=True)
+    # Create directories.
+    CONFIG["workspace"] = os.path.join(os.path.dirname(os.path.dirname(__file__)), CONFIG["workspace"])
+    os.makedirs(CONFIG["workspace"], exist_ok=True)
+    CONFIG["log"] = os.path.join(CONFIG["workspace"], CONFIG["log"])
+    os.makedirs(CONFIG["log"], exist_ok=True)
+    CONFIG["result"] = os.path.join(CONFIG["workspace"], CONFIG["result"])
+    os.makedirs(CONFIG["result"], exist_ok=True)
 
     # Log configurations.
     def update_log_dir(dictionary):
@@ -42,7 +43,7 @@ def init_config():
             if isinstance(v, collections.abc.Mapping):
                 update_log_dir(v)
             elif k == "filename":
-                dictionary[k] = os.path.join(log_dir, dictionary[k])
+                dictionary[k] = os.path.join(CONFIG["log"], dictionary[k])
 
     default_log_config_path = os.path.join(default_config_base, log_config_name)
     default_log_config = load_yaml(default_log_config_path) if os.path.isfile(default_log_config_path) else {}
