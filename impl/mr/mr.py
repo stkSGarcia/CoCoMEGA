@@ -22,6 +22,11 @@ class Perturbation:
             scenario.update(perturbation.category, perturbation.value)
         return scenario
 
+    def __eq__(self, other):
+        return (isinstance(other, self.__class__) and
+                self.category == other.category and
+                self.value == other.value)
+
     def __repr__(self):
         return f"{self.category}: {self.value}"
 

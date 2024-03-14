@@ -87,20 +87,23 @@ class ScenarioDefinition:
     _ATTRIBUTES = ["weather", "darkness"]
     _BOUNDARY = Boundary(CONFIG["boundary"]["env"])
 
-    def __init__(self):
+    def __new__(cls, *args):
+        if len(args) == 1 and isinstance(args[0], cls): return args[0]
+        self = super().__new__(cls)
         self.id_ = uuid.uuid4().hex
-        self.ego_vehicle: Vehicle | None = None
-        self.trajectory: List = []
-        self.vehicles: List[Vehicle] = []
-        self.walkers: List[Walker] = []
-        self.statics: List[Static] = []
+        self.ego_vehicle = None
+        self.trajectory = []
+        self.vehicles = []
+        self.walkers = []
+        self.statics = []
         self.weather = None
         self.darkness = None
-        self._other_actors: List | None = None
+        self._other_actors = None
+        return self
 
-    @staticmethod
-    def generate_random():
-        scenario = ScenarioDefinition()
+    @classmethod
+    def generate_random(cls):
+        scenario = cls()
         scenario.ego_vehicle = Vehicle.generate_random()
         scenario.vehicles = [Vehicle.generate_random()]
         scenario.walkers = [Walker.generate_random()]
@@ -205,6 +208,7 @@ class ScenarioDefinition:
         length = len(ScenarioDefinition._ATTRIBUTES)
         for actors, other_actors in zip([self.vehicles, self.walkers, self.statics],
                                         [other.vehicles, other.walkers, other.statics]):
+            # TODO: using cdist?
             actor_dict = {actor.id_: actor for actor in actors}
             other_actor_dict = {actor.id_: actor for actor in other_actors}
             common_ids = set(actor_dict.keys()).intersection(set(other_actor_dict.keys()))
@@ -227,6 +231,27 @@ class ScenarioDefinition:
         _mutate_attrs(self, ScenarioDefinition._ATTRIBUTES, ScenarioDefinition._BOUNDARY)
         for actor in self.vehicles + self.walkers + self.statics:
             actor.mutate()
+
+    @staticmethod
+    def _list_eq(this, that):
+        if len(this) != len(that): return False
+        copy = list(this)
+        try:
+            for elem in that:
+                copy.remove(elem)
+        except ValueError:
+            return False
+        return not copy
+
+    def __eq__(self, other):
+        return (isinstance(other, self.__class__) and
+                self.ego_vehicle == other.ego_vehicle and
+                self.trajectory == other.trajectory and
+                self.weather == other.weather and
+                self.darkness == other.darkness and
+                self._list_eq(self.vehicles, other.vehicles) and
+                self._list_eq(self.walkers, other.walkers) and
+                self._list_eq(self.statics, other.statics))
 
     def __repr__(self):
         return (f"Scenario(id={self.id_}, "
@@ -323,7 +348,7 @@ class Actor(ABC):
 
     def __eq__(self, other):
         return (isinstance(other, self.__class__) and
-                self.id_ == other.id_ and
+                # self.id_ == other.id_ and
                 self.transform == other.transform)
 
     def __repr__(self):

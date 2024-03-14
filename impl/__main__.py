@@ -13,10 +13,10 @@ def ccea(algorithm: str):
     from impl import problem
     if algorithm == "ccea":
         solver = CCEA(
-            archive_size=problem.ARCHIVE_SIZE,
+            archive_size=config.CONFIG["archive_size"],
             toolbox=problem.toolbox,
-            time_budget=problem.TIME_BUDGET,
-            max_iter=problem.MAX_ITERATIONS,
+            time_budget=config.CONFIG["max_time"],
+            max_iter=config.CONFIG["max_iteration"],
         )
     else:
         raise ValueError(f"Unsupported algorithm: {algorithm}.")
@@ -64,9 +64,6 @@ def simulate():
 
 
 if __name__ == "__main__":
-    # Configuration initialization.
-    config.init_config()
-
     # Parse command line.
     parser = argparse.ArgumentParser(
         prog="mtcg",

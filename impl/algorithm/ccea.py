@@ -1,11 +1,9 @@
 import logging
 import random
 import time
-from concurrent.futures import ProcessPoolExecutor
 
 from deap import base, tools
 
-from impl import config
 from impl.algorithm.base import BaseAlgorithm
 
 logger = logging.getLogger(__name__)
@@ -55,10 +53,8 @@ class CCEA(BaseAlgorithm):
             self._record_statistics(archive_perturbation, gen, pop_name="arc_pert")
 
             # Generate offsprings.
-            pop_scenario = self._breed(pop_scenario, len(pop_scenario) - len(archive_scenario),
-                                       self.toolbox.mutate_scenario)
-            pop_perturbation = self._breed(pop_perturbation, len(pop_perturbation) - len(archive_perturbation),
-                                           self.toolbox.mutate_perturbation)
+            pop_scenario = self._breed(pop_scenario, len(pop_scenario) - len(archive_scenario))
+            pop_perturbation = self._breed(pop_perturbation, len(pop_perturbation) - len(archive_perturbation))
 
             pop_scenario += archive_scenario
             pop_perturbation += archive_perturbation
@@ -104,19 +100,18 @@ class CCEA(BaseAlgorithm):
         # Evaluate joint fitness.
         # TODO: avoid evaluating similar scenarios
         candidates = [ind for ind in unique_solutions if ind not in evaluated_solutions]
-        with ProcessPoolExecutor(max_workers=config.CONFIG["max_workers"]) as executor:
-            candidates = executor.map(self.toolbox.evaluate_joint, candidates)
+        candidates = self.toolbox.evaluate_solutions(candidates)
         evaluated_solutions.extend(candidates)
         archive_solution = [self.toolbox.clone(ind) for ind in evaluated_solutions if ind in unique_solutions]
 
         # Evaluate individual fitness.
         for scenario in pop_scenario:
-            self.toolbox.evaluate_individual(scenario, 0, archive_solution)
-        self.toolbox.fitness_sharing(pop_scenario, 0)
+            self.toolbox.evaluate_individual(scenario, archive_solution)
+        self.toolbox.fitness_sharing(pop_scenario)
 
         for perturbation in pop_perturbation:
-            self.toolbox.evaluate_individual(perturbation, 1, archive_solution)
-        self.toolbox.fitness_sharing(pop_perturbation, 1)
+            self.toolbox.evaluate_individual(perturbation, archive_solution)
+        self.toolbox.fitness_sharing(pop_perturbation)
 
         return archive_solution
 
@@ -128,22 +123,24 @@ class CCEA(BaseAlgorithm):
         random_individuals = tools.selRandom(population, self.archive_size - 1)  # TODO: avoid similar individuals
         return best + random_individuals
 
-    def _breed(self, population, size, mutate_operator):
+    def _breed(self, population, size):
         """Perform selection, crossover and mutation on individuals.
 
         @param population: The individuals to be bred.
         @param size: The size of the offsprings.
-        @param mutate_operator: The function to perform the mutation.
         @return: A list of offsprings.
         """
+        assert len(population) > 0
+        select_operator, mate_operator, mutate_operator = self.toolbox.operators(population[0])
+
         population = self.toolbox.clone(population)
         offsprings = []
         for _ in range(size):
-            parents = self.toolbox.select(population, k=2)
-            parents = self.toolbox.mate(parents[0], parents[1])
+            parents = select_operator(population, k=2)
+            mate_operator(parents[0], parents[1])
             offspring = random.choice(parents)
-            offspring = mutate_operator(offspring)
-            # TODO
+            mutate_operator(offspring)
+            # TODO: diversity
             del offspring.fitness.values
             offsprings.append(offspring)
         return offsprings
