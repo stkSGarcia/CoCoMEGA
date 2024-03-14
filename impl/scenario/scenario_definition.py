@@ -1,13 +1,13 @@
 import random
 import uuid
-from abc import ABC, abstractmethod
-from typing import List
+from abc import ABC
+from typing import List, Dict
 
 from impl.config import CONFIG
 
 
 class Boundary:
-    def __init__(self, boundary):
+    def __init__(self, boundary: Dict[str, List]):
         self.boundary = boundary
         # Check type consistency.
         for lower, upper in self.boundary.values():
@@ -19,12 +19,12 @@ class Boundary:
     def get(self, field: str):
         return self.boundary[field][0], self.boundary[field][1]
 
-    def random(self, field: str):
+    def random(self, field: str, none_pb=None):
         lower, upper = self.boundary[field]
         if isinstance(lower, float):
-            return random.uniform(lower, upper)
+            return None if none_pb and random.random() < none_pb else random.uniform(lower, upper)
         elif isinstance(lower, int):
-            return random.randint(lower, upper)
+            return None if none_pb and random.random() < none_pb else random.randint(lower, upper)
 
 
 def _dist_attrs(this, that, attrs, boundary: Boundary):
@@ -84,8 +84,8 @@ def _mutate_attrs(this, attrs, boundary: Boundary):
 
 
 class ScenarioDefinition:
-    ATTRIBUTES = ["weather", "darkness"]
-    BOUNDARY = Boundary(CONFIG["boundary"]["env"])
+    _ATTRIBUTES = ["weather", "darkness"]
+    _BOUNDARY = Boundary(CONFIG["boundary"]["env"])
 
     def __init__(self):
         self.id_ = uuid.uuid4().hex
@@ -105,8 +105,8 @@ class ScenarioDefinition:
         scenario.vehicles = [Vehicle.generate_random()]
         scenario.walkers = [Walker.generate_random()]
         scenario.statics = [Static.generate_random()]
-        for attr in ScenarioDefinition.ATTRIBUTES:
-            setattr(scenario, attr, ScenarioDefinition.BOUNDARY.random(attr))
+        for attr in ScenarioDefinition._ATTRIBUTES:
+            setattr(scenario, attr, ScenarioDefinition._BOUNDARY.random(attr))
         return scenario
 
     @staticmethod
@@ -178,11 +178,31 @@ class ScenarioDefinition:
             self._other_actors = [actor.get_config() for actor in self.vehicles + self.walkers + self.statics]
         return self._other_actors
 
+    def update(self, category: str, value, replace_pb=None):  # TODO: optimize
+        if category in ["vehicle", "walker", "static"]:
+            actors = getattr(self, f"{category}s")
+            exist = False
+            for actor in actors:
+                if actor.id_ == value.id_:
+                    exist = True
+                    actor.update(value)
+                    break
+            if not exist:
+                if replace_pb and len(actors) > 0 and random.random() < replace_pb:
+                    actor = random.choice(actors)
+                    actor.update(value)
+                else:
+                    actors.append(value)
+        elif category in ScenarioDefinition._ATTRIBUTES:
+            setattr(self, category, value)
+        else:
+            raise ValueError(f"Unsupported category: {category}.")
+
     def dist(self, other):
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        dist = _dist_attrs(self, other, ScenarioDefinition.ATTRIBUTES, ScenarioDefinition.BOUNDARY)
-        length = len(ScenarioDefinition.ATTRIBUTES)
+        dist = _dist_attrs(self, other, ScenarioDefinition._ATTRIBUTES, ScenarioDefinition._BOUNDARY)
+        length = len(ScenarioDefinition._ATTRIBUTES)
         for actors, other_actors in zip([self.vehicles, self.walkers, self.statics],
                                         [other.vehicles, other.walkers, other.statics]):
             actor_dict = {actor.id_: actor for actor in actors}
@@ -198,17 +218,17 @@ class ScenarioDefinition:
     def mate(self, other):
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        _mate_attrs(self, other, ScenarioDefinition.ATTRIBUTES)
+        _mate_attrs(self, other, ScenarioDefinition._ATTRIBUTES)
         _mate_actors(self.vehicles, other.vehicles)
         _mate_actors(self.walkers, other.walkers)
         _mate_actors(self.statics, other.statics)
 
     def mutate(self):
-        _mutate_attrs(self, ScenarioDefinition.ATTRIBUTES, ScenarioDefinition.BOUNDARY)
+        _mutate_attrs(self, ScenarioDefinition._ATTRIBUTES, ScenarioDefinition._BOUNDARY)
         for actor in self.vehicles + self.walkers + self.statics:
             actor.mutate()
 
-    def __str__(self):
+    def __repr__(self):
         return (f"Scenario(id={self.id_}, "
                 f"ego_vehicle={self.ego_vehicle}, "
                 f"trajectory={self.trajectory}, "
@@ -217,9 +237,6 @@ class ScenarioDefinition:
                 f"statics={self.statics}, "
                 f"weather={self.weather}, "
                 f"darkness={self.darkness})")
-
-    def __repr__(self):
-        return self.__str__()
 
 
 class Transform:
@@ -250,36 +267,53 @@ class Transform:
                 self.yaw == other.yaw and
                 self.roll == other.roll)
 
-    def __str__(self):
-        return f"Transform(x={self.x}, y={self.y}, z={self.z}, pitch={self.pitch}, yaw={self.yaw}, roll={self.roll})"
-
     def __repr__(self):
-        return self.__str__()
+        return f"Transform(x={self.x}, y={self.y}, z={self.z}, pitch={self.pitch}, yaw={self.yaw}, roll={self.roll})"
 
 
 class Actor(ABC):
-    ATTRIBUTES = ["x", "y", "z", "pitch", "yaw", "roll"]
-    last_id = 0
+    _TRANSFORM = ["x", "y", "z", "pitch", "yaw", "roll"]
+    _ATTRIBUTES = []
+    _BOUNDARY = None
+    _BASE_ID = "actor"
+    _last_id = 0
 
-    def __init__(self, id_, transform: Transform):
+    def __init__(self, id_, transform: Transform, *args, **kwargs):
         self.id_ = id_
         self.transform = transform
 
-    @staticmethod
-    @abstractmethod
-    def generate_random():
-        raise NotImplementedError
+    @classmethod
+    def generate_random(cls, boundary: Boundary = None, none_pb=None, id_=None):
+        if id_ is None:
+            cls._last_id += 1
+            id_ = f"{cls._BASE_ID}{cls._last_id}"
+        if boundary is None:
+            boundary = cls._BOUNDARY
+        return cls(id_=id_, transform=Transform(**{attr: boundary.random(attr, none_pb) for attr in Actor._TRANSFORM}),
+                   **{attr: boundary.random(attr, none_pb) for attr in cls._ATTRIBUTES})
 
-    @abstractmethod
+    def update(self, other):
+        for attr in Actor._TRANSFORM:
+            setattr(self.transform, attr, getattr(other.transform, attr))
+        for attr in self._ATTRIBUTES:
+            setattr(self, attr, getattr(other, attr))
+
     def dist(self, other):
-        raise NotImplementedError
+        if not isinstance(other, self.__class__):
+            raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
+        return ((_dist_attrs(self.transform, other.transform, Actor._TRANSFORM, self._BOUNDARY) +
+                 _dist_attrs(self, other, self._ATTRIBUTES, self._BOUNDARY)) /
+                (len(Actor._TRANSFORM) + len(self._ATTRIBUTES)))
 
     def mate(self, other):
-        _mate_attrs(self.transform, other.transform, Actor.ATTRIBUTES)
+        if not isinstance(other, self.__class__):
+            raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
+        _mate_attrs(self.transform, other.transform, Actor._TRANSFORM)
+        _mate_attrs(self, other, self._ATTRIBUTES)
 
-    @abstractmethod
     def mutate(self):
-        raise NotImplementedError
+        _mutate_attrs(self.transform, Actor._TRANSFORM, self._BOUNDARY)
+        _mutate_attrs(self, self._ATTRIBUTES, self._BOUNDARY)
 
     def get_config(self):
         return {
@@ -292,17 +326,16 @@ class Actor(ABC):
                 self.id_ == other.id_ and
                 self.transform == other.transform)
 
-    def __str__(self):
-        return f"Actor(id={self.id_}, transform={self.transform})"
-
     def __repr__(self):
-        return self.__str__()
+        return (f"{self.__class__.__name__}(id={self.id_}, transform={self.transform}, " +
+                ", ".join(f"{attr}={str(getattr(self, attr))}" for attr in self._ATTRIBUTES) + ")")
 
 
 class Vehicle(Actor):
-    ATTRIBUTES = ["speed", "model", "color", "autopilot"]
-    BLUEPRINTS = CONFIG["blueprint"]["vehicle"]
-    BOUNDARY = Boundary(CONFIG["boundary"]["vehicle"])
+    _ATTRIBUTES = ["speed", "model", "color", "autopilot"]
+    _BLUEPRINTS = CONFIG["blueprint"]["vehicle"]
+    _BOUNDARY = Boundary(CONFIG["boundary"]["vehicle"])
+    _BASE_ID = "vehicle"
 
     def __init__(self, id_, transform, speed, model, color, autopilot):
         super().__init__(id_, transform)
@@ -311,174 +344,66 @@ class Vehicle(Actor):
         self.color = color
         self.autopilot = autopilot
 
-    @staticmethod
-    def generate_random():
-        Vehicle.last_id += 1
-        return Vehicle(
-            id_=f"vehicle{Vehicle.last_id}",
-            transform=Transform(**{attr: Vehicle.BOUNDARY.random(attr) for attr in Actor.ATTRIBUTES}),
-            **{attr: Vehicle.BOUNDARY.random(attr) for attr in Vehicle.ATTRIBUTES},
-        )
-
-    def dist(self, other):
-        if not isinstance(other, self.__class__):
-            raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        return ((_dist_attrs(self.transform, other.transform, Actor.ATTRIBUTES, Vehicle.BOUNDARY) +
-                 _dist_attrs(self, other, Vehicle.ATTRIBUTES, Vehicle.BOUNDARY)) /
-                (len(Actor.ATTRIBUTES) + len(Vehicle.ATTRIBUTES)))
-
-    def mate(self, other):
-        if not isinstance(other, self.__class__):
-            raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        super().mate(other)
-        _mate_attrs(self, other, Vehicle.ATTRIBUTES)
-
-    def mutate(self):
-        _mutate_attrs(self.transform, Actor.ATTRIBUTES, Vehicle.BOUNDARY)
-        _mutate_attrs(self, Vehicle.ATTRIBUTES, Vehicle.BOUNDARY)
-
     def get_config(self):
         return {
             **super().get_config(),
             "speed": self.speed,
-            "model": Vehicle.BLUEPRINTS["model"][self.model],
-            "color": Vehicle.BLUEPRINTS["color"][self.color],
+            "model": Vehicle._BLUEPRINTS["model"][self.model],
+            "color": Vehicle._BLUEPRINTS["color"][self.color],
             "autopilot": bool(self.autopilot),
         }
 
     def __eq__(self, other):
-        return (isinstance(other, self.__class__) and
-                super().__eq__(other) and
+        return (super().__eq__(other) and
                 self.speed == other.speed and
                 self.model == other.model and
                 self.color == other.color and
                 self.autopilot == other.autopilot)
 
-    def __str__(self):
-        return (f"Vehicle(id={self.id_}, "
-                f"transform={self.transform}, "
-                f"speed={self.speed}, "
-                f"model={self.model}, "
-                f"color={self.color}, "
-                f"autopilot={self.autopilot})")
-
-    def __repr__(self):
-        return self.__str__()
-
 
 class Walker(Actor):
-    ATTRIBUTES = ["speed", "model"]
-    BLUEPRINTS = CONFIG["blueprint"]["walker"]
-    BOUNDARY = Boundary(CONFIG["boundary"]["walker"])
+    _ATTRIBUTES = ["speed", "model"]
+    _BLUEPRINTS = CONFIG["blueprint"]["walker"]
+    _BOUNDARY = Boundary(CONFIG["boundary"]["walker"])
+    _BASE_ID = "walker"
 
     def __init__(self, id_, transform, speed, model):
         super().__init__(id_, transform)
         self.speed = speed
         self.model = model
 
-    @staticmethod
-    def generate_random():
-        Walker.last_id += 1
-        return Walker(
-            id_=f"walker{Walker.last_id}",
-            transform=Transform(**{attr: Walker.BOUNDARY.random(attr) for attr in Actor.ATTRIBUTES}),
-            **{attr: Walker.BOUNDARY.random(attr) for attr in Walker.ATTRIBUTES},
-        )
-
-    def dist(self, other):
-        if not isinstance(other, self.__class__):
-            raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        return ((_dist_attrs(self.transform, other.transform, Actor.ATTRIBUTES, Walker.BOUNDARY) +
-                 _dist_attrs(self, other, Walker.ATTRIBUTES, Walker.BOUNDARY)) /
-                (len(Actor.ATTRIBUTES) + len(Walker.ATTRIBUTES)))
-
-    def mate(self, other):
-        if not isinstance(other, self.__class__):
-            raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        super().mate(other)
-        _mate_attrs(self, other, Walker.ATTRIBUTES)
-
-    def mutate(self):
-        _mutate_attrs(self.transform, Actor.ATTRIBUTES, Walker.BOUNDARY)
-        _mutate_attrs(self, Walker.ATTRIBUTES, Walker.BOUNDARY)
-
     def get_config(self):
         return {
             **super().get_config(),
             "speed": self.speed,
-            "model": Walker.BLUEPRINTS["model"][self.model],
+            "model": Walker._BLUEPRINTS["model"][self.model],
         }
 
     def __eq__(self, other):
-        return (isinstance(other, self.__class__) and
-                super().__eq__(other) and
+        return (super().__eq__(other) and
                 self.speed == other.speed and
                 self.model == other.model)
 
-    def __str__(self):
-        return (f"Walker(id={self.id_}, "
-                f"transform={self.transform}, "
-                f"speed={self.speed}, "
-                f"model={self.model})")
-
-    def __repr__(self):
-        return self.__str__()
-
 
 class Static(Actor):
-    ATTRIBUTES = ["model", "size"]
-    BLUEPRINTS = CONFIG["blueprint"]["static"]
-    BOUNDARY = Boundary(CONFIG["boundary"]["static"])
+    _ATTRIBUTES = ["model", "size"]
+    _BLUEPRINTS = CONFIG["blueprint"]["static"]
+    _BOUNDARY = Boundary(CONFIG["boundary"]["static"])
+    _BASE_ID = "static"
 
     def __init__(self, id_, transform, model, size):
         super().__init__(id_, transform)
         self.model = model
         self.size = size
 
-    @staticmethod
-    def generate_random():
-        Static.last_id += 1
-        return Static(
-            id_=f"static{Static.last_id}",
-            transform=Transform(**{attr: Static.BOUNDARY.random(attr) for attr in Actor.ATTRIBUTES}),
-            **{attr: Static.BOUNDARY.random(attr) for attr in Static.ATTRIBUTES},
-        )
-
-    def dist(self, other):
-        if not isinstance(other, self.__class__):
-            raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        return ((_dist_attrs(self.transform, other.transform, Actor.ATTRIBUTES, Static.BOUNDARY) +
-                 _dist_attrs(self, other, Static.ATTRIBUTES, Static.BOUNDARY)) /
-                (len(Actor.ATTRIBUTES) + len(Static.ATTRIBUTES)))
-
-    def mate(self, other):
-        if not isinstance(other, self.__class__):
-            raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        super().mate(other)
-        _mate_attrs(self, other, Static.ATTRIBUTES)
-
-    def mutate(self):
-        _mutate_attrs(self.transform, Actor.ATTRIBUTES, Static.BOUNDARY)
-        _mutate_attrs(self, Static.ATTRIBUTES, Static.BOUNDARY)
-
     def get_config(self):
         return {
             **super().get_config(),
-            "model": Static.BLUEPRINTS["model"][self.model],
+            "model": Static._BLUEPRINTS["model"][self.model],
             "size": self.size,
         }
 
     def __eq__(self, other):
-        return (isinstance(other, self.__class__) and
-                super().__eq__(other) and
+        return (super().__eq__(other) and
                 self.model == other.model and
                 self.size == other.size)
-
-    def __str__(self):
-        return (f"Static("
-                f"id={self.id_}, "
-                f"transform={self.transform}, "
-                f"size={self.size})")
-
-    def __repr__(self):
-        return self.__str__()

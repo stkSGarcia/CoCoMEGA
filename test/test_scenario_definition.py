@@ -1,12 +1,13 @@
 import os
-from copy import deepcopy
 
 os.chdir("..")
 from impl import config
 
 config.init_config()
 
+from copy import deepcopy
 from unittest import TestCase
+
 from impl.scenario.scenario_definition import ScenarioDefinition
 from impl.scenario.scenario_definition import Vehicle, Walker, Static
 

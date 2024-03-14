@@ -144,7 +144,7 @@ def _fitness_sharing(population, index):
     """
     individuals = [[ScenarioDefinition(scenario)] for scenario in population] if index == 0 \
         else [[Perturbation.squash(perturbation)] for perturbation in population]
-    dist_matrix = squareform(pdist(individuals, lambda x, y: x[0].heterogeneous_distance(y[0])))
+    dist_matrix = squareform(pdist(individuals, lambda x, y: x[0].dist(y[0])))
     max_dist = np.max(dist_matrix)
     radius = max_dist / (2 * len(population))
     sh = np.vectorize(
