@@ -104,7 +104,31 @@ class ScenarioDefinition:
     @classmethod
     def generate_random(cls):
         scenario = cls()
-        scenario.ego_vehicle = Vehicle.generate_random()
+        # scenario.ego_vehicle = Vehicle.generate_random() # TODO
+        scenario.ego_vehicle = Vehicle(
+            id_="ego_vehicle",
+            transform=Transform(x=200.0, y=-2.0, z=0.5, pitch=0.0, yaw=0.0, roll=0.0),
+            speed=0.0,
+            model=0,
+            color=0,
+            autopilot=0,
+        )
+        scenario.trajectory = [{
+            "x": -188.04,
+            "y": 111.89,
+            "z": 0.0,
+            "yaw": -90.0,
+        }, {
+            "x": -208.309,
+            "y": 87.82,
+            "z": 0.0,
+            "yaw": 180.0,
+        }, {
+            "x": -241.01,
+            "y": 87.77,
+            "z": 0.0,
+            "yaw": 180.0,
+        }, ]
         scenario.vehicles = [Vehicle.generate_random()]
         scenario.walkers = [Walker.generate_random()]
         scenario.statics = [Static.generate_random()]

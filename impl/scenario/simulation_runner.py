@@ -1,11 +1,10 @@
-import csv
 import os
 import sys
 import traceback
 
+import pandas as pd
+
 from impl.config import CONFIG
-# from impl.scenario.interfuser_scenario_evaluator import ScenarioEvaluator
-from impl.scenario.scenario_definition import ScenarioDefinition
 
 root = "impl/scenario"
 for p in [
@@ -25,7 +24,7 @@ arguments = [
     ("CHALLENGE_TRACK_CODENAME", "track", "SENSORS"),
     ("CHECKPOINT_ENDPOINT", "checkpoint", os.path.join(CONFIG["result"], "sample_result.json")),
     ("TEAM_AGENT", "agent", os.path.join(root, "leaderboard/team_code/interfuser_agent.py")),
-    ("TEAM_CONFIG", "agent-config", os.path.join(root, "leaderboard/team_code/interfuser_config.py")),
+    ("TEAM_CONFIG", "agent_config", os.path.join(root, "leaderboard/team_code/interfuser_config.py")),
     ("DEBUG_CHALLENGE", "debug", 0),
     ("RESUME", "resume", True),
     ("HOST", "host", "172.30.32.1"),
@@ -35,39 +34,37 @@ arguments = [
     ("LEADERBOARD_ROOT", None, os.path.join(root, "leaderboard")),
     ("SAVE_PATH", None, os.path.join(CONFIG["workspace"], "data/eval")),
     ("TM_PORT", None, 2500),
+    (None, "trafficManagerPort", "2500"),
+    (None, "trafficManagerSeed", "1"),
+    (None, "carlaProviderSeed", "2000"),
+    (None, "record", ""),
+    (None, "timeout", "600.0"),
 ]
 
-for env, _, value in arguments:
-    if env is not None: os.environ[env] = str(value)
+for env, _, v in arguments:
+    if env is not None: os.environ[env] = str(v)
+
+from impl.scenario.scenario_definition import ScenarioDefinition
+from impl.scenario.interfuser_scenario_evaluator import ScenarioEvaluator
 
 
 class SimulationRunner:
     def __init__(self):
-        self.arguments = {arg: str(v) for _, arg, v in arguments}
+        self.arguments = type("", (object,), {arg: value for _, arg, value in arguments})()
 
     def run(self, scenario: ScenarioDefinition):
-        # try:
-        #     evaluator = ScenarioEvaluator(scenario, self.arguments)
-        #     evaluator.run(self.arguments)
-        # except Exception as e:
-        #     traceback.print_exc()
-        # finally:
-        #     del evaluator
+        try:
+            evaluator = ScenarioEvaluator(scenario, self.arguments)
+            evaluator.run(self.arguments)
+        except Exception as e:
+            traceback.print_exc()
+        finally:
+            del evaluator
 
-        # results = SimulationRunner._read_record(os.path.join(CONFIG["result"], f"{scenario.id_}.csv"))
-        results = SimulationRunner._read_record(os.path.join(CONFIG["result"], "4c5d1c3708994a4fafbe53bc47ff82f9.csv"))
+        results = pd.read_csv(os.path.join(CONFIG["result"], f"{scenario.id_}.csv"))
+        results.set_index(results.columns[0], inplace=True)
         setattr(scenario, "results", results)
         return scenario
-
-    @staticmethod
-    def _read_record(path):
-        results = {}
-        with open(path) as f:
-            reader = csv.reader(f)
-            next(reader)
-            for row in reader:
-                results[row[0]] = (row[1], row[2], row[3])
-        return results
 
 
 simulation_runner = SimulationRunner()

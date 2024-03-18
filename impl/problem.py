@@ -1,5 +1,4 @@
 import random
-from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 from deap import creator, base, tools
@@ -62,9 +61,11 @@ toolbox.register("mutate_perturbation", _mutate_perturbation)
 
 
 def _determine_individual_type(individual):
-    if str(type(individual)) == "<class 'deap.creator.Scenario'>":  # FIXME: isinstance(individual, creator.Scenario)
+    if isinstance(individual, creator.Scenario):
+        # if str(type(individual)) == "<class 'deap.creator.Scenario'>":  # FIXME: isinstance(individual, creator.Scenario)
         return 0
-    elif str(type(individual)) == "<class 'deap.creator.Perturbation'>":  # isinstance(individual, creator.Perturbation)
+    elif isinstance(individual, creator.Perturbation):
+        # elif str(type(individual)) == "<class 'deap.creator.Perturbation'>":  # isinstance(individual, creator.Perturbation)
         return 1
     else:
         raise ValueError(f"Unrecognized individual type: {type(individual)}.")
@@ -76,19 +77,25 @@ toolbox.register("operators",
                      else (toolbox.select_perturbation, toolbox.mate_perturbation, toolbox.mutate_perturbation))
 
 
+def _fitness(source, follow_up):  # TODO: test
+    field = mr_set.field()
+    idx = (source[field] - follow_up[field]).abs().idxmax()
+    _, extent = mr_set.is_violated(source.loc[idx, field], follow_up.loc[idx, field])
+    return extent,
+
+
 def _evaluate_complete_solution(solution):
     """Evaluate the joint fitness of a complete solution.
 
     @param solution: The complete solutions (`creator.Individual`) to be evaluated.
     @return: The complete solution with fitness evaluated.
     """
-    source_results = simulation_runner.run(solution[0])
     follow_up_scenario = toolbox.clone(solution[0])
+    source = simulation_runner.run(solution[0])
     for perturbation in solution[1]:
         perturbation.perturb(follow_up_scenario)
-    follow_up_results = simulation_runner.run(follow_up_scenario)
-    # TODO: calculate fitness
-    solution.fitness.values = random.uniform(0.0, 100.0),
+    follow_up = simulation_runner.run(follow_up_scenario)
+    solution.fitness.values = _fitness(source.results, follow_up.results)
     return solution
 
 

@@ -1,5 +1,6 @@
 import random
 from abc import abstractmethod, ABC
+from copy import deepcopy
 from typing import List
 
 from impl.config import CONFIG
@@ -12,7 +13,7 @@ class Perturbation:
         self.value = value
 
     def perturb(self, scenario: ScenarioDefinition):
-        scenario.update(self.category, self.value, CONFIG["perturbation"]["replace_pb"])
+        scenario.update(self.category, deepcopy(self.value), CONFIG["perturbation"]["replace_pb"])
 
     @staticmethod
     def squash(perturbations: List) -> ScenarioDefinition:
@@ -118,6 +119,9 @@ class MRSet:
 
         self.mrs = mrs
         self.relation = mrs[0].relation
+
+    def field(self):
+        return self.relation.field
 
     def is_violated(self, source, result) -> (bool, float):
         return self.relation.is_violated(source, result)
