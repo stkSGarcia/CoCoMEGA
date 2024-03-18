@@ -1,4 +1,5 @@
 import random
+from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 from deap import creator, base, tools
