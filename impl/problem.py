@@ -9,6 +9,7 @@ from impl.config import CONFIG
 from impl.mr.mr import Perturbation
 from impl.mr.predefined import *
 from impl.scenario.scenario_definition import ScenarioDefinition
+from impl.scenario.simulation_runner import simulation_runner
 
 mr_set = mr_set1
 
@@ -89,12 +90,11 @@ def _evaluate_complete_solution(solution):
     @return: The complete solution with fitness evaluated.
     """
     follow_up_scenario = toolbox.clone(solution[0])
-    # source = simulation_runner.run(solution[0])
+    source = simulation_runner.run(solution[0])
     for perturbation in solution[1]:
         perturbation.perturb(follow_up_scenario)
-    # follow_up = simulation_runner.run(follow_up_scenario)
-    # solution.fitness.values = _fitness(source.results, follow_up.results)
-    solution.fitness.values = random.uniform(0, 20),
+    follow_up = simulation_runner.run(follow_up_scenario)
+    solution.fitness.values = _fitness(source.results, follow_up.results)
     return solution
 
 
