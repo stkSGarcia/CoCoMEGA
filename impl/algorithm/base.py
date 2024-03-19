@@ -53,12 +53,12 @@ class BaseAlgorithm:
         record = self.stats.compile(population)
         self.logbook.record(pop=pop_name, gen=num_of_generation, evals=len(population), **record)
 
-    @staticmethod
-    def population_diversity(population):
+    def population_diversity(self, population):
         """Calculate the Pure Diversity (PD) of the given population."""
         n = len(population)
+        population = self.toolbox.prepare_ind_for_dist(population)
         connected = np.eye(n, dtype=bool)
-        dist_matrix = squareform(pdist(population, lambda x, y: x[0].heterogeneous_distance(y[0])))
+        dist_matrix = squareform(pdist(population, lambda x, y: x[0].dist(y[0])))
         np.fill_diagonal(dist_matrix, np.inf)
         pd = 0
         for _ in range(n - 1):

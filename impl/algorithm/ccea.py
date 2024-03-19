@@ -1,5 +1,4 @@
 import logging
-import random
 import time
 
 from deap import base, tools
@@ -59,7 +58,7 @@ class CCEA(BaseAlgorithm):
             pop_scenario += archive_scenario
             pop_perturbation += archive_perturbation
             gen += 1
-            logger.info(self.logbook.stream)
+            logger.info("Generation info:\n" + self.logbook.stream)
 
         return archive_solution
 
@@ -118,10 +117,20 @@ class CCEA(BaseAlgorithm):
     def _update_archive(self, population):
         """Update the archive using the `best random` strategy."""
         population = self.toolbox.clone(population)
-        best = tools.selBest(population, 1)
-        # TODO: calculate diversity
-        random_individuals = tools.selRandom(population, self.archive_size - 1)  # TODO: avoid similar individuals
-        return best + random_individuals
+        archive = tools.selBest(population, 1)
+        population.remove(archive[0])
+        if len(population) == 0: return archive
+
+        for _ in range(self.archive_size - 1):
+            best = population[0]
+            if len(population) <= 1: break
+            for ind in population[1:]:
+                if self.population_diversity(archive + [ind]) > self.population_diversity(archive + [best]):
+                    best = ind
+            archive.append(best)
+            population.remove(best)
+
+        return archive
 
     def _breed(self, population, size):
         """Perform selection, crossover and mutation on individuals.
@@ -138,9 +147,13 @@ class CCEA(BaseAlgorithm):
         for _ in range(size):
             parents = select_operator(population, k=2)
             mate_operator(parents[0], parents[1])
-            offspring = random.choice(parents)
-            mutate_operator(offspring)
-            # TODO: diversity
-            del offspring.fitness.values
-            offsprings.append(offspring)
+            mutate_operator(parents[0])
+            mutate_operator(parents[1])
+            del parents[0].fitness.values
+            del parents[1].fitness.values
+            if (self.population_diversity(offsprings + [parents[0]]) >
+                    self.population_diversity(offsprings + [parents[1]])):
+                offsprings.append(parents[0])
+            else:
+                offsprings.append(parents[1])
         return offsprings

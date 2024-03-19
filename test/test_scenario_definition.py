@@ -1,13 +1,7 @@
-import os
-
-os.chdir("..")
-from impl import config
-
-config.init_config()
-
 from copy import deepcopy
 from unittest import TestCase
 
+import test
 from impl.scenario.scenario_definition import ScenarioDefinition
 from impl.scenario.scenario_definition import Vehicle, Walker, Static
 
@@ -15,8 +9,8 @@ from impl.scenario.scenario_definition import Vehicle, Walker, Static
 class TestActor(TestCase):
     def setUp(self):
         self.clazz = [Vehicle, Walker, Static]
-        config.CONFIG["scenario"]["cxpb"] = 1.0
-        config.CONFIG["scenario"]["mutpb"] = 1.0
+        test.CONFIG["scenario"]["cxpb"] = 1.0
+        test.CONFIG["scenario"]["mutpb"] = 1.0
 
     def test_dist(self):
         for c in self.clazz:
@@ -53,9 +47,9 @@ class TestActor(TestCase):
 
 class TestScenarioDefinition(TestCase):
     def setUp(self):
-        config.CONFIG["scenario"]["cxpb"] = 1.0
-        config.CONFIG["scenario"]["mutpb"] = 1.0
-        config.CONFIG["scenario"]["eta"] = 0.1
+        test.CONFIG["scenario"]["cxpb"] = 1.0
+        test.CONFIG["scenario"]["mutpb"] = 1.0
+        test.CONFIG["scenario"]["eta"] = 0.1
 
     def test_mock(self):
         print("==========Mock==========")

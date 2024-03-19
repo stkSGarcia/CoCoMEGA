@@ -1,5 +1,5 @@
 import random
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 from deap import creator, base, tools
@@ -9,7 +9,6 @@ from impl.config import CONFIG
 from impl.mr.mr import Perturbation
 from impl.mr.predefined import *
 from impl.scenario.scenario_definition import ScenarioDefinition
-from impl.scenario.simulation_runner import simulation_runner
 
 mr_set = mr_set1
 
@@ -63,10 +62,8 @@ toolbox.register("mutate_perturbation", _mutate_perturbation)
 
 def _determine_individual_type(individual):
     if isinstance(individual, creator.Scenario):
-        # if str(type(individual)) == "<class 'deap.creator.Scenario'>":  # FIXME: isinstance(individual, creator.Scenario)
         return 0
     elif isinstance(individual, creator.Perturbation):
-        # elif str(type(individual)) == "<class 'deap.creator.Perturbation'>":  # isinstance(individual, creator.Perturbation)
         return 1
     else:
         raise ValueError(f"Unrecognized individual type: {type(individual)}.")
@@ -92,19 +89,19 @@ def _evaluate_complete_solution(solution):
     @return: The complete solution with fitness evaluated.
     """
     follow_up_scenario = toolbox.clone(solution[0])
-    source = simulation_runner.run(solution[0])
+    # source = simulation_runner.run(solution[0])
     for perturbation in solution[1]:
         perturbation.perturb(follow_up_scenario)
-    follow_up = simulation_runner.run(follow_up_scenario)
-    solution.fitness.values = _fitness(source.results, follow_up.results)
+    # follow_up = simulation_runner.run(follow_up_scenario)
+    # solution.fitness.values = _fitness(source.results, follow_up.results)
+    solution.fitness.values = random.uniform(0, 20),
     return solution
 
 
 def _evaluate_solutions(solutions):
-    # with ProcessPoolExecutor(max_workers=CONFIG["max_workers"]) as executor:
-    #     candidates = executor.map(_evaluate_complete_solution, solutions)
-    # evaluated_solutions = list(candidates)
-    evaluated_solutions = list(map(_evaluate_complete_solution, solutions))
+    with ThreadPoolExecutor(max_workers=CONFIG["max_workers"]) as executor:
+        candidates = executor.map(_evaluate_complete_solution, solutions)
+    evaluated_solutions = list(candidates)
     return evaluated_solutions
 
 
@@ -128,15 +125,24 @@ toolbox.register("evaluate_solutions", _evaluate_solutions)
 toolbox.register("evaluate_individual", _evaluate_individual)
 
 
+def _prepare_ind_for_dist(population):
+    assert len(population) > 0
+    if _determine_individual_type(population[0]) == 0:
+        return np.reshape(population, (-1, 1))
+    else:
+        return np.array([[Perturbation.squash(perturbation)] for perturbation in population])
+
+
+toolbox.register("prepare_ind_for_dist", _prepare_ind_for_dist)
+
+
 def _fitness_sharing(population):
     """Adjust the individual fitness using fitness sharing.
 
     @param population: The population whose fitness needs to be adjusted.
     @return: The population with fitness adjusted.
     """
-    assert len(population) > 0
-    individuals = [[scenario] for scenario in population] if _determine_individual_type(population[0]) == 0 \
-        else [[Perturbation.squash(perturbation)] for perturbation in population]
+    individuals = _prepare_ind_for_dist(population)
     dist_matrix = squareform(pdist(individuals, lambda x, y: x[0].dist(y[0])))
     max_dist = np.max(dist_matrix)
     radius = max_dist / (2 * len(population))

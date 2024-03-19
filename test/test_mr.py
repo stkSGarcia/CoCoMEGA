@@ -1,16 +1,13 @@
-import os
-
-os.chdir("..")
-from impl import config
-
-config.init_config()
-
 import random
 from copy import deepcopy
 from unittest import TestCase
 
+import test
 from impl.mr.mr import PerturbationFactory, Perturbation
 from impl.scenario.scenario_definition import Boundary, ScenarioDefinition
+
+config = test.CONFIG
+from impl.mr.predefined import mr_set1
 
 
 class TestMR(TestCase):
@@ -43,7 +40,6 @@ class TestMR(TestCase):
         print(scenario)
 
     def test_dist(self):
-        from impl.mr.predefined import mr_set1
         sequence1 = [random.choice(mr_set1.mrs).generate_perturbation() for _ in range(20)]
         sequence2 = [random.choice(mr_set1.mrs).generate_perturbation() for _ in range(10)]
         sequence1_origin = deepcopy(sequence1)
