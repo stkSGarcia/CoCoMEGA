@@ -48,7 +48,7 @@ def simulate():
         ("TEAM_CONFIG", "agent-config", os.path.join(root, "leaderboard/team_code/interfuser_config.py")),
         ("DEBUG_CHALLENGE", "debug", 0),
         ("RESUME", "resume", True),
-        ("HOST", "host", "172.30.32.1"),
+        ("HOST", "host", "localhost"),
         ("PORT", "port", 2000),
         ("CARLA_ROOT", None, os.path.join(root, "carla")),
         ("CARLA_SERVER", None, os.path.join(root, "carla/CarlaUE4.sh")),
