@@ -1,5 +1,5 @@
 import random
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 from deap import creator, base, tools
@@ -99,8 +99,9 @@ def _evaluate_complete_solution(solution):
 
 
 def _evaluate_solutions(solutions):
-    with ThreadPoolExecutor(max_workers=CONFIG["max_workers"]) as executor:
-        candidates = executor.map(_evaluate_complete_solution, solutions)
+    # with ProcessPoolExecutor(max_workers=CONFIG["max_workers"]) as executor:
+    #     candidates = executor.map(_evaluate_complete_solution, solutions)
+    candidates = map(_evaluate_complete_solution, solutions)
     evaluated_solutions = list(candidates)
     return evaluated_solutions
 
