@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import traceback
@@ -47,16 +48,19 @@ for env, _, v in arguments:
 from impl.scenario.scenario_definition import ScenarioDefinition
 from impl.scenario.interfuser_scenario_evaluator import ScenarioEvaluator
 
+logger = logging.getLogger(__name__)
+
 
 class SimulationRunner:
     def __init__(self):
         self.arguments = type("", (object,), {arg: value for _, arg, value in arguments})()
 
     def run(self, scenario: ScenarioDefinition):
+        logger.info(f"Starting simulation, scenario id: {scenario.id_}.")
         try:
             evaluator = ScenarioEvaluator(scenario, self.arguments)
             evaluator.run(self.arguments)
-        except Exception as e:
+        except Exception:
             traceback.print_exc()
         finally:
             del evaluator

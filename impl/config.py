@@ -13,6 +13,15 @@ def load_yaml(path):
         return yaml.safe_load(f.read())
 
 
+def merge_dict(default: dict, user: dict):
+    for k, v in user.items():
+        if k not in default or not isinstance(default[k], dict):
+            default[k] = v
+        else:
+            default[k] = merge_dict(default[k], v)
+    return default
+
+
 def init_config():
     """Load configurations."""
     default_config_base = "conf"
@@ -27,7 +36,7 @@ def init_config():
     else:
         raise ValueError("Cannot find default configuration file.")
     custom_config = load_yaml(config_name) if os.path.isfile(config_name) else {}
-    CONFIG = {**default_config, **custom_config}
+    CONFIG = merge_dict(default_config, custom_config)
 
     # Create directories.
     CONFIG["workspace"] = os.path.join(os.path.dirname(os.path.dirname(__file__)), CONFIG["workspace"])
@@ -48,7 +57,7 @@ def init_config():
     default_log_config_path = os.path.join(default_config_base, log_config_name)
     default_log_config = load_yaml(default_log_config_path) if os.path.isfile(default_log_config_path) else {}
     custom_log_config = load_yaml(log_config_name) if os.path.isfile(log_config_name) else {}
-    log_config = {**default_log_config, **custom_log_config}
+    log_config = merge_dict(default_log_config, custom_log_config)
     if log_config:
         update_log_dir(log_config)
         logging.config.dictConfig(log_config)
