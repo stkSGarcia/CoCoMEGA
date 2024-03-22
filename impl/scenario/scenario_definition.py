@@ -1,3 +1,4 @@
+import math
 import random
 import uuid
 from abc import ABC
@@ -32,10 +33,10 @@ def _dist_attrs(this, that, attrs, boundary: Boundary):
     for attr in attrs:
         lower, upper = boundary.get(attr)
         if isinstance(lower, float):
-            dist += abs(getattr(this, attr) - getattr(that, attr)) / (upper - lower)
+            dist += pow(abs(getattr(this, attr) - getattr(that, attr)) / (upper - lower), 2)
         elif isinstance(lower, int):
             # TODO: within the same category
-            dist += CONFIG["dist_scaling"] * (0.0 if getattr(this, attr) == getattr(that, attr) else 1.0)
+            dist += pow(CONFIG["dist_scaling"] * (0.0 if getattr(this, attr) == getattr(that, attr) else 1.0), 2)
     return dist
 
 
@@ -229,7 +230,6 @@ class ScenarioDefinition:
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         dist = _dist_attrs(self, other, ScenarioDefinition._ATTRIBUTES, ScenarioDefinition._BOUNDARY)
-        length = len(ScenarioDefinition._ATTRIBUTES)
         for actors, other_actors in zip([self.vehicles, self.walkers, self.statics],
                                         [other.vehicles, other.walkers, other.statics]):
             # TODO: using cdist?
@@ -237,11 +237,10 @@ class ScenarioDefinition:
             other_actor_dict = {actor.id_: actor for actor in other_actors}
             common_ids = set(actor_dict.keys()).intersection(set(other_actor_dict.keys()))
             size = max(len(actors), len(other_actors))
-            length += size
-            dist += (size - len(common_ids)) * CONFIG["dist_scaling"]
+            dist += (size - len(common_ids)) * pow(CONFIG["dist_scaling"], 2)
             for actor_id in common_ids:
                 dist += actor_dict[actor_id].dist(other_actor_dict[actor_id])
-        return dist / length
+        return math.sqrt(dist)
 
     def mate(self, other):
         if not isinstance(other, self.__class__):
@@ -350,9 +349,8 @@ class Actor(ABC):
     def dist(self, other):
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        return ((_dist_attrs(self.transform, other.transform, Actor._TRANSFORM, self._BOUNDARY) +
-                 _dist_attrs(self, other, self._ATTRIBUTES, self._BOUNDARY)) /
-                (len(Actor._TRANSFORM) + len(self._ATTRIBUTES)))
+        return (_dist_attrs(self.transform, other.transform, Actor._TRANSFORM, self._BOUNDARY) +
+                _dist_attrs(self, other, self._ATTRIBUTES, self._BOUNDARY))
 
     def mate(self, other):
         if not isinstance(other, self.__class__):

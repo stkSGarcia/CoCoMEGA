@@ -44,16 +44,17 @@ def _mutate_perturbation(individual):
     @param individual: The sequence of perturbations (`creator.Perturbation`) to be mutated.
     @return: The mutated sequence of perturbations.
     """
-    # Add perturbations.
-    times = 1
-    while random.random() < CONFIG["perturbation"]["mut_add"] ** times:
-        perturbation = random.choice(mr_set.mrs).generate_perturbation()
-        individual.append(perturbation)
-        times += 1
-
-    # Remove one previous perturbation.
-    if len(individual) > 1 and random.random() < CONFIG["perturbation"]["mut_del"]:
-        individual.pop()
+    if random.random() > CONFIG["perturbation"]["mutpb"]: return individual
+    if random.random() < CONFIG["perturbation"]["mut_del"]:
+        # Remove one previous perturbation.
+        if len(individual) > 1: individual.pop()
+    else:
+        # Add perturbations.
+        times = 1
+        while random.random() < CONFIG["perturbation"]["mut_add"] ** times:
+            perturbation = random.choice(mr_set.mrs).generate_perturbation()
+            individual.append(perturbation)
+            times += 1
     return individual
 
 
@@ -87,23 +88,24 @@ def _evaluate_complete_solution(solution):
     """Evaluate the joint fitness of a complete solution.
 
     @param solution: The complete solutions (`creator.Individual`) to be evaluated.
-    @return: The complete solution with fitness evaluated.
+    @return: A tuple of results of the source scenario and the follow-up scenario.
     """
     follow_up_scenario = toolbox.clone(solution[0])
-    source = simulation_runner.run(solution[0])
+    # source = simulation_runner.run(solution[0])
     for perturbation in solution[1]:
         perturbation.perturb(follow_up_scenario)
-    follow_up = simulation_runner.run(follow_up_scenario)
-    solution.fitness.values = _fitness(source.results, follow_up.results)
-    return solution
+    # follow_up = simulation_runner.run(follow_up_scenario)
+    # return source, follow_up
+    return None, None
 
 
 def _evaluate_solutions(solutions):
-    # with ProcessPoolExecutor(max_workers=CONFIG["max_workers"]) as executor:
-    #     candidates = executor.map(_evaluate_complete_solution, solutions)
-    candidates = map(_evaluate_complete_solution, solutions)
-    evaluated_solutions = list(candidates)
-    return evaluated_solutions
+    with ProcessPoolExecutor(max_workers=CONFIG["max_workers"]) as executor:
+        results = executor.map(_evaluate_complete_solution, solutions)
+        for solution, (source, follow_up) in zip(solutions, results):
+            # solution.fitness.values = _fitness(source, follow_up)
+            solution.fitness.values = random.random(),
+    return solutions
 
 
 def _evaluate_individual(individual, complete_solutions):

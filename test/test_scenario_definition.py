@@ -1,3 +1,4 @@
+import math
 from copy import deepcopy
 from unittest import TestCase
 
@@ -11,6 +12,7 @@ class TestActor(TestCase):
         self.clazz = [Vehicle, Walker, Static]
         test.CONFIG["scenario"]["cxpb"] = 1.0
         test.CONFIG["scenario"]["mutpb"] = 1.0
+        test.CONFIG["scenario"]["eta"] = 0.1
 
     def test_dist(self):
         for c in self.clazz:
@@ -19,7 +21,7 @@ class TestActor(TestCase):
             b = c.generate_random()
             print(a)
             print(b)
-            print(a.dist(b))
+            print(math.sqrt(a.dist(b)))
 
     def test_mate(self):
         for c in self.clazz:
@@ -68,8 +70,6 @@ class TestScenarioDefinition(TestCase):
         print(scenario2)
         dist = scenario1.dist(scenario2)
         print(dist)
-        self.assertLessEqual(dist, 1.0)
-        self.assertGreaterEqual(dist, 0.0)
 
     def test_same_dist(self):
         print("==========Dist zero==========")
