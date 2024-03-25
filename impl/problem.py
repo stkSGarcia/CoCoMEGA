@@ -1,5 +1,4 @@
 import random
-from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 from deap import creator, base, tools
@@ -9,7 +8,7 @@ from impl.config import CONFIG
 from impl.mr.mr import Perturbation
 from impl.mr.predefined import *
 from impl.scenario.scenario_definition import ScenarioDefinition
-from impl.scenario.simulation_runner import simulation_runner
+from impl.scenario.simulation_runner import run_scenarios
 
 mr_set = mr_set1
 
@@ -84,27 +83,19 @@ def _fitness(source, follow_up):  # TODO: test
     return extent,
 
 
-def _evaluate_complete_solution(solution):
-    """Evaluate the joint fitness of a complete solution.
-
-    @param solution: The complete solutions (`creator.Individual`) to be evaluated.
-    @return: A tuple of results of the source scenario and the follow-up scenario.
-    """
-    follow_up_scenario = toolbox.clone(solution[0])
-    # source = simulation_runner.run(solution[0])
-    for perturbation in solution[1]:
-        perturbation.perturb(follow_up_scenario)
-    # follow_up = simulation_runner.run(follow_up_scenario)
-    # return source, follow_up
-    return None, None
-
-
 def _evaluate_solutions(solutions):
-    with ProcessPoolExecutor(max_workers=CONFIG["max_workers"]) as executor:
-        results = executor.map(_evaluate_complete_solution, solutions)
-        for solution, (source, follow_up) in zip(solutions, results):
-            # solution.fitness.values = _fitness(source, follow_up)
-            solution.fitness.values = random.random(),
+    scenarios = []
+    for solution in solutions:
+        scenarios.append(solution[0])
+        follow_up = toolbox.clone(solution[0])
+        follow_up.assign_new_id()
+        for perturbation in solution[1]:
+            perturbation.perturb(follow_up)
+        scenarios.append(follow_up)
+    assert len(scenarios) == len(solutions) * 2
+    results = run_scenarios(scenarios)
+    for solution, source, follow_up in zip(solutions, results[::2], results[1::2]):
+        solution.fitness.values = _fitness(source, follow_up)
     return solutions
 
 

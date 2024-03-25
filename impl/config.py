@@ -43,8 +43,6 @@ def init_config():
     os.makedirs(CONFIG["workspace"], exist_ok=True)
     CONFIG["log"] = os.path.join(CONFIG["workspace"], CONFIG["log"])
     os.makedirs(CONFIG["log"], exist_ok=True)
-    CONFIG["result"] = os.path.join(CONFIG["workspace"], CONFIG["result"])
-    os.makedirs(CONFIG["result"], exist_ok=True)
 
     # Log configurations.
     def update_log_dir(dictionary):

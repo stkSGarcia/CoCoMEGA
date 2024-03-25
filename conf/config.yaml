@@ -1,6 +1,10 @@
 workspace: out
 log: logs
-result: results
+
+simulation:
+  result: results
+  save: data/eval
+  host: localhost
 
 max_time: 3600
 max_iteration: 20

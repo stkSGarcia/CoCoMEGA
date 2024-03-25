@@ -102,6 +102,9 @@ class ScenarioDefinition:
         self._other_actors = None
         return self
 
+    def assign_new_id(self):
+        self.id_ = uuid.uuid4().hex
+
     @classmethod
     def generate_random(cls):
         scenario = cls()
