@@ -2,13 +2,19 @@ workspace: out
 log: logs
 
 simulation:
+  parallel: true
   result: results
   save: data/eval
   host: localhost
+  ports:
+    - 2000
+    - 2002
+    - 2004
+    - 2006
+    - 2008
 
 max_time: 3600
 max_iteration: 20
-max_workers: 10
 
 scenario:
   pop_size: 10

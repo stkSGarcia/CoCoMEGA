@@ -1,9 +1,9 @@
 import logging
 import os
-import subprocess
 import sys
 import traceback
 from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import Queue
 
 import pandas as pd
 
@@ -54,20 +54,30 @@ logger = logging.getLogger(__name__)
 config = type("", (object,), {arg: value for _, arg, value in arguments})()
 evaluated = {}
 
+carla_port = None
 
-def run_scenario(scenario: ScenarioDefinition, port):
+
+def _init_carla(ports):
+    assert ports.qsize() > 0
+    global carla_port
+    carla_port = ports.get()
+    # subprocess.Popen([CONFIG["simulation"]["carla"], f"-carla-port={config.port}"])  # TODO: run containers
+
+
+def run_scenario(scenario: ScenarioDefinition):
     if scenario.id_ in evaluated: return evaluated[scenario.id_]
-    setattr(config, "port", port)
+    global carla_port
+    assert carla_port is not None
+    setattr(config, "port", carla_port)
     logger.debug(f"Starting simulation, scenario id: {scenario.id_}, carla port: {config.port}.")
     logger.debug(scenario)
-    # carla_ps = subprocess.Popen([CONFIG["simulation"]["carla"], f"-carla-port={config.port}"])  # TODO: run containers
+
     try:
         evaluator = ScenarioEvaluator(scenario, config)
         evaluator.run(config)
     except Exception:
         traceback.print_exc()
     finally:
-        # carla_ps.kill()
         del evaluator
 
     results = pd.read_csv(os.path.join(CONFIG["workspace"], CONFIG["simulation"]["result"], f"{scenario.id_}.csv"))
@@ -77,8 +87,14 @@ def run_scenario(scenario: ScenarioDefinition, port):
 
 
 def run_scenarios(scenarios):
-    ports = [2000 + i for i in range(len(scenarios))]
-    # with ProcessPoolExecutor(max_workers=CONFIG["max_workers"]) as executor:
-    #     results = executor.map(run_scenario, scenarios, ports)
-    results = map(run_scenario, scenarios, [2000 for _ in range(len(scenarios))])
+    if CONFIG["simulation"]["parallel"]:
+        queue = Queue()
+        [queue.put(port) for port in CONFIG["simulation"]["ports"]]
+        with ProcessPoolExecutor(max_workers=len(CONFIG["simulation"]["ports"]),
+                                 initializer=_init_carla, initargs=(queue,)) as executor:
+            results = executor.map(run_scenario, scenarios)
+    else:
+        global carla_port
+        carla_port = CONFIG["simulation"]["ports"][0]
+        results = map(run_scenario, scenarios)
     return list(results)
