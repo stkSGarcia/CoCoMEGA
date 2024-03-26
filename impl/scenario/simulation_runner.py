@@ -52,11 +52,14 @@ from impl.scenario.interfuser_scenario_evaluator import ScenarioEvaluator
 
 logger = logging.getLogger(__name__)
 config = type("", (object,), {arg: value for _, arg, value in arguments})()
+evaluated = {}
 
 
 def run_scenario(scenario: ScenarioDefinition, port):
+    if scenario.id_ in evaluated: return evaluated[scenario.id_]
     setattr(config, "port", port)
     logger.debug(f"Starting simulation, scenario id: {scenario.id_}, carla port: {config.port}.")
+    logger.debug(scenario)
     # carla_ps = subprocess.Popen([CONFIG["simulation"]["carla"], f"-carla-port={config.port}"])  # TODO: run containers
     try:
         evaluator = ScenarioEvaluator(scenario, config)
@@ -69,6 +72,7 @@ def run_scenario(scenario: ScenarioDefinition, port):
 
     results = pd.read_csv(os.path.join(CONFIG["workspace"], CONFIG["simulation"]["result"], f"{scenario.id_}.csv"))
     results.set_index(results.columns[0], inplace=True)
+    evaluated[scenario.id_] = results
     return results
 
 
