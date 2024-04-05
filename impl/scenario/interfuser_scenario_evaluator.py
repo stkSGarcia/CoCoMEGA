@@ -28,6 +28,8 @@ import copy
 import signal
 import torch
 
+from impl.config import CONFIG
+
 from impl.scenario.scenario_definition import ScenarioDefinition
 from srunner.scenariomanager.carla_data_provider import *
 from srunner.scenariomanager.timer import GameTime
@@ -63,9 +65,9 @@ class ScenarioEvaluator(object):
     ego_vehicles = []
 
     # Tunable parameters
-    client_timeout = 10.0  # in seconds
-    wait_for_world = 20.0  # in seconds
-    frame_rate = 10.0  # in Hz
+    client_timeout = CONFIG['simulation']['client_timeout']  # in seconds
+    wait_for_world = CONFIG['simulation']['wait_for_world']  # in seconds
+    frame_rate = CONFIG['simulation']['frame_rate']  # in Hz
 
     def __init__(self, scenario_definition, args):
         """

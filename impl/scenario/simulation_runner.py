@@ -30,7 +30,7 @@ arguments = [
     ("TEAM_AGENT", "agent", os.path.join(root, "leaderboard/team_code/interfuser_agent.py")),
     ("TEAM_CONFIG", "agent_config", os.path.join(root, "leaderboard/team_code/interfuser_config.py")),
     ("DEBUG_CHALLENGE", "debug", 0),
-    ("RESUME", "resume", True),
+    ("RESUME", "resume", False),
     ("HOST", "host", CONFIG["simulation"]["host"]),
     ("CARLA_ROOT", None, os.path.join(root, "carla")),
     ("CARLA_SERVER", None, os.path.join(root, "carla/CarlaUE4.sh")),

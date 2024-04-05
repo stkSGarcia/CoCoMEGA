@@ -6,6 +6,10 @@ simulation:
   result: results
   save: data/eval
   host: localhost
+  timeout: 20
+  client_timeout: 10
+  wait_for_world: 20
+  frame_rate: 10
   ports:
     - 2000
     - 2002

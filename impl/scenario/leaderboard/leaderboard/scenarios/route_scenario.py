@@ -10,7 +10,7 @@ This module provides Challenge routes as standalone scenarios
 """
 
 from __future__ import print_function
-
+import logging
 import math
 import xml.etree.ElementTree as ET
 import numpy.random as random
@@ -48,6 +48,9 @@ from srunner.scenariomanager.scenarioatomics.atomic_criteria import (CollisionTe
 
 from leaderboard.utils.route_parser import RouteParser, TRIGGER_THRESHOLD, TRIGGER_ANGLE_THRESHOLD
 from leaderboard.utils.route_manipulation import interpolate_trajectory
+from impl.config import CONFIG
+
+logger = logging.getLogger(__name__)
 
 ROUTESCENARIO = ["RouteScenario"]
 
@@ -198,6 +201,7 @@ class RouteScenario(BasicScenario):
         self.route = None
         self.scenario_definition = scenario_definition
         self.agent_instance = agent_instance
+        self.timeout = CONFIG['simulation']['timeout']
         trajectory = [Location(loc['x'], loc['y'], loc['z']) for loc in scenario_definition.trajectory]
         self._update_route(world, trajectory, debug_mode > 0)
         ego_vehicle = self._update_ego_vehicle()
@@ -220,6 +224,18 @@ class RouteScenario(BasicScenario):
                                             debug_mode=debug_mode > 1,
                                             terminate_on_failure=False,
                                             criteria_enable=criteria_enable)
+
+    def _initialize_actors(self, config):
+        """
+        initialization of other actors.
+        """
+        if config.other_actors:
+            for other_actor_conf in config.other_actors:
+                new_actor = CarlaDataProvider.request_new_actors([other_actor_conf])
+                if not new_actor:
+                    logger.error(f"Could not initialize Actor {other_actor_conf.model}.")
+                    raise Exception(f"Could not initialize Actor {other_actor_conf.model}.")
+                self.other_actors.append(new_actor[0])
 
     def _update_route(self, world, trajectory, debug_mode):
         """
@@ -248,7 +264,7 @@ class RouteScenario(BasicScenario):
         # self.sampled_scenarios_definitions = self._scenario_sampling(potential_scenarios_definitions)
 
         # Timeout of scenario in seconds
-        self.timeout = self._estimate_route_timeout()
+        # self.timeout = self._estimate_route_timeout()
 
         # Print route in debug mode
         if debug_mode:
@@ -389,88 +405,21 @@ class RouteScenario(BasicScenario):
         scenario_config.other_actors = list_of_actor_conf_instances
         scenario_config.trigger_points = [egoactor_trigger_position]
         scenario_config.name = 'Scenariotest'
-        # scenario_config.subtype = scenario_def.get_scenario_type()
         scenario_config.ego_vehicles = [ActorConfigurationData('vehicle.lincoln.mkz2017',
                                                                ego_vehicle.get_transform(),
                                                                'hero')]
         scenario_config.agent = agent_instance
         return scenario_config
 
-    def _build_scenario_instance(self, world, ego_vehicle, scenario_definition, timeout=300, debug_mode=False):
-        """
-        Based on the parsed route and possible scenarios, build all the scenario classes.
-        """
-        # scenario_instance_vec = []
-
-        # if debug_mode:
-        #     for scenario in scenario_definitions:
-        #         loc = carla.Location(scenario['trigger_position']['x'],
-        #                              scenario['trigger_position']['y'],
-        #                              scenario['trigger_position']['z']) + carla.Location(z=2.0)
-        #         world.debug.draw_point(loc, size=0.3, color=carla.Color(255, 0, 0), life_time=100000)
-        #         world.debug.draw_string(loc, str(scenario['name']), draw_shadow=False,
-        #                                 color=carla.Color(0, 0, 255), life_time=100000, persistent_lines=True)
-
-        # for scenario_number, definition in enumerate(scenario_definitions):
-        # Get the class possibilities for this scenario number
-        # scenario_class = NUMBER_CLASS_TRANSLATION[scenario_definition['name']]
-
-        # Create the other actors that are going to appear
-        if scenario_definition['other_actors'] is not None:
-            list_of_actor_conf_instances = self._get_actors_instances(scenario_definition['other_actors'])
-        else:
-            list_of_actor_conf_instances = []
-        # Create an actor configuration for the ego-vehicle trigger position
-
-        egoactor_trigger_position = convert_json_to_transform(scenario_definition['trigger_position'])
-        scenario_configuration = ScenarioConfiguration()
-        scenario_configuration.other_actors = list_of_actor_conf_instances
-        scenario_configuration.trigger_points = [egoactor_trigger_position]
-        scenario_configuration.subtype = scenario_definition['scenario_type']
-        scenario_configuration.ego_vehicles = [ActorConfigurationData('vehicle.lincoln.mkz2017',
-                                                                      ego_vehicle.get_transform(),
-                                                                      'hero')]
-        # route_var_name = "ScenarioRouteNumber{}".format(scenario_number)
-        # scenario_configuration.route_var_name = route_var_name
-        scenario_instance = scenario_class(world, [ego_vehicle], scenario_configuration,
-                                           criteria_enable=False, timeout=timeout)
-        # Do a tick every once in a while to avoid spawning everything at the same time
-        # if scenario_number % scenarios_per_tick == 0:
-        if CarlaDataProvider.is_sync_mode():
-            world.tick()
-        else:
-            world.wait_for_tick()
-
-        # scenario_instance_vec.append(scenario_instance)
-
-        return scenario_instance
-
     def _get_actors_instances(self, list_of_antagonist_actors):
         """
         Get the full list of actor instances.
+        Receives a list of actor definitions and creates an actual list of ActorConfigurationObjects
         """
 
-        def get_actors_from_list(list_of_actor_def):
-            """
-                Receives a list of actor definitions and creates an actual list of ActorConfigurationObjects
-            """
-            sublist_of_actors = []
-            for actor_def in list_of_actor_def:
-                sublist_of_actors.append(convert_json_to_actor(actor_def))
-
-            return sublist_of_actors
-
-        # list_of_actors = []
-        # Parse vehicles to the left
-        # if 'front' in list_of_antagonist_actors:
-        #     list_of_actors += get_actors_from_list(list_of_antagonist_actors['front'])
-        #
-        # if 'left' in list_of_antagonist_actors:
-        #     list_of_actors += get_actors_from_list(list_of_antagonist_actors['left'])
-        #
-        # if 'right' in list_of_antagonist_actors:
-        #     list_of_actors += get_actors_from_list(list_of_antagonist_actors['right'])
-        list_of_actors = get_actors_from_list(list_of_antagonist_actors)
+        list_of_actors = []
+        for actor_def in list_of_antagonist_actors:
+            list_of_actors.append(convert_json_to_actor(actor_def))
 
         return list_of_actors
 

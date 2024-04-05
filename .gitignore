@@ -300,3 +300,5 @@ logs
 /impl/scenario/data
 /impl/scenario/leaderboard/team_code/interfuser.pth.tar
 impl/scenario/results/
+config.yaml
+log.yaml
