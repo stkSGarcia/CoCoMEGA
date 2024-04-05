@@ -62,9 +62,11 @@ toolbox.register("mutate_perturbation", _mutate_perturbation)
 
 
 def _determine_individual_type(individual):
-    if isinstance(individual, creator.Scenario):
+    if str(type(individual)) == str(creator.Scenario):
+    # if isinstance(individual, creator.Scenario):
         return 0
-    elif isinstance(individual, creator.Perturbation):
+    elif str(type(individual)) == str(creator.Perturbation):
+    # elif isinstance(individual, creator.Perturbation):
         return 1
     else:
         raise ValueError(f"Unrecognized individual type: {type(individual)}.")

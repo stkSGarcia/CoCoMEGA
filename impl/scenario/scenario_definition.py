@@ -230,7 +230,8 @@ class ScenarioDefinition:
             raise ValueError(f"Unsupported category: {category}.")
 
     def dist(self, other):
-        if not isinstance(other, self.__class__):
+        # if not isinstance(other, self.__class__):
+        if str(type(self)) != str(type(other)):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         dist = _dist_attrs(self, other, ScenarioDefinition._ATTRIBUTES, ScenarioDefinition._BOUNDARY)
         for actors, other_actors in zip([self.vehicles, self.walkers, self.statics],
@@ -246,7 +247,8 @@ class ScenarioDefinition:
         return math.sqrt(dist)
 
     def mate(self, other):
-        if not isinstance(other, self.__class__):
+        # if not isinstance(other, self.__class__):
+        if str(type(self)) != str(type(other)):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         _mate_attrs(self, other, ScenarioDefinition._ATTRIBUTES)
         _mate_actors(self.vehicles, other.vehicles)
@@ -270,7 +272,8 @@ class ScenarioDefinition:
         return not copy
 
     def __eq__(self, other):
-        return (isinstance(other, self.__class__) and
+        # return (isinstance(other, self.__class__) and
+        return (str(type(self)) == str(type(other)) and
                 self.ego_vehicle == other.ego_vehicle and
                 self.trajectory == other.trajectory and
                 self.weather == other.weather and
@@ -310,7 +313,8 @@ class Transform:
         }
 
     def __eq__(self, other):
-        return (isinstance(other, self.__class__) and
+        # return (isinstance(other, self.__class__) and
+        return (str(type(self)) == str(type(other)) and
                 self.x == other.x and
                 self.y == other.y and
                 self.z == other.z and
@@ -350,13 +354,15 @@ class Actor(ABC):
             setattr(self, attr, getattr(other, attr))
 
     def dist(self, other):
-        if not isinstance(other, self.__class__):
+        # if not isinstance(other, self.__class__):
+        if str(type(self)) != str(type(other)):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         return (_dist_attrs(self.transform, other.transform, Actor._TRANSFORM, self._BOUNDARY) +
                 _dist_attrs(self, other, self._ATTRIBUTES, self._BOUNDARY))
 
     def mate(self, other):
-        if not isinstance(other, self.__class__):
+        # if not isinstance(other, self.__class__):
+        if str(type(self)) != str(type(other)):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         _mate_attrs(self.transform, other.transform, Actor._TRANSFORM)
         _mate_attrs(self, other, self._ATTRIBUTES)
@@ -372,7 +378,8 @@ class Actor(ABC):
         }
 
     def __eq__(self, other):
-        return (isinstance(other, self.__class__) and
+        # return (isinstance(other, self.__class__) and
+        return (str(type(self)) == str(type(other)) and
                 # self.id_ == other.id_ and
                 self.transform == other.transform)
 

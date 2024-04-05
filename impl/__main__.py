@@ -1,5 +1,6 @@
 import argparse
 import logging.config
+import sys
 
 import argformat
 
@@ -9,7 +10,7 @@ from impl.algorithm import *
 logger = logging.getLogger("impl")
 
 
-def ccea(algorithm: str):
+def ccea(algorithm: str, resume: bool):
     from impl import problem
     if algorithm == "ccea":
         solver = CCEA(
@@ -20,7 +21,7 @@ def ccea(algorithm: str):
         )
     else:
         raise ValueError(f"Unsupported algorithm: {algorithm}.")
-    solver.solve()
+    solver.solve(resume)
 
 
 def simulate():
@@ -78,13 +79,17 @@ if __name__ == "__main__":
         help="subcommand help"
     )
 
-    parser_search = subparsers.add_parser("search", aliases=["srch"], help="")
-    parser_search.add_argument("-a", "--algorithm", required=False, choices=("ccea", "nsga2", "mosa"),
-                               default="ccea", help="")
-    parser_search.set_defaults(func=lambda args: ccea(args.algorithm))
+    parser_search = subparsers.add_parser("search", aliases=["srch"], help="Start the search")
+    parser_search.add_argument("-a", "--algorithm", choices=("ccea", "nsga2", "mosa"),
+                               default="ccea", help="Choose the algorithm to use")
+    parser_search.add_argument("-r", "--resume", action="store_true", help="Resume previous run")
+    parser_search.set_defaults(func=lambda args: ccea(args.algorithm, args.resume))
 
     parser_sim = subparsers.add_parser("simulate", aliases=["sim"], help="")
     parser_sim.set_defaults(func=lambda args: simulate())
 
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
     arguments = parser.parse_args()
     arguments.func(arguments)

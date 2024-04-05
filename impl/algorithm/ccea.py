@@ -1,9 +1,12 @@
 import logging
+import os
+import pickle
 import time
 
 from deap import base, tools
 
 from impl.algorithm.base import BaseAlgorithm
+from impl.config import CONFIG
 
 logger = logging.getLogger(__name__)
 
@@ -22,20 +25,25 @@ class CCEA(BaseAlgorithm):
         super().__init__(toolbox, time_budget, max_iter, seed)
         self.archive_size = archive_size
 
-    def solve(self):
+    def solve(self, resume=False):
         logger.info("CCEA started.")
         logger.info(f"Time budget: {self.time_budget}.")
         logger.info(f"Max iteration: {self.max_iter}.")
 
         # Initialize the population.
-        pop_scenario = self.toolbox.pop_scenario()
-        pop_perturbation = self.toolbox.pop_perturbation()
-        archive_scenario = pop_scenario
-        archive_perturbation = pop_perturbation
-        archive_solution = []
-        evaluated_solutions = []
+        if resume:
+            (gen, pop_scenario, pop_perturbation,
+             archive_scenario, archive_perturbation,
+             archive_solution, evaluated_solutions) = self._resume()
+        else:
+            gen = 0
+            pop_scenario = self.toolbox.pop_scenario()
+            pop_perturbation = self.toolbox.pop_perturbation()
+            archive_scenario = pop_scenario
+            archive_perturbation = pop_perturbation
+            archive_solution = []
+            evaluated_solutions = []
 
-        gen = 0
         start_time = time.perf_counter()
         while gen < self.max_iter and time.perf_counter() - start_time < self.time_budget:
             archive_solution = self._evaluate(pop_scenario, archive_scenario,
@@ -59,7 +67,9 @@ class CCEA(BaseAlgorithm):
             pop_perturbation += archive_perturbation
             gen += 1
             logger.info("Generation info:\n" + self.logbook.stream)
-
+            self._checkpoint(gen, pop_scenario, pop_perturbation,
+                             archive_scenario, archive_perturbation,
+                             archive_solution, evaluated_solutions)
         return archive_solution
 
     def _evaluate(self, pop_scenario, archive_scenario, pop_perturbation, archive_perturbation, evaluated_solutions):
@@ -157,3 +167,21 @@ class CCEA(BaseAlgorithm):
             else:
                 offsprings.append(parents[1])
         return offsprings
+
+    @staticmethod
+    def _checkpoint(*objects):
+        dir_path = os.path.join(CONFIG["workspace"], CONFIG["checkpoint"])
+        os.makedirs(dir_path, exist_ok=True)
+        with open(os.path.join(dir_path, f"{int(round(time.time() * 1000))}.pickle"), "wb") as f:
+            for obj in objects:
+                pickle.dump(obj, f)
+
+    @staticmethod
+    def _resume():
+        dir_path = os.path.join(CONFIG["workspace"], CONFIG["checkpoint"])
+        files = sorted(os.listdir(dir_path), reverse=True)
+        if len(files) == 0:
+            raise ValueError("No checkpoints found.")
+        logger.info(f"Resuming from checkpoint: {files[0]}.")
+        with open(os.path.join(dir_path, files[0]), "rb") as f:
+            return [pickle.load(f) for _ in range(7)]
