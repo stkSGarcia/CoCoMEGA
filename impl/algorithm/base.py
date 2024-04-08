@@ -13,24 +13,27 @@ logger = logging.getLogger(__name__)
 class BaseAlgorithm:
     def __init__(self,
                  toolbox: base.Toolbox,
-                 time_budget,
-                 max_iter,
+                 max_sim=None,
+                 max_time=None,
+                 max_iter=None,
                  seed=None):
         """Constructor.
 
         @param toolbox: `base.Toolbox` that defines the problem.
-        @param time_budget: The maximum execution time for the search.
+        @param max_sim: The maximum number of simulations for the search.
+        @param max_time: The maximum execution time for the search.
         @param max_iter: The maximum number of iterations for the search.
         @param seed: Random seed.
         """
         self.toolbox = toolbox
-        self.time_budget = time_budget
+        self.max_sim = max_sim
+        self.max_time = max_time
         self.max_iter = max_iter
         random.seed(seed)
 
         # Replace the original `dominates` function.
         if getattr(creator.Fitness, "dominates", None) is not None:
-            logger.info("Replace `dominates` function of fitness.")
+            logger.debug("Replace `dominates` function of fitness.")
             setattr(creator.Fitness, "dominates", BaseAlgorithm._dominates)
 
         # Initialize statistics object.
@@ -41,7 +44,7 @@ class BaseAlgorithm:
         self.stats.register("max", np.max, axis=0)
 
         self.logbook = tools.Logbook()
-        self.logbook.header = "pop", "gen", "evals", "std", "min", "avg", "max"
+        self.logbook.header = "pop", "gen", "len", "std", "min", "avg", "max"
 
     @abstractmethod
     def solve(self):

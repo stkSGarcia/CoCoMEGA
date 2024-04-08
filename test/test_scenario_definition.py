@@ -28,11 +28,22 @@ class TestActor(TestCase):
             print(f"=========={c.__name__}: Mate==========")
             a = c.generate_random()
             b = c.generate_random()
+            a_origin = deepcopy(a)
+            b_origin = deepcopy(b)
             print(a)
             print(b)
             a.mate(b)
             print(a)
             print(b)
+
+            self.assertEqual(getattr(a, "id_"), getattr(a_origin, "id_"))
+            self.assertEqual(getattr(b, "id_"), getattr(b_origin, "id_"))
+            for attr in ["x", "y", "z", "pitch", "yaw", "roll"]:
+                self.assertEqual(getattr(a.transform, attr), getattr(b_origin.transform, attr))
+                self.assertEqual(getattr(b.transform, attr), getattr(a_origin.transform, attr))
+            for attr in ["speed", "model", "color", "autopilot", "size"]:
+                self.assertEqual(getattr(a, attr, None), getattr(b_origin, attr, None))
+                self.assertEqual(getattr(b, attr, None), getattr(a_origin, attr, None))
 
     def test_mutate(self):
         for c in self.clazz:
@@ -73,8 +84,8 @@ class TestScenarioDefinition(TestCase):
 
     def test_same_dist(self):
         print("==========Dist zero==========")
-        scenario1 = ScenarioDefinition.mock()
-        scenario2 = ScenarioDefinition.mock()
+        scenario1 = ScenarioDefinition.generate_random()
+        scenario2 = deepcopy(scenario1)
         print(scenario1)
         dist = scenario1.dist(scenario2)
         print(dist)
@@ -97,7 +108,7 @@ class TestScenarioDefinition(TestCase):
             self.assertEqual(getattr(scenario1, invariant), getattr(scenario1_origin, invariant))
             self.assertEqual(getattr(scenario2, invariant), getattr(scenario2_origin, invariant))
 
-        variants = ["vehicles", "walkers", "statics", "weather", "darkness"]
+        variants = ["vehicles", "walkers", "statics", "weather"]
         for variant in variants:
             if isinstance(getattr(scenario1, variant), list):
                 actors1 = getattr(scenario1, variant)
@@ -135,7 +146,7 @@ class TestScenarioDefinition(TestCase):
             self.assertEqual(getattr(scenario1, invariant), getattr(scenario1_origin, invariant))
             self.assertEqual(getattr(scenario2, invariant), getattr(scenario2_origin, invariant))
 
-        variants = ["vehicles", "walkers", "statics", "weather", "darkness"]
+        variants = ["vehicles", "walkers", "statics", "weather"]
         for variant in variants:
             self.assertNotEqual(getattr(scenario1, variant), getattr(scenario1_origin, variant))
             self.assertNotEqual(getattr(scenario2, variant), getattr(scenario2_origin, variant))

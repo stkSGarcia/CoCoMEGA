@@ -63,10 +63,10 @@ toolbox.register("mutate_perturbation", _mutate_perturbation)
 
 def _determine_individual_type(individual):
     if str(type(individual)) == str(creator.Scenario):
-    # if isinstance(individual, creator.Scenario):
+        # if isinstance(individual, creator.Scenario):
         return 0
     elif str(type(individual)) == str(creator.Perturbation):
-    # elif isinstance(individual, creator.Perturbation):
+        # elif isinstance(individual, creator.Perturbation):
         return 1
     else:
         raise ValueError(f"Unrecognized individual type: {type(individual)}.")
@@ -79,6 +79,7 @@ toolbox.register("operators",
 
 
 def _fitness(source, follow_up):  # TODO: test
+    """Calculate the fitness value."""
     field = mr_set.field()
     idx = (source[field] - follow_up[field]).abs().idxmax()
     _, extent = mr_set.is_violated(source.loc[idx, field], follow_up.loc[idx, field])
@@ -86,6 +87,7 @@ def _fitness(source, follow_up):  # TODO: test
 
 
 def _evaluate_solutions(solutions):
+    """Evaluate the complete solutions."""
     scenarios = []
     for solution in solutions:
         scenarios.append(solution[0])

@@ -16,8 +16,9 @@ def ccea(algorithm: str, resume: bool):
         solver = CCEA(
             archive_size=config.CONFIG["archive_size"],
             toolbox=problem.toolbox,
-            time_budget=config.CONFIG["max_time"],
-            max_iter=config.CONFIG["max_iteration"],
+            max_sim=config.CONFIG["max_sim"],
+            max_time=config.CONFIG["max_time"],
+            max_iter=config.CONFIG["max_iter"],
         )
     else:
         raise ValueError(f"Unsupported algorithm: {algorithm}.")

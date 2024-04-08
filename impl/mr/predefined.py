@@ -30,7 +30,7 @@ walker_pert_factory = PerturbationFactory("walker", Boundary({
     "roll": [-45.0, 45.0],
     "speed": [0.0, 10.0],
     "model": [0, 14],
-}))
+}), "walker_roadside1")
 
 static_pert_factory = PerturbationFactory("static", Boundary({
     "x": [-240.0, -185.0],
@@ -39,14 +39,15 @@ static_pert_factory = PerturbationFactory("static", Boundary({
     "pitch": [-45.0, 45.0],
     "yaw": [-180.0, 180.0],
     "roll": [-45.0, 45.0],
-    "model": [0, 89],
+    "model": [71, 73],
     "size": [0, 50],
-}))
+}), "static_roadside1")
 
 mr1 = MR([walker_pert_factory], relation_slow)
 mr2 = MR([static_pert_factory], relation_slow)
 mr3 = MR([walker_pert_factory], relation_slow_30)
-mr7 = MR([PerturbationFactory("darkness", Boundary({"darkness": [1, 3]}))], relation_slow)
+mr7 = MR([PerturbationFactory("weather", Boundary({"weather": [1, 3]}))], relation_slow)
 mr8 = MR([PerturbationFactory("weather", Boundary({"weather": [0, 14]}))], relation_steer)
 
-mr_set1 = MRSet([mr1, mr2, mr7])
+# mr_set1 = MRSet([mr1, mr2, mr7])
+mr_set1 = MRSet([mr1, mr2])

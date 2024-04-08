@@ -1,6 +1,7 @@
 import logging
 import os
 import pickle
+import random
 import time
 
 from deap import base, tools
@@ -15,28 +16,42 @@ class CCEA(BaseAlgorithm):
     def __init__(self,
                  archive_size,
                  toolbox: base.Toolbox,
-                 time_budget,
-                 max_iter,
+                 max_sim=None,
+                 max_time=None,
+                 max_iter=None,
                  seed=None):
         """Constructor.
 
         @param archive_size: The maximum number of individuals allowed in the archive.
         """
-        super().__init__(toolbox, time_budget, max_iter, seed)
+        super().__init__(toolbox, max_sim, max_time, max_iter, seed)
         self.archive_size = archive_size
 
     def solve(self, resume=False):
         logger.info("CCEA started.")
-        logger.info(f"Time budget: {self.time_budget}.")
+        logger.info(f"Max number of simulations: {self.max_sim}.")
+        logger.info(f"Max time: {self.max_time}.")
         logger.info(f"Max iteration: {self.max_iter}.")
 
-        # Initialize the population.
+        # Initialize the population or resume from the latest checkpoint.
+        checkpoint_dir = os.path.join(CONFIG["workspace"], CONFIG["checkpoint"])
         if resume:
-            (gen, pop_scenario, pop_perturbation,
-             archive_scenario, archive_perturbation,
-             archive_solution, evaluated_solutions) = self._resume()
+            files = sorted(os.listdir(checkpoint_dir), reverse=True)
+            if len(files) == 0:
+                raise ValueError("No checkpoints found.")
+            logger.info(f"Resuming from checkpoint: {files[0]}.")
+            with open(os.path.join(checkpoint_dir, files[0]), "rb") as f:
+                gen = pickle.load(f)
+                sim_num = pickle.load(f)
+                pop_scenario = pickle.load(f)
+                pop_perturbation = pickle.load(f)
+                archive_scenario = pickle.load(f)
+                archive_perturbation = pickle.load(f)
+                archive_solution = pickle.load(f)
+                evaluated_solutions = pickle.load(f)
         else:
             gen = 0
+            sim_num = 0
             pop_scenario = self.toolbox.pop_scenario()
             pop_perturbation = self.toolbox.pop_perturbation()
             archive_scenario = pop_scenario
@@ -45,10 +60,14 @@ class CCEA(BaseAlgorithm):
             evaluated_solutions = []
 
         start_time = time.perf_counter()
-        while gen < self.max_iter and time.perf_counter() - start_time < self.time_budget:
-            archive_solution = self._evaluate(pop_scenario, archive_scenario,
-                                              pop_perturbation, archive_perturbation,
-                                              evaluated_solutions)
+        while ((self.max_sim is None or sim_num < self.max_sim) and
+               (self.max_time is None or time.perf_counter() - start_time < self.max_time) and
+               (self.max_iter is None or gen < self.max_iter)):
+            # Evaluate the population.
+            archive_solution, n = self._evaluate(pop_scenario, archive_scenario,
+                                                 pop_perturbation, archive_perturbation,
+                                                 evaluated_solutions)
+            sim_num += n
             self._record_statistics(pop_scenario, gen, pop_name="pop_scen")
             self._record_statistics(pop_perturbation, gen, pop_name="pop_pert")
             self._record_statistics(archive_solution, gen, pop_name="solution")
@@ -67,9 +86,20 @@ class CCEA(BaseAlgorithm):
             pop_perturbation += archive_perturbation
             gen += 1
             logger.info("Generation info:\n" + self.logbook.stream)
-            self._checkpoint(gen, pop_scenario, pop_perturbation,
-                             archive_scenario, archive_perturbation,
-                             archive_solution, evaluated_solutions)
+            logger.info(f"Number of simulations: {n}/{sim_num}.")
+
+            # Store the current status into a checkpoint.
+            os.makedirs(checkpoint_dir, exist_ok=True)
+            with open(os.path.join(checkpoint_dir, f"{int(round(time.time() * 1000))}.pickle"), "wb") as f:
+                pickle.dump(gen, f)
+                pickle.dump(sim_num, f)
+                pickle.dump(pop_scenario, f)
+                pickle.dump(pop_perturbation, f)
+                pickle.dump(archive_scenario, f)
+                pickle.dump(archive_perturbation, f)
+                pickle.dump(archive_solution, f)
+                pickle.dump(evaluated_solutions, f)
+
         return archive_solution
 
     def _evaluate(self, pop_scenario, archive_scenario, pop_perturbation, archive_perturbation, evaluated_solutions):
@@ -80,7 +110,7 @@ class CCEA(BaseAlgorithm):
         @param pop_perturbation: The population of perturbations.
         @param archive_perturbation: The archive of perturbations.
         @param evaluated_solutions: The evaluated complete solutions.
-        @return: An archived complete solutions.
+        @return: An archived complete solutions and the number of simulations.
         """
         # Generate complete solutions from archives.
         complete_solutions = ([self.toolbox.collaborate(self.toolbox.clone(scenario), self.toolbox.clone(perturbation))
@@ -107,7 +137,7 @@ class CCEA(BaseAlgorithm):
                 unique_solutions.append(ind)
 
         # Evaluate joint fitness.
-        # TODO: avoid evaluating similar scenarios
+        # TODO: avoid evaluating similar scenarios.
         candidates = [ind for ind in unique_solutions if ind not in evaluated_solutions]
         candidates = self.toolbox.evaluate_solutions(candidates)
         evaluated_solutions.extend(candidates)
@@ -122,23 +152,28 @@ class CCEA(BaseAlgorithm):
             self.toolbox.evaluate_individual(perturbation, archive_solution)
         self.toolbox.fitness_sharing(pop_perturbation)
 
-        return archive_solution
+        return archive_solution, len(candidates) * 2
 
     def _update_archive(self, population):
-        """Update the archive using the `best random` strategy."""
+        """Update the archive."""
         population = self.toolbox.clone(population)
         archive = tools.selBest(population, 1)
         population.remove(archive[0])
         if len(population) == 0: return archive
 
-        for _ in range(self.archive_size - 1):
-            best = population[0]
-            if len(population) <= 1: break
-            for ind in population[1:]:
-                if self.population_diversity(archive + [ind]) > self.population_diversity(archive + [best]):
-                    best = ind
-            archive.append(best)
-            population.remove(best)
+        if CONFIG["diversity_opt"]:
+            # Select individuals able to maximize the diversity.
+            for _ in range(self.archive_size - 1):
+                best = population[0]
+                if len(population) <= 1: break
+                for ind in population[1:]:
+                    if self.population_diversity(archive + [ind]) > self.population_diversity(archive + [best]):
+                        best = ind
+                archive.append(best)
+                population.remove(best)
+        else:
+            # Randomly select individuals.
+            archive += tools.selRandom(population, self.archive_size - 1)
 
         return archive
 
@@ -157,31 +192,19 @@ class CCEA(BaseAlgorithm):
         for _ in range(size):
             parents = select_operator(population, k=2)
             mate_operator(parents[0], parents[1])
-            mutate_operator(parents[0])
-            mutate_operator(parents[1])
-            del parents[0].fitness.values
-            del parents[1].fitness.values
-            if (self.population_diversity(offsprings + [parents[0]]) >
-                    self.population_diversity(offsprings + [parents[1]])):
-                offsprings.append(parents[0])
+            if CONFIG["diversity_opt"]:
+                mutate_operator(parents[0])
+                mutate_operator(parents[1])
+                del parents[0].fitness.values
+                del parents[1].fitness.values
+                if (self.population_diversity(offsprings + [parents[0]]) >
+                        self.population_diversity(offsprings + [parents[1]])):
+                    offsprings.append(parents[0])
+                else:
+                    offsprings.append(parents[1])
             else:
-                offsprings.append(parents[1])
+                offspring = random.choice(parents)
+                mutate_operator(offspring)
+                del offspring.fitness.values
+                offsprings.append(offspring)
         return offsprings
-
-    @staticmethod
-    def _checkpoint(*objects):
-        dir_path = os.path.join(CONFIG["workspace"], CONFIG["checkpoint"])
-        os.makedirs(dir_path, exist_ok=True)
-        with open(os.path.join(dir_path, f"{int(round(time.time() * 1000))}.pickle"), "wb") as f:
-            for obj in objects:
-                pickle.dump(obj, f)
-
-    @staticmethod
-    def _resume():
-        dir_path = os.path.join(CONFIG["workspace"], CONFIG["checkpoint"])
-        files = sorted(os.listdir(dir_path), reverse=True)
-        if len(files) == 0:
-            raise ValueError("No checkpoints found.")
-        logger.info(f"Resuming from checkpoint: {files[0]}.")
-        with open(os.path.join(dir_path, files[0]), "rb") as f:
-            return [pickle.load(f) for _ in range(7)]

@@ -61,7 +61,6 @@ def _init_carla(ports):
     assert ports.qsize() > 0
     global carla_port
     carla_port = ports.get()
-    # subprocess.Popen([CONFIG["simulation"]["carla"], f"-carla-port={config.port}"])  # TODO: run containers
 
 
 def run_scenario(scenario: ScenarioDefinition):

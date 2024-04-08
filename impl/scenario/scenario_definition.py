@@ -2,6 +2,7 @@ import math
 import random
 import uuid
 from abc import ABC
+from copy import deepcopy
 from typing import List, Dict
 
 from impl.config import CONFIG
@@ -35,7 +36,7 @@ def _dist_attrs(this, that, attrs, boundary: Boundary):
         if isinstance(lower, float):
             dist += pow(abs(getattr(this, attr) - getattr(that, attr)) / (upper - lower), 2)
         elif isinstance(lower, int):
-            # TODO: within the same category
+            # TODO: within the same category.
             dist += pow(CONFIG["dist_scaling"] * (0.0 if getattr(this, attr) == getattr(that, attr) else 1.0), 2)
     return dist
 
@@ -85,7 +86,8 @@ def _mutate_attrs(this, attrs, boundary: Boundary):
 
 
 class ScenarioDefinition:
-    _ATTRIBUTES = ["weather", "darkness"]
+    _ATTRIBUTES = ["weather"]
+    _BLUEPRINTS = CONFIG["blueprint"]["scenario"]
     _BOUNDARY = Boundary(CONFIG["boundary"]["env"])
 
     def __new__(cls, *args):
@@ -98,7 +100,6 @@ class ScenarioDefinition:
         self.walkers = []
         self.statics = []
         self.weather = None
-        self.darkness = None
         self._other_actors = None
         return self
 
@@ -108,7 +109,7 @@ class ScenarioDefinition:
     @classmethod
     def generate_random(cls):
         scenario = cls()
-        # scenario.ego_vehicle = Vehicle.generate_random() # TODO
+        # scenario.ego_vehicle = Vehicle.generate_random() # TODO: generate random ego vehicle.
         scenario.ego_vehicle = Vehicle(
             id_="ego_vehicle",
             transform=Transform(x=200.0, y=-2.0, z=0.5, pitch=0.0, yaw=0.0, roll=0.0),
@@ -204,12 +205,18 @@ class ScenarioDefinition:
     def get_trigger_position(self):
         return self.trajectory[0]
 
-    def get_other_actors(self):  # TODO
+    def get_other_actors(self):  # TODO: refine this method.
         if self._other_actors is None:
             self._other_actors = [actor.get_config() for actor in self.vehicles + self.walkers + self.statics]
         return self._other_actors
 
-    def update(self, category: str, value, replace_pb=None):  # TODO: optimize
+    def get_config(self):
+        return {
+            "id": self.id_,
+            "weather": ScenarioDefinition._BLUEPRINTS["weather"][self.weather],
+        }
+
+    def update(self, category: str, value):
         if category in ["vehicle", "walker", "static"]:
             actors = getattr(self, f"{category}s")
             exist = False
@@ -219,11 +226,7 @@ class ScenarioDefinition:
                     actor.update(value)
                     break
             if not exist:
-                if replace_pb and len(actors) > 0 and random.random() < replace_pb:
-                    actor = random.choice(actors)
-                    actor.update(value)
-                else:
-                    actors.append(value)
+                actors.append(deepcopy(value))
         elif category in ScenarioDefinition._ATTRIBUTES:
             setattr(self, category, value)
         else:
@@ -277,7 +280,6 @@ class ScenarioDefinition:
                 self.ego_vehicle == other.ego_vehicle and
                 self.trajectory == other.trajectory and
                 self.weather == other.weather and
-                self.darkness == other.darkness and
                 self._list_eq(self.vehicles, other.vehicles) and
                 self._list_eq(self.walkers, other.walkers) and
                 self._list_eq(self.statics, other.statics))
@@ -289,8 +291,7 @@ class ScenarioDefinition:
                 f"vehicles={self.vehicles}, "
                 f"walkers={self.walkers}, "
                 f"statics={self.statics}, "
-                f"weather={self.weather}, "
-                f"darkness={self.darkness})")
+                f"weather={self.weather})")
 
 
 class Transform:

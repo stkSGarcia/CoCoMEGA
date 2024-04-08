@@ -1,9 +1,7 @@
 import random
 from abc import abstractmethod, ABC
-from copy import deepcopy
 from typing import List
 
-from impl.config import CONFIG
 from impl.scenario.scenario_definition import Boundary, ScenarioDefinition, Vehicle, Walker, Static
 
 
@@ -13,7 +11,7 @@ class Perturbation:
         self.value = value
 
     def perturb(self, scenario: ScenarioDefinition):
-        scenario.update(self.category, deepcopy(self.value), CONFIG["perturbation"]["replace_pb"])
+        scenario.update(self.category, self.value)
 
     @staticmethod
     def squash(perturbations: List) -> ScenarioDefinition:
@@ -35,19 +33,20 @@ class Perturbation:
 class PerturbationFactory:
     _ATTR_MAP = {"vehicle": Vehicle, "walker": Walker, "static": Static}
 
-    def __init__(self, category: str, boundary: Boundary):
+    def __init__(self, category: str, boundary: Boundary, id_: str = None):
+        self.id_ = id_
         self.category = category
         self.boundary = boundary
         if self.category in ["vehicle", "walker", "static"]:
             cls = PerturbationFactory._ATTR_MAP[self.category]
-            self._spawn_func = lambda: cls.generate_random(self.boundary)
+            self._spawn_func = lambda x: cls.generate_random(self.boundary, id_=x)
         elif self.category in ["weather", "darkness"]:
-            self._spawn_func = lambda: self.boundary.random(self.category)
+            self._spawn_func = lambda x: self.boundary.random(self.category)
         else:
             raise ValueError(f"Unsupported actor category: {self.category}.")
 
     def spawn(self) -> Perturbation:
-        return Perturbation(self.category, self._spawn_func())
+        return Perturbation(self.category, self._spawn_func(self.id_))  # TODO: generate an actor with different id.
 
 
 class Relation(ABC):

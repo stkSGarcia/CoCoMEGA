@@ -22,7 +22,7 @@ class MOSA(BaseAlgorithm):
                  seed=None):
         """Constructor.
 
-        @param objectives: TODO
+        @param objectives: Objectives to optimize.
         @param pop_size: The size of the population.
         """
         super().__init__(toolbox, time_budget, max_iter, seed)
