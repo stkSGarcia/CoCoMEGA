@@ -10,6 +10,11 @@ simulation:
   client_timeout: 10
   wait_for_world: 20
   frame_rate: 10
+  docker: true
+  image: carla-0.9.10
+  memory: 8g
+  cpu: 4
+  gpu: all
   ports:
     - 2000
     - 2002

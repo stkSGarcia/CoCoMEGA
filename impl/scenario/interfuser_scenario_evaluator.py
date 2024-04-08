@@ -27,8 +27,10 @@ import carla
 import copy
 import signal
 import torch
+import logging
 
 from impl.config import CONFIG
+from impl.scenario.docker_utils import setup_carla, restart_carla
 
 from impl.scenario.scenario_definition import ScenarioDefinition
 from srunner.scenariomanager.carla_data_provider import *
@@ -43,6 +45,7 @@ from leaderboard.autoagents.agent_wrapper import AgentWrapper, AgentError
 from leaderboard.utils.statistics_manager import StatisticsManager
 from leaderboard.utils.route_indexer import RouteIndexer
 
+logger = logging.getLogger(__name__)
 sensors_to_icons = {
     'sensor.camera.rgb': 'carla_camera',
     'sensor.camera.semantic_segmentation': 'carla_camera',
@@ -76,6 +79,11 @@ class ScenarioEvaluator(object):
         """
         self.scenario_definition = scenario_definition
         # self.statistics_manager = statistics_manager
+
+        docker = CONFIG['simulation']['docker']
+        if docker:
+            setup_carla(container_name=f"{CONFIG['simulation']['image']}-{args.port}", port=args.port)
+
         self.sensors = None
         self.sensor_icons = []
         self._vehicle_lights = carla.VehicleLightState.Position | carla.VehicleLightState.LowBeam
@@ -257,6 +265,7 @@ class ScenarioEvaluator(object):
         Depending on what code fails, the simulation will either stop the route and
         continue from the next one, or report a crash and stop.
         """
+
         crash_message = ""
         entry_status = "Started"
 
@@ -368,24 +377,23 @@ class ScenarioEvaluator(object):
         print("\033[1m> Running the route\033[0m")
 
         # Run the scenario
-        # try:
-        self.manager.run_scenario()
+        try:
+            self.manager.run_scenario()
+        except AgentError as e:
+            # The agent has failed -> stop the route
+            logger.error("\n\033[91mStopping the route, the agent has crashed:")
+            logger.error("> {}\033[0m\n".format(e))
+            traceback.print_exc()
 
-        # except AgentError as e:
-        #     # The agent has failed -> stop the route
-        #     print("\n\033[91mStopping the route, the agent has crashed:")
-        #     print("> {}\033[0m\n".format(e))
-        #     traceback.print_exc()
+            crash_message = "Agent crashed"
 
-        #     crash_message = "Agent crashed"
+        except Exception as e:
+            logger.error("\n\033[91mError during the simulation:")
+            logger.error("> {}\033[0m\n".format(e))
+            traceback.print_exc()
 
-        # except Exception as e:
-        #     print("\n\033[91mError during the simulation:")
-        #     print("> {}\033[0m\n".format(e))
-        #     traceback.print_exc()
-
-        #     crash_message = "Simulation crashed"
-        #     entry_status = "Crashed"
+            crash_message = "Simulation crashed"
+            entry_status = "Crashed"
 
         # Stop the scenario
         try:
@@ -409,7 +417,11 @@ class ScenarioEvaluator(object):
             crash_message = "Simulation crashed"
 
         if crash_message == "Simulation crashed":
-            sys.exit(-1)
+            if docker:
+                logger.info("Failed running scenario. Restarting Carla...")
+                restart_carla(container_name=f"{CONFIG['simulation']['container']}-{config['port']}")
+            else:
+                sys.exit(-1)
 
     def run(self, args):
         """
@@ -417,6 +429,7 @@ class ScenarioEvaluator(object):
         """
         # agent_class_name = getattr(self.module_agent, 'get_entry_point')()
         # self.agent_instance = getattr(self.module_agent, agent_class_name)(args.agent_config)
+
 
         route_indexer = RouteIndexer(args.routes, args.scenarios, args.repetitions)
 

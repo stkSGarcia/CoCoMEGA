@@ -233,9 +233,12 @@ class RouteScenario(BasicScenario):
             for other_actor_conf in config.other_actors:
                 new_actor = CarlaDataProvider.request_new_actors([other_actor_conf])
                 if not new_actor:
-                    logger.error(f"Could not initialize Actor {other_actor_conf.model}.")
-                    raise Exception(f"Could not initialize Actor {other_actor_conf.model}.")
-                self.other_actors.append(new_actor[0])
+                    logger.error(f"Could not initialize Actor {other_actor_conf.model} on location {other_actor_conf.transform}.")
+                    # TODO handle exception
+                    self.other_actors.append(None)
+                    # raise Exception(f"Could not initialize Actor {other_actor_conf.model}.")
+                else:
+                    self.other_actors.append(new_actor[0])
 
     def _update_route(self, world, trajectory, debug_mode):
         """
@@ -471,7 +474,7 @@ class RouteScenario(BasicScenario):
         behavior = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL)
         actor_definitions = self.scenario_definition.get_other_actors()
         for i, other_actor in enumerate(self.other_actors):
-            if 'speed' in actor_definitions[i]:
+            if other_actor is not None and 'speed' in actor_definitions[i]:
                 behavior.add_child(
                     AccelerateToVelocity(other_actor, throttle_value=1, target_velocity=actor_definitions[i]['speed']))
 
