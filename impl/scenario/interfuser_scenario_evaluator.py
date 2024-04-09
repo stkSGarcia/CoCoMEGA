@@ -80,9 +80,9 @@ class ScenarioEvaluator(object):
         self.scenario_definition = scenario_definition
         # self.statistics_manager = statistics_manager
 
-        docker = CONFIG['simulation']['docker']
+        docker = CONFIG['simulation']['docker']['enabled']
         if docker:
-            setup_carla(container_name=f"{CONFIG['simulation']['image']}-{args.port}", port=args.port)
+            setup_carla(container_name=f"{CONFIG['simulation']['docker']['image']}-{args.port}", port=args.port)
 
         self.sensors = None
         self.sensor_icons = []
@@ -417,9 +417,9 @@ class ScenarioEvaluator(object):
             crash_message = "Simulation crashed"
 
         if crash_message == "Simulation crashed":
-            if CONFIG['simulation']['docker']:
+            if CONFIG['simulation']['docker']['enabled']:
                 logger.info("Failed running scenario. Restarting Carla...")
-                restart_carla(container_name=f"{CONFIG['simulation']['container']}-{config['port']}")
+                restart_carla(container_name=f"{CONFIG['simulation']['docker']['image']}-{config.port}")
             else:
                 sys.exit(-1)
 
@@ -429,8 +429,6 @@ class ScenarioEvaluator(object):
         """
         # agent_class_name = getattr(self.module_agent, 'get_entry_point')()
         # self.agent_instance = getattr(self.module_agent, agent_class_name)(args.agent_config)
-
-
         route_indexer = RouteIndexer(args.routes, args.scenarios, args.repetitions)
 
         if args.resume:

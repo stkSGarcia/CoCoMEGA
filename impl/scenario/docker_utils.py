@@ -23,11 +23,11 @@ def setup_carla(container_name, port):
     carla_container = get_container(container_name)
     if carla_container is None or carla_container.status != 'running':
         process = subprocess.Popen([
-            f"docker run --privileged --rm --net=host --memory {CONFIG['simulation']['memory']} --cpus {CONFIG['simulation']['cpu']} --gpus {CONFIG['simulation']['gpu']}" \
-            + f" --name {container_name} {CONFIG['simulation']['image']} ./CarlaUE4.sh --world-port={port} -opengl"
+            f"docker run --privileged --rm --net=host --memory {CONFIG['simulation']['docker']['memory']} --cpus {CONFIG['simulation']['docker']['cpu']} --gpus {CONFIG['simulation']['docker']['gpu']}" \
+            + f" --name {container_name} {CONFIG['simulation']['docker']['image']} ./CarlaUE4.sh --world-port={port} -opengl"
         ],
             shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        logger.info("Setting up Carla engine...")
+        logger.info("Setting up Carla...")
         time.sleep(10)
         # try:
         #     time.sleep(5)

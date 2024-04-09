@@ -6,23 +6,24 @@ simulation:
   parallel: true
   result: results
   save: data/eval
-  display_agent: false
+  display_agent: true
   host: localhost
   timeout: 20
   client_timeout: 10
   wait_for_world: 20
   frame_rate: 10
-  docker: true
-  image: carla-0.9.10
-  memory: 8g
-  cpu: 4
-  gpu: all
   ports:
     - 2000
     - 2002
     - 2004
     - 2006
     - 2008
+  docker:
+    enabled: true
+    image: carla-0.9.10
+    memory: 8g
+    cpu: 4
+    gpu: all
 
 max_sim: 1000
 max_time: 3600
