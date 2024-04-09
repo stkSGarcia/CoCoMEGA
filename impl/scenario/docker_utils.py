@@ -27,8 +27,8 @@ def setup_carla(container_name, port):
             + f" --name {container_name} {CONFIG['simulation']['image']} ./CarlaUE4.sh --world-port={port} -opengl"
         ],
             shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        logger.info("Waiting for Carla engine...")
-        time.sleep(15)
+        logger.info("Setting up Carla engine...")
+        time.sleep(10)
         # try:
         #     time.sleep(5)
         #     _, stderr = process.communicate(timeout=5)  # Adjust timeout as needed

@@ -417,7 +417,7 @@ class ScenarioEvaluator(object):
             crash_message = "Simulation crashed"
 
         if crash_message == "Simulation crashed":
-            if docker:
+            if CONFIG['simulation']['docker']:
                 logger.info("Failed running scenario. Restarting Carla...")
                 restart_carla(container_name=f"{CONFIG['simulation']['container']}-{config['port']}")
             else:
@@ -510,7 +510,6 @@ def main():
     arguments = parser.parse_args()
 
     # statistics_manager = StatisticsManager()
-    vector = ['1', 1, '10', 2.3, 34.21]
     scenario_definition = ScenarioDefinition.mock()
 
     try:

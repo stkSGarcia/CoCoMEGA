@@ -5,6 +5,7 @@ simulation:
   parallel: true
   result: results
   save: data/eval
+  display_agent: true
   host: localhost
   timeout: 20
   client_timeout: 10

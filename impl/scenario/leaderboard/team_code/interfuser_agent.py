@@ -25,12 +25,14 @@ from team_code.tracker import Tracker
 
 import math
 import yaml
+from impl.config import CONFIG
+
+display_agent = CONFIG['simulation']['display_agent']
 
 try:
     import pygame
 except ImportError:
     raise RuntimeError("cannot import pygame, make sure pygame package is installed")
-
 
 SAVE_PATH = os.environ.get("SAVE_PATH", 'eval')
 IMAGENET_DEFAULT_MEAN = (0.485, 0.456, 0.406)
@@ -57,35 +59,37 @@ class DisplayInterface(object):
         rgb_right = input_data['rgb_right']
         rgb_focus = input_data['rgb_focus']
         map = input_data['map']
-        surface = np.zeros((600, 1200, 3),np.uint8)
+        surface = np.zeros((600, 1200, 3), np.uint8)
         surface[:, :800] = rgb
-        surface[:400,800:1200] = map
-        surface[400:600,800:1000] = input_data['map_t1']
-        surface[400:600,1000:1200] = input_data['map_t2']
-        surface[:150,:200] = input_data['rgb_left']
+        surface[:400, 800:1200] = map
+        surface[400:600, 800:1000] = input_data['map_t1']
+        surface[400:600, 1000:1200] = input_data['map_t2']
+        surface[:150, :200] = input_data['rgb_left']
         surface[:150, 600:800] = input_data['rgb_right']
         surface[:150, 325:475] = input_data['rgb_focus']
-        surface = cv2.putText(surface, input_data['control'], (20,580), cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,0,255), 1)
-        surface = cv2.putText(surface, input_data['meta_infos'][0], (20,560), cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,0,255), 1)
-        surface = cv2.putText(surface, input_data['meta_infos'][1], (20,540), cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,0,255), 1)
-        surface = cv2.putText(surface, input_data['time'], (20,520), cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,0,255), 1)
+        surface = cv2.putText(surface, input_data['control'], (20, 580), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+        surface = cv2.putText(surface, input_data['meta_infos'][0], (20, 560), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                              (0, 0, 255), 1)
+        surface = cv2.putText(surface, input_data['meta_infos'][1], (20, 540), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                              (0, 0, 255), 1)
+        surface = cv2.putText(surface, input_data['time'], (20, 520), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
 
-        surface = cv2.putText(surface, 'Left  View', (40,135), cv2.FONT_HERSHEY_SIMPLEX,0.75,(0,0,0), 2)
-        surface = cv2.putText(surface, 'Focus View', (335,135), cv2.FONT_HERSHEY_SIMPLEX,0.75,(0,0,0), 2)
-        surface = cv2.putText(surface, 'Right View', (640,135), cv2.FONT_HERSHEY_SIMPLEX,0.75,(0,0,0), 2)
+        surface = cv2.putText(surface, 'Left  View', (40, 135), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 0), 2)
+        surface = cv2.putText(surface, 'Focus View', (335, 135), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 0), 2)
+        surface = cv2.putText(surface, 'Right View', (640, 135), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 0), 2)
 
-        surface = cv2.putText(surface, 'Future Prediction', (940,420), cv2.FONT_HERSHEY_SIMPLEX,0.5,(255,0,0), 2)
-        surface = cv2.putText(surface, 't', (1160,385), cv2.FONT_HERSHEY_SIMPLEX,0.8,(255,0,0), 2)
-        surface = cv2.putText(surface, '0', (1170,385), cv2.FONT_HERSHEY_SIMPLEX,0.5,(255,0,0), 2)
-        surface = cv2.putText(surface, 't', (960,585), cv2.FONT_HERSHEY_SIMPLEX,0.8,(255,0,0), 2)
-        surface = cv2.putText(surface, '1', (970,585), cv2.FONT_HERSHEY_SIMPLEX,0.5,(255,0,0), 2)
-        surface = cv2.putText(surface, 't', (1160,585), cv2.FONT_HERSHEY_SIMPLEX,0.8,(255,0,0), 2)
-        surface = cv2.putText(surface, '2', (1170,585), cv2.FONT_HERSHEY_SIMPLEX,0.5,(255,0,0), 2)
+        surface = cv2.putText(surface, 'Future Prediction', (940, 420), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+        surface = cv2.putText(surface, 't', (1160, 385), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), 2)
+        surface = cv2.putText(surface, '0', (1170, 385), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+        surface = cv2.putText(surface, 't', (960, 585), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), 2)
+        surface = cv2.putText(surface, '1', (970, 585), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+        surface = cv2.putText(surface, 't', (1160, 585), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), 2)
+        surface = cv2.putText(surface, '2', (1170, 585), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
-        surface[:150,198:202]=0
-        surface[:150,323:327]=0
-        surface[:150,473:477]=0
-        surface[:150,598:602]=0
+        surface[:150, 198:202] = 0
+        surface[:150, 323:327] = 0
+        surface[:150, 473:477] = 0
+        surface[:150, 598:602] = 0
         surface[148:152, :200] = 0
         surface[148:152, 325:475] = 0
         surface[148:152, 600:800] = 0
@@ -95,7 +99,6 @@ class DisplayInterface(object):
         surface[0:2, 800:1200] = 255
         surface[598:600, 800:1200] = 255
         surface[398:400, 800:1200] = 255
-
 
         # display image
         self._surface = pygame.surfarray.make_surface(surface.swapaxes(0, 1))
@@ -124,9 +127,8 @@ class Resize2FixedSize:
 
 
 def create_carla_rgb_transform(
-    input_size, need_scale=True, mean=IMAGENET_DEFAULT_MEAN, std=IMAGENET_DEFAULT_STD
+        input_size, need_scale=True, mean=IMAGENET_DEFAULT_MEAN, std=IMAGENET_DEFAULT_STD
 ):
-
     if isinstance(input_size, (tuple, list)):
         img_size = input_size[-2:]
     else:
@@ -158,8 +160,8 @@ def create_carla_rgb_transform(
 
 class InterfuserAgent(autonomous_agent.AutonomousAgent):
     def setup(self, path_to_conf_file):
-
-        self._hic = DisplayInterface()
+        if display_agent:
+            self._hic = DisplayInterface()
         self.lidar_processed = list()
         self.track = autonomous_agent.Track.SENSORS
         self.step = -1
@@ -328,7 +330,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         speed = input_data["speed"][1]["speed"]
         compass = input_data["imu"][1][-1]
         if (
-            math.isnan(compass) == True
+                math.isnan(compass) == True
         ):  # It can happen that the compass sends nan for a few frames
             compass = 0.0
 
@@ -465,13 +467,13 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         )
         stop_sign = self.softmax(stop_sign).detach().cpu().numpy().reshape(-1)[0]
 
-
         if self.step % 2 == 0 or self.step < 4:
-            traffic_meta = self.tracker.update_and_predict(traffic_meta.reshape(20, 20, -1), tick_data['gps'], tick_data['compass'], self.step // 2)
+            traffic_meta = self.tracker.update_and_predict(traffic_meta.reshape(20, 20, -1), tick_data['gps'],
+                                                           tick_data['compass'], self.step // 2)
             traffic_meta = traffic_meta.reshape(400, -1)
             self.traffic_meta_moving_avg = (
-                self.momentum * self.traffic_meta_moving_avg
-                + (1 - self.momentum) * traffic_meta
+                    self.momentum * self.traffic_meta_moving_avg
+                    + (1 - self.momentum) * traffic_meta
             )
         traffic_meta = self.traffic_meta_moving_avg
 
@@ -511,7 +513,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         pred_waypoints = pred_waypoints.reshape(-1, 2)
         safe_index = 10
         for i in range(10):
-            if pred_waypoints[i, 0] ** 2 + pred_waypoints[i, 1] ** 2> (meta_infos[3]+0.5) ** 2:
+            if pred_waypoints[i, 0] ** 2 + pred_waypoints[i, 1] ** 2 > (meta_infos[3] + 0.5) ** 2:
                 safe_index = i
                 break
         wp1 = render_waypoints(pred_waypoints[:safe_index], pixels_per_meter=20, color=(0, 255, 0))[:400, 160:560]
@@ -520,9 +522,9 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
 
         surround_map = np.clip(
             (
-                surround_map.astype(np.float32)
-                + self_car_map.astype(np.float32)
-                + wp.astype(np.float32)
+                    surround_map.astype(np.float32)
+                    + self_car_map.astype(np.float32)
+                    + wp.astype(np.float32)
             ),
             0,
             255,
@@ -538,7 +540,6 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         map_t2 = np.stack([map_t2, map_t2, map_t2], 2)
         map_t2 = np.clip(map_t2.astype(np.float32) + self_car_map.astype(np.float32), 0, 255).astype(np.uint8)
         map_t2 = cv2.resize(map_t2, (200, 200))
-
 
         if self.step % 2 != 0 and self.step > 4:
             control = self.prev_control
@@ -570,8 +571,9 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         )
         tick_data["mes"] = "speed: %.2f" % velocity
         tick_data["time"] = "time: %.3f" % timestamp
-        surface = self._hic.run_interface(tick_data)
-        tick_data["surface"] = surface
+        if display_agent:
+            surface = self._hic.run_interface(tick_data)
+            tick_data["surface"] = surface
 
         if SAVE_PATH is not None:
             self.save(tick_data)
@@ -580,9 +582,10 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
 
     def save(self, tick_data):
         frame = self.step // self.skip_frames
-        Image.fromarray(tick_data["surface"]).save(
-            self.save_path / "meta" / ("%04d.jpg" % frame)
-        )
+        if display_agent:
+            Image.fromarray(tick_data["surface"]).save(
+                self.save_path / "meta" / ("%04d.jpg" % frame)
+            )
         return
 
     def destroy(self):
