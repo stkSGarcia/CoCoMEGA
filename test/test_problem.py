@@ -9,7 +9,7 @@ from impl.scenario.scenario_definition import ScenarioDefinition
 mr_set = mr_set1
 
 creator.create("Fitness", base.Fitness, weights=(1.0,))
-creator.create("Solution", tuple, fitness=creator.Fitness)
+creator.create("Solution", tuple, fitness=creator.Fitness, is_violated=False)
 creator.create("Scenario", ScenarioDefinition, fitness=creator.Fitness)
 creator.create("Perturbation", list, fitness=creator.Fitness)
 

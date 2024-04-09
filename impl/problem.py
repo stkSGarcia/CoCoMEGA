@@ -14,7 +14,7 @@ mr_set = mr_set1
 
 # Define individuals.
 creator.create("Fitness", base.Fitness, weights=(1.0,))
-creator.create("Solution", tuple, fitness=creator.Fitness)
+creator.create("Solution", tuple, fitness=creator.Fitness, is_violated=False)
 creator.create("Scenario", ScenarioDefinition, fitness=creator.Fitness)
 creator.create("Perturbation", list, fitness=creator.Fitness)
 
@@ -78,8 +78,13 @@ toolbox.register("operators",
                      else (toolbox.select_perturbation, toolbox.mate_perturbation, toolbox.mutate_perturbation))
 
 
-def _fitness(source, follow_up):  # TODO: test
-    """Calculate the fitness value."""
+def _fitness(source, follow_up):
+    """Calculate the fitness value and check if it violates the relation.
+
+    @param source: Simulation results of the source scenario.
+    @param follow_up: Simulation results of the follow-up scenario.
+    @return: A tuple containing a bool value indicating whether it violates the relation and the fitness value.
+    """
     field = mr_set.field()
     idx = (source[field] - follow_up[field]).abs().idxmax()
     _, extent = mr_set.is_violated(source.loc[idx, field], follow_up.loc[idx, field])
@@ -99,7 +104,7 @@ def _evaluate_solutions(solutions):
     assert len(scenarios) == len(solutions) * 2
     results = run_scenarios(scenarios)
     for solution, source, follow_up in zip(solutions, results[::2], results[1::2]):
-        solution.fitness.values = _fitness(source, follow_up)
+        solution.is_violated, solution.fitness.values = _fitness(source, follow_up)
     return solutions
 
 

@@ -43,6 +43,7 @@ perturbation:
   mut_add: 0.6
   mut_del: 0.2
 
+convergence_threshold: 0.8
 archive_size: 3
 diversity_opt: true
 punishment: 1.0

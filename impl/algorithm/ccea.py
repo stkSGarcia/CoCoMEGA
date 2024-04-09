@@ -67,6 +67,15 @@ class CCEA(BaseAlgorithm):
             archive_solution, n = self._evaluate(pop_scenario, archive_scenario,
                                                  pop_perturbation, archive_perturbation,
                                                  evaluated_solutions)
+            violated_solutions_count = [solution.is_violated for solution in archive_solution].count(True)
+            logger.info(f"The number of solutions violating the relation: {violated_solutions_count}.")
+
+            # Terminate if the archive has converged.
+            if violated_solutions_count > CONFIG["convergence_threshold"] * len(archive_solution):
+                logger.info(f"Terminate due to the number of violations reaching the threshold: "
+                            f"{violated_solutions_count} > {CONFIG['convergence_threshold']}*{len(archive_solution)}.")
+                break
+
             sim_num += n
             self._record_statistics(pop_scenario, gen, pop_name="pop_scen")
             self._record_statistics(pop_perturbation, gen, pop_name="pop_pert")
