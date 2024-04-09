@@ -22,8 +22,10 @@ def get_container(container_name):
 def setup_carla(container_name, port):
     carla_container = get_container(container_name)
     if carla_container is None or carla_container.status != 'running':
+        container_conf = [conf for conf in CONFIG["simulation"]["docker"]["instances"] if conf["port"] == port][0]
         process = subprocess.Popen([
-            f"docker run --privileged --rm --net=host --memory {CONFIG['simulation']['docker']['memory']} --cpus {CONFIG['simulation']['docker']['cpu']} --gpus {CONFIG['simulation']['docker']['gpu']}" \
+            f"docker run --privileged --rm --net=host --memory {container_conf['memory']}" \
+            + f" --cpus {container_conf['cpu']} --gpus '\"device={container_conf['gpu_device']}\"'" \
             + f" --name {container_name} {CONFIG['simulation']['docker']['image']} ./CarlaUE4.sh --world-port={port} -opengl"
         ],
             shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -50,6 +52,8 @@ def restart_carla(container_name):
     process = subprocess.run([
         f"docker restart {container_name}"
     ],
-        shell=True, stdout=subprocess.PIPE)
+        shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if process.returncode != 0:
-        raise Exception(f"There was an error while restarting Carla: {process.stdout}")
+        raise Exception(
+            f"There was an error while restarting container {container_name}: {process.stdout}, {process.stderr}"
+        )
