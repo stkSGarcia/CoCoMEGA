@@ -87,8 +87,8 @@ def _fitness(source, follow_up):
     """
     field = mr_set.field()
     idx = (source[field] - follow_up[field]).abs().idxmax()
-    _, extent = mr_set.is_violated(source.loc[idx, field], follow_up.loc[idx, field])
-    return extent,
+    is_violated, extent = mr_set.is_violated(source.loc[idx, field], follow_up.loc[idx, field])
+    return is_violated, (extent,)
 
 
 def _evaluate_solutions(solutions):
