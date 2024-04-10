@@ -71,7 +71,7 @@ class CCEA(BaseAlgorithm):
             logger.info(f"The number of solutions violating the relation: {violated_solutions_count}.")
 
             # Terminate if the archive has converged.
-            if violated_solutions_count > CONFIG["convergence_threshold"] * len(archive_solution):
+            if gen > 0 and violated_solutions_count > CONFIG["convergence_threshold"] * len(archive_solution):
                 logger.info(f"Terminate due to the number of violations reaching the threshold: "
                             f"{violated_solutions_count} > {CONFIG['convergence_threshold']}*{len(archive_solution)}.")
                 break
