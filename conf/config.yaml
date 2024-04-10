@@ -52,7 +52,7 @@ convergence_threshold: 0.9
 archive_size: 3
 diversity_opt: true
 punishment: 1.0
-scaling: 1.5
+scaling: 1.0
 dist_scaling: 0.4
 
 boundary:
