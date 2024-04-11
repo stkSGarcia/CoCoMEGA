@@ -3,11 +3,12 @@ import os
 import sys
 import traceback
 from concurrent.futures import ProcessPoolExecutor
-from multiprocessing import Queue
+from multiprocessing import Queue, Manager
 
 import pandas as pd
 
 from impl.config import CONFIG
+from impl.scenario.scenario_definition import ScenarioDefinition
 
 root = "impl/scenario"
 for p in [
@@ -31,13 +32,10 @@ arguments = [
     ("TEAM_CONFIG", "agent_config", os.path.join(root, "leaderboard/team_code/interfuser_config.py")),
     ("DEBUG_CHALLENGE", "debug", 0),
     ("RESUME", "resume", False),
-    ("HOST", "host", CONFIG["simulation"]["host"]),
     ("CARLA_ROOT", None, os.path.join(root, "carla")),
     ("CARLA_SERVER", None, os.path.join(root, "carla/CarlaUE4.sh")),
     ("LEADERBOARD_ROOT", None, os.path.join(root, "leaderboard")),
     ("SAVE_PATH", None, os.path.join(CONFIG["workspace"], CONFIG["simulation"]["save"])),
-    ("TM_PORT", None, 2500),
-    (None, "trafficManagerPort", "2500"),
     (None, "trafficManagerSeed", "1"),
     (None, "carlaProviderSeed", "2000"),
     (None, "record", ""),
@@ -47,28 +45,33 @@ arguments = [
 for env, _, v in arguments:
     if env is not None: os.environ[env] = str(v)
 
-from impl.scenario.scenario_definition import ScenarioDefinition
 from impl.scenario.interfuser_scenario_evaluator import ScenarioEvaluator
 
 logger = logging.getLogger(__name__)
 config = type("", (object,), {arg: value for _, arg, value in arguments})()
-evaluated = {}
 
+evaluated = Manager().dict()
+
+carla_host = None
 carla_port = None
+tm_port = None
 
 
-def _init_carla(ports):
-    assert ports.qsize() > 0
-    global carla_port
-    carla_port = ports.get()
+def _init_carla(instance_configs):
+    assert instance_configs.qsize() > 0
+    global carla_host, carla_port, tm_port
+    carla_host, carla_port, tm_port = instance_configs.get()
 
 
 def run_scenario(scenario: ScenarioDefinition):
     if scenario.id_ in evaluated: return evaluated[scenario.id_]
-    global carla_port
-    assert carla_port is not None
+    global carla_host, carla_port, tm_port
+    assert carla_host is not None and carla_port is not None and tm_port is not None
+    setattr(config, "host", carla_host)
     setattr(config, "port", carla_port)
-    logger.debug(f"Starting simulation, scenario id: {scenario.id_}, carla port: {config.port}.")
+    setattr(config, "trafficManagerPort", tm_port)
+    logger.debug(f"Starting simulation, scenario id: {scenario.id_}, carla instance: {config.host}:{config.port}, "
+                 f"traffic manager port: {config.trafficManagerPort}.")
     logger.debug(scenario)
 
     try:
@@ -88,12 +91,16 @@ def run_scenario(scenario: ScenarioDefinition):
 def run_scenarios(scenarios):
     if CONFIG["simulation"]["parallel"]:
         queue = Queue()
-        [queue.put(port) for port in CONFIG["simulation"]["ports"]]
-        with ProcessPoolExecutor(max_workers=len(CONFIG["simulation"]["ports"]),
+        [queue.put((instance["host"], instance["port"], instance["tm_port"]))
+         for instance in CONFIG["simulation"]["docker"]["instances"]]
+        with ProcessPoolExecutor(max_workers=len(CONFIG["simulation"]["docker"]["instances"]),
                                  initializer=_init_carla, initargs=(queue,)) as executor:
             results = executor.map(run_scenario, scenarios)
     else:
-        global carla_port
-        carla_port = CONFIG["simulation"]["ports"][0]
+        global carla_host, carla_port, tm_port
+        instance = CONFIG["simulation"]["docker"]["instances"][0]
+        carla_host = instance["host"]
+        carla_port = instance["port"]
+        tm_port = instance["tm_port"]
         results = map(run_scenario, scenarios)
     return list(results)

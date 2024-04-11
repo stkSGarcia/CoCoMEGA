@@ -30,7 +30,9 @@ import torch
 import logging
 
 from impl.config import CONFIG
-from impl.scenario.docker_utils import setup_carla, restart_carla
+
+if CONFIG["simulation"]["docker"]["enabled"]:
+    from impl.scenario.docker_utils import setup_carla, restart_carla
 
 from impl.scenario.scenario_definition import ScenarioDefinition
 from srunner.scenariomanager.carla_data_provider import *
@@ -438,7 +440,7 @@ class ScenarioEvaluator(object):
             # self.statistics_manager.clear_record(args.checkpoint)
             route_indexer.save_state(args.checkpoint)
 
-        while route_indexer.peek():
+        if route_indexer.peek():
             # setup
             config = route_indexer.next()
 

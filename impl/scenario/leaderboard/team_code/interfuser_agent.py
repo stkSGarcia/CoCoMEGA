@@ -4,6 +4,7 @@ import datetime
 import pathlib
 import time
 import imp
+import uuid
 import cv2
 import carla
 from collections import deque
@@ -226,6 +227,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
                     (now.month, now.day, now.hour, now.minute, now.second),
                 )
             )
+            string += uuid.uuid4().hex
 
             print(string)
 
