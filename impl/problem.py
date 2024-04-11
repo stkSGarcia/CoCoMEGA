@@ -104,7 +104,14 @@ def _evaluate_solutions(solutions):
     assert len(scenarios) == len(solutions) * 2
     results = run_scenarios(scenarios)
     for solution, source, follow_up in zip(solutions, results[::2], results[1::2]):
-        solution.is_violated, solution.fitness.values = _fitness(source, follow_up)
+        solution.valid_source = False if source is None else True
+        solution.valid_follow_up = False if follow_up is None else True
+        solution.is_valid = solution.valid_source and solution.valid_follow_up
+
+        if solution.is_valid:
+            solution.is_violated, solution.fitness.values = _fitness(source, follow_up)
+        else:
+            solution.is_violated, solution.fitness = False, None
     return solutions
 
 
@@ -120,7 +127,10 @@ def _evaluate_individual(individual, complete_solutions):
     for solution in complete_solutions:
         if solution[index] == individual:
             involved.append(solution.fitness.values[0])
-    individual.fitness.values = max(involved),
+    if len(involved) > 0:
+        individual.fitness.values = max(involved),
+    else:
+        individual.fitness = None
     return individual
 
 
@@ -155,8 +165,9 @@ def _fitness_sharing(population):
         np.fill_diagonal(dist_matrix, 1.0)
     dist_sum = dist_matrix.sum(axis=1)
     for i, individual in enumerate(population):
-        raw_fitness = individual.fitness.values[0]
-        individual.fitness.values = pow(raw_fitness, CONFIG["scaling"]) / dist_sum[i],
+        if individual.fitness is not None:
+            raw_fitness = individual.fitness.values[0]
+            individual.fitness.values = pow(raw_fitness, CONFIG["scaling"]) / dist_sum[i],
 
 
 toolbox.register("fitness_sharing", _fitness_sharing)
