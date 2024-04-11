@@ -15,30 +15,23 @@ from __future__ import print_function
 import traceback
 import argparse
 from argparse import RawTextHelpFormatter
-from datetime import datetime
-from distutils.version import LooseVersion
 import importlib
 import os
 import sys
-import gc
-import pkg_resources
-import sys
-import carla
-import copy
 import signal
-import torch
 import logging
 
 from impl.config import CONFIG
-from impl.scenario.docker_utils import setup_carla, restart_carla
 from impl.scenario.exceptions import StoppingScenarioFailedError, SimulationError, InvalidScenarioDefinitionError, \
     LoadingScenarioFailedError, AgentSetupFailedError
+
+if CONFIG["simulation"]["docker"]["enabled"]:
+    from impl.scenario.docker_utils import setup_carla, restart_carla
 
 from impl.scenario.scenario_definition import ScenarioDefinition
 from srunner.scenariomanager.carla_data_provider import *
 from srunner.scenariomanager.timer import GameTime
 from srunner.scenariomanager.watchdog import Watchdog
-from srunner.scenarioconfigs.scenario_configuration import ScenarioConfiguration, ActorConfigurationData
 
 from leaderboard.scenarios.scenario_manager import ScenarioManager
 from leaderboard.scenarios.route_scenario import RouteScenario
@@ -456,11 +449,12 @@ class ScenarioEvaluator(object):
 
             route_indexer.save_state(args.checkpoint)
 
-        # save global statistics
-        # print("\033[1m> Registering the global statistics\033[0m")
-        # global_stats_record = self.statistics_manager.compute_global_statistics(route_indexer.total)
-        # StatisticsManager.save_global_record(global_stats_record, self.sensor_icons, route_indexer.total,
-        #                                      args.checkpoint)
+
+# save global statistics
+# print("\033[1m> Registering the global statistics\033[0m")
+# global_stats_record = self.statistics_manager.compute_global_statistics(route_indexer.total)
+# StatisticsManager.save_global_record(global_stats_record, self.sensor_icons, route_indexer.total,
+#                                      args.checkpoint)
 
 
 def main():

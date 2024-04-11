@@ -7,27 +7,26 @@ simulation:
   result: results
   save: data/eval
   display_agent: false
-  host: localhost
   timeout: 20
   client_timeout: 10
   wait_for_world: 20
   frame_rate: 10
-  ports:
-    - 2000
-    - 2002
   docker:
     enabled: true
     image: carla-0.9.10
     instances:
-      - port: 2000
+      - host: localhost
+        port: 2000
+        tm_port: 2500
         gpu_device: 0
         memory: 8g
         cpu: 4
-      - port: 2002
+      - host: localhost
+        port: 2002
+        tm_port: 2502
         gpu_device: 1
         memory: 8g
         cpu: 4
-
 
 max_sim: 1000
 max_time: 3600
