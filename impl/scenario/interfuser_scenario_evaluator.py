@@ -31,6 +31,8 @@ import logging
 
 from impl.config import CONFIG
 from impl.scenario.docker_utils import setup_carla, restart_carla
+from impl.scenario.exceptions import StoppingScenarioFailedError, SimulationError, InvalidScenarioDefinitionError, \
+    LoadingScenarioFailedError, AgentSetupFailedError
 
 from impl.scenario.scenario_definition import ScenarioDefinition
 from srunner.scenariomanager.carla_data_provider import *
@@ -269,8 +271,8 @@ class ScenarioEvaluator(object):
         crash_message = ""
         entry_status = "Started"
 
-        print("\n\033[1m========= Preparing {} (repetition {}) =========".format(config.name, config.repetition_index))
-        print("> Setting up the agent\033[0m")
+        logger.info(f"\n\033[1m========= Preparing {config.name} (repetition {config.repetition_index}) =========")
+        logger.info("> Setting up the agent\033[0m")
 
         # Prepare the statistics of the route
         # self.statistics_manager.set_route(config.name, config.index)
@@ -296,30 +298,30 @@ class ScenarioEvaluator(object):
 
         except SensorConfigurationInvalid as e:
             # The sensors are invalid -> set the ejecution to rejected and stop
-            print("\n\033[91mThe sensor's configuration used is invalid:")
-            print("> {}\033[0m\n".format(e))
-            traceback.print_exc()
+            logger.error(f"\n\033[91mThe sensor's configuration used is invalid: {e}")
+            # traceback.print_exc()
+            raise e
 
-            crash_message = "Agent's sensors were invalid"
-            entry_status = "Rejected"
+            # crash_message = "Agent's sensors were invalid"
+            # entry_status = "Rejected"
 
             # self._register_statistics(config, args.checkpoint, entry_status, crash_message)
-            self._cleanup()
-            sys.exit(-1)
+            # self._cleanup()
+            # sys.exit(-1)
 
         except Exception as e:
             # The agent setup has failed -> start the next route
-            print("\n\033[91mCould not set up the required agent:")
-            print("> {}\033[0m\n".format(e))
-            traceback.print_exc()
+            logger.error(f"\n\033[91mCould not set up the required agent: {e}")
+            # traceback.print_exc()
+            raise AgentSetupFailedError(f"\n\033[91mCould not set up the required agent: {e}")
 
-            crash_message = "Agent couldn't be set up"
+            # crash_message = "Agent couldn't be set up"
 
             # self._register_statistics(config, args.checkpoint, entry_status, crash_message)
-            self._cleanup()
-            return
+            # self._cleanup()
+            # return
 
-        print("\033[1m> Loading the world\033[0m")
+        logger.info("\033[1m> Loading the world\033[0m")
 
         # Load the world and the scenario
         try:
@@ -356,50 +358,51 @@ class ScenarioEvaluator(object):
             if args.record:
                 self.client.start_recorder("{}/{}_rep{}.log".format(args.record, config.name, config.repetition_index))
             self.manager.load_scenario(scenario, self.agent_instance, config.repetition_index)
-
+        except InvalidScenarioDefinitionError as e:
+            raise e
         except Exception as e:
             # The scenario is wrong -> set the ejecution to crashed and stop
-            print("\n\033[91mThe scenario could not be loaded:")
-            print("> {}\033[0m\n".format(e))
-            traceback.print_exc()
+            logger.error(f"\n\033[91mThe scenario could not be loaded: {e}")
+            # traceback.print_exc()
+            raise LoadingScenarioFailedError(f"\n\033[91mThe scenario could not be loaded: {e}")
 
-            crash_message = "Simulation crashed"
-            entry_status = "Crashed"
+            # crash_message = "Simulation crashed"
+            # entry_status = "Crashed"
 
-            self._register_statistics(config, args.checkpoint, entry_status, crash_message)
+            # self._register_statistics(config, args.checkpoint, entry_status, crash_message)
 
-            if args.record:
-                self.client.stop_recorder()
+            # if args.record:
+            #     self.client.stop_recorder()
 
-            self._cleanup()
-            sys.exit(-1)
+            # self._cleanup()
+            # sys.exit(-1)
 
-        print("\033[1m> Running the route\033[0m")
+        logger.info("\033[1m> Running the scenario\033[0m")
 
         # Run the scenario
         try:
             self.manager.run_scenario()
         except AgentError as e:
             # The agent has failed -> stop the route
-            logger.error("\n\033[91mStopping the route, the agent has crashed:")
-            logger.error("> {}\033[0m\n".format(e))
-            traceback.print_exc()
+            logger.error(f"\n\033[91mStopping the route, the agent has crashed: {e}")
+            # traceback.print_exc()
+            raise e
 
-            crash_message = "Agent crashed"
+            # crash_message = "Agent crashed"
 
         except Exception as e:
-            logger.error("\n\033[91mError during the simulation:")
-            logger.error("> {}\033[0m\n".format(e))
-            traceback.print_exc()
+            logger.error(f"\n\033[91mError during the simulation: {e}")
+            # traceback.print_exc()
+            raise SimulationError(f"\n\033[91mError during the simulation: {e}")
 
-            crash_message = "Simulation crashed"
-            entry_status = "Crashed"
+            # crash_message = "Simulation crashed"
+            # entry_status = "Crashed"
 
         # Stop the scenario
         try:
-            print("\033[1m> Stopping the route\033[0m")
+            logger.info("\033[1m> Stopping the route\033[0m")
             self.manager.stop_scenario()
-            self._register_statistics(config, args.checkpoint, entry_status, crash_message)
+            # self._register_statistics(config, args.checkpoint, entry_status, crash_message)
 
             if args.record:
                 self.client.stop_recorder()
@@ -410,18 +413,18 @@ class ScenarioEvaluator(object):
             self._cleanup()
 
         except Exception as e:
-            print("\n\033[91mFailed to stop the scenario, the statistics might be empty:")
-            print("> {}\033[0m\n".format(e))
-            traceback.print_exc()
+            logger.error(f"\n\033[91mFailed to stop the scenario: {e}")
+            # traceback.print_exc()
+            raise StoppingScenarioFailedError(f"\n\033[91mFailed to stop the scenario: {e}")
 
-            crash_message = "Simulation crashed"
+            # crash_message = "Simulation crashed"
 
-        if crash_message == "Simulation crashed":
-            if CONFIG['simulation']['docker']['enabled']:
-                logger.info("Failed running scenario. Restarting Carla...")
-                restart_carla(container_name=f"{CONFIG['simulation']['docker']['image']}-{config.port}")
-            else:
-                sys.exit(-1)
+        # if crash_message == "Simulation crashed":
+        #     if CONFIG['simulation']['docker']['enabled']:
+        #         logger.info("Failed running scenario. Restarting Carla...")
+        #         restart_carla(container_name=f"{CONFIG['simulation']['docker']['image']}-{config.port}")
+        #     else:
+        #         sys.exit(-1)
 
     def run(self, args):
         """
@@ -438,24 +441,23 @@ class ScenarioEvaluator(object):
             # self.statistics_manager.clear_record(args.checkpoint)
             route_indexer.save_state(args.checkpoint)
 
-        while route_indexer.peek():
-            # setup
-            config = route_indexer.next()
+        config = route_indexer.next()
 
+        for i in range(args.repetitions):
             # run
             self._load_and_run_scenario(args, config)
 
-            for obj in gc.get_objects():
-                try:
-                    if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
-                        print(type(obj), obj.size())
-                except:
-                    pass
+            # for obj in gc.get_objects():
+            #     try:
+            #         if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+            #             print(type(obj), obj.size())
+            #     except:
+            #         pass
 
             route_indexer.save_state(args.checkpoint)
 
         # save global statistics
-        print("\033[1m> Registering the global statistics\033[0m")
+        # print("\033[1m> Registering the global statistics\033[0m")
         # global_stats_record = self.statistics_manager.compute_global_statistics(route_indexer.total)
         # StatisticsManager.save_global_record(global_stats_record, self.sensor_icons, route_indexer.total,
         #                                      args.checkpoint)

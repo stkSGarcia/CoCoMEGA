@@ -8,6 +8,8 @@ from multiprocessing import Queue
 import pandas as pd
 
 from impl.config import CONFIG
+from impl.scenario.docker_utils import restart_carla
+from impl.scenario.exceptions import InvalidScenarioDefinitionError
 
 root = "impl/scenario"
 for p in [
@@ -74,11 +76,22 @@ def run_scenario(scenario: ScenarioDefinition):
     try:
         evaluator = ScenarioEvaluator(scenario, config)
         evaluator.run(config)
-    except Exception:
-        traceback.print_exc()
-    finally:
         del evaluator
-
+    except InvalidScenarioDefinitionError as e:
+        logger.error(f"Scenario {scenario.id_} failed: {e}")
+        # if CONFIG['debug']:
+        #     traceback.print_exc()
+        del evaluator
+        return None
+    except Exception as e:
+        logger.error(f"Scenario {scenario.id_} failed: {e}")
+        if CONFIG['debug']:
+            traceback.print_exc()
+        del evaluator
+        if CONFIG['simulation']['docker']['enabled']:
+            container_name = f"{CONFIG['simulation']['docker']['image']}-{carla_port}"
+            restart_carla(container_name, carla_port)
+        return None
     results = pd.read_csv(os.path.join(CONFIG["workspace"], CONFIG["simulation"]["result"], f"{scenario.id_}.csv"))
     results.set_index(results.columns[0], inplace=True)
     evaluated[scenario.id_] = results

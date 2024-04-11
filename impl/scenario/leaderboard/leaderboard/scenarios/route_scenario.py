@@ -22,20 +22,15 @@ from carla.libcarla import Location
 
 from agents.navigation.local_planner import RoadOption
 from impl.scenario.criterions import VehicleMeasurementTest
+from impl.scenario.exceptions import InvalidScenarioDefinitionError
 
 # pylint: disable=line-too-long
 from srunner.scenarioconfigs.scenario_configuration import ScenarioConfiguration, ActorConfigurationData
 # pylint: enable=line-too-long
-from srunner.scenariomanager.scenarioatomics.atomic_behaviors import Idle, ScenarioTriggerer
+
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenarios.basic_scenario import BasicScenario
-from srunner.scenarios.control_loss import ControlLoss
-from srunner.scenarios.follow_leading_vehicle import FollowLeadingVehicle
-from srunner.scenarios.object_crash_vehicle import DynamicObjectCrossing
-from srunner.scenarios.object_crash_intersection import VehicleTurningRoute
-from srunner.scenarios.other_leading_vehicle import OtherLeadingVehicle
-from srunner.scenarios.maneuver_opposite_direction import ManeuverOppositeDirection
-from srunner.scenarios.junction_crossing_route import SignalJunctionCrossingRoute, NoSignalJunctionCrossingRoute
+
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import AccelerateToVelocity
 
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import (CollisionTest,
@@ -56,20 +51,6 @@ ROUTESCENARIO = ["RouteScenario"]
 
 SECONDS_GIVEN_PER_METERS = 0.8  # for timeout
 INITIAL_SECONDS_DELAY = 5.0
-
-
-# NUMBER_CLASS_TRANSLATION = {
-#     "Scenario1": ControlLoss,
-#     "Scenario2": FollowLeadingVehicle,
-#     "Scenario3": DynamicObjectCrossing,
-#     "Scenario4": VehicleTurningRoute,
-#     "Scenario5": OtherLeadingVehicle,
-#     "Scenario6": ManeuverOppositeDirection,
-#     "Scenario7": SignalJunctionCrossingRoute,
-#     "Scenario8": SignalJunctionCrossingRoute,
-#     "Scenario9": SignalJunctionCrossingRoute,
-#     "Scenario10": NoSignalJunctionCrossingRoute
-# }
 
 
 def oneshot_behavior(name, variable_name, behaviour):
@@ -185,6 +166,51 @@ def compare_scenarios(scenario_choice, existent_scenario):
     return False
 
 
+def request_new_actor(model, spawn_point, rolename='scenario', autopilot=False,
+                      random_location=False, color=None, actor_category="car"):
+    """
+    This method tries to create a new actor, returning it if successful (raises InvalidScenarioConfError otherwise).
+    """
+    try:
+        blueprint = CarlaDataProvider.create_blueprint(model, rolename, color, actor_category)
+
+        if random_location:
+            actor = None
+            while not actor:
+                spawn_point = CarlaDataProvider._rng.choice(CarlaDataProvider._spawn_points)
+                actor = CarlaDataProvider._world.spawn_actor(blueprint, spawn_point)
+
+        else:
+            # slightly lift the actor to avoid collisions with ground when spawning the actor
+            # DO NOT USE spawn_point directly, as this will modify spawn_point permanently
+            _spawn_point = carla.Transform(carla.Location(), spawn_point.rotation)
+            _spawn_point.location.x = spawn_point.location.x
+            _spawn_point.location.y = spawn_point.location.y
+            _spawn_point.location.z = spawn_point.location.z + 0.2
+            actor = CarlaDataProvider._world.spawn_actor(blueprint, _spawn_point)
+
+        if actor in CarlaDataProvider._blueprint_library.filter('vehicle.*'):
+            actor.set_autopilot(autopilot)
+
+        # wait for the actor to be spawned properly before we do anything
+        if CarlaDataProvider.is_sync_mode():
+            CarlaDataProvider._world.tick()
+        else:
+            CarlaDataProvider._world.wait_for_tick()
+
+        if actor is None:
+            return None
+
+        CarlaDataProvider._carla_actor_pool[actor.id] = actor
+        CarlaDataProvider.register_actor(actor)
+        return actor
+    except Exception as e:
+        logger.error(f"Error has occurred while trying to spawn actor {model} on location {spawn_point}: {e}")
+        raise InvalidScenarioDefinitionError(
+            f"An error has occurred while trying to spawn actor {model} on location {spawn_point}: {e}"
+        )
+
+
 class RouteScenario(BasicScenario):
     """
     Implementation of a RouteScenario, i.e. a scenario that consists of driving along a pre-defined route,
@@ -230,15 +256,17 @@ class RouteScenario(BasicScenario):
         initialization of other actors.
         """
         if config.other_actors:
-            for other_actor_conf in config.other_actors:
-                new_actor = CarlaDataProvider.request_new_actors([other_actor_conf])
-                if not new_actor:
-                    logger.error(f"Could not initialize Actor {other_actor_conf.model} on location {other_actor_conf.transform}.")
-                    # TODO handle exception
-                    self.other_actors.append(None)
-                    # raise Exception(f"Could not initialize Actor {other_actor_conf.model}.")
-                else:
-                    self.other_actors.append(new_actor[0])
+            for actor_conf in config.other_actors:
+                new_actor = request_new_actor(
+                    model=actor_conf.model,
+                    spawn_point=actor_conf.transform,
+                    rolename='scenario',
+                    autopilot=actor_conf.autopilot,
+                    random_location=actor_conf.random_location,
+                    color=actor_conf.color,
+                    actor_category=actor_conf.category,
+                )
+                self.other_actors.append(new_actor)
 
     def _update_route(self, world, trajectory, debug_mode):
         """
@@ -426,50 +454,10 @@ class RouteScenario(BasicScenario):
 
         return list_of_actors
 
-    # pylint: enable=no-self-use
-
-    # def _initialize_actors(self, config):
-    #     """
-    #     Set other_actors to the superset of all scenario actors
-    #     """
-    #     # Create the background activity of the route
-    #     town_amount = {
-    #         'Town01': 120,
-    #         'Town02': 100,
-    #         'Town03': 120,
-    #         'Town04': 200,
-    #         'Town05': 120,
-    #         'Town06': 150,
-    #         'Town07': 110,
-    #         'Town08': 180,
-    #         'Town09': 300,
-    #         'Town10HD': 120,  # town10 doesn't load properly for some reason
-    #     }
-    #
-    #     amount = town_amount[config.town] if config.town in town_amount else 0
-
-    # new_actors = CarlaDataProvider.request_new_batch_actors('vehicle.*',
-    #                                                         amount,
-    #                                                         carla.Transform(),
-    #                                                         autopilot=True,
-    #                                                         random_location=True,
-    #                                                         rolename='background')
-    #
-    # if new_actors is None:
-    #     raise Exception("Error: Unable to add the background activity, all spawn points were occupied")
-    #
-    # for _actor in new_actors:
-    #     self.other_actors.append(_actor)
-
-    # Add all the actors of the specific scenarios to self.other_actors
-    # for scenario in self.list_scenarios:
-    #     self.other_actors.extend(scenario.other_actors)
-
     def _create_behavior(self):
         """
         Basic behavior do nothing, i.e. Idle
         """
-        scenario_trigger_distance = 1.5  # Max trigger distance between route and scenario
 
         behavior = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL)
         actor_definitions = self.scenario_definition.get_other_actors()
@@ -478,40 +466,6 @@ class RouteScenario(BasicScenario):
                 behavior.add_child(
                     AccelerateToVelocity(other_actor, throttle_value=1, target_velocity=actor_definitions[i]['speed']))
 
-        # subbehavior = py_trees.composites.Parallel(name="Behavior",
-        #                                            # policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL)
-        #
-        # scenario_behaviors = []
-        # blackboard_list = []
-        #
-        # if self.scenario.scenario.behavior is not None:
-        #     route_var_name = scenario.config.route_var_name
-        #
-        #     if route_var_name is not None:
-        #         scenario_behaviors.append(scenario.scenario.behavior)
-        #         blackboard_list.append([scenario.config.route_var_name,
-        #                                 scenario.config.trigger_points[0].location])
-        #     else:
-        #         name = "{} - {}".format(i, scenario.scenario.behavior.name)
-        #         oneshot_idiom = oneshot_behavior(
-        #             name=name,
-        #             variable_name=name,
-        #             behaviour=scenario.scenario.behavior)
-        #         scenario_behaviors.append(oneshot_idiom)
-        #
-        # # Add behavior that manages the scenarios trigger conditions
-        # scenario_triggerer = ScenarioTriggerer(
-        #     self.ego_vehicles[0],
-        #     self.route,
-        #     blackboard_list,
-        #     scenario_trigger_distance,
-        #     repeat_scenarios=False
-        # )
-        #
-        # subbehavior.add_child(scenario_triggerer)  # make ScenarioTriggerer the first thing to be checked
-        # subbehavior.add_children(scenario_behaviors)
-        # subbehavior.add_child(Idle())  # The behaviours cannot make the route scenario stop
-        # behavior.add_child(subbehavior)
         return behavior
 
     def _create_test_criteria(self):
