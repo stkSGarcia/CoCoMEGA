@@ -1,6 +1,7 @@
 workspace: out
 log: logs
 checkpoint: checkpoints
+debug: false
 
 simulation:
   parallel: true
