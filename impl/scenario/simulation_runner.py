@@ -52,7 +52,7 @@ from impl.scenario.interfuser_scenario_evaluator import ScenarioEvaluator
 logger = logging.getLogger(__name__)
 config = type("", (object,), {arg: value for _, arg, value in arguments})()
 
-evaluated = Manager().dict()
+evaluated_scenarios = Manager().list()
 
 carla_host = None
 carla_port = None
@@ -66,7 +66,11 @@ def _init_carla(instance_configs):
 
 
 def run_scenario(scenario: ScenarioDefinition):
-    if scenario.id_ in evaluated: return evaluated[scenario.id_]
+    for evaluated_scenario, evaluated_result in evaluated_scenarios:
+        if scenario == evaluated_scenario:
+            logger.debug(f"Scenario evaluated: {evaluated_scenario}.")
+            return evaluated_result
+
     global carla_host, carla_port, tm_port
     assert carla_host is not None and carla_port is not None and tm_port is not None
     setattr(config, "host", carla_host)
@@ -81,13 +85,13 @@ def run_scenario(scenario: ScenarioDefinition):
         evaluator.run(config)
         del evaluator
     except InvalidScenarioDefinitionError as e:
-        logger.error(f"Scenario {scenario.id_} failed: {e}")
+        logger.error(f"Scenario failed: {scenario}, message: {e}.")
         # if CONFIG['debug']:
         #     traceback.print_exc()
         del evaluator
         return None
     except Exception as e:
-        logger.error(f"Scenario {scenario.id_} failed: {e}")
+        logger.error(f"Scenario failed: {scenario}, message: {e}.")
         if CONFIG['debug']:
             traceback.print_exc()
         del evaluator
@@ -95,10 +99,11 @@ def run_scenario(scenario: ScenarioDefinition):
             container_name = f"{CONFIG['simulation']['docker']['image']}-{carla_port}"
             restart_carla(container_name, carla_port)
         return None
-    results = pd.read_csv(os.path.join(CONFIG["workspace"], CONFIG["simulation"]["result"], f"{scenario.id_}.csv"))
-    results.set_index(results.columns[0], inplace=True)
-    evaluated[scenario.id_] = results
-    return results
+
+    result = pd.read_csv(os.path.join(CONFIG["workspace"], CONFIG["simulation"]["result"], f"{scenario.id_}.csv"))
+    result.set_index(result.columns[0], inplace=True)
+    evaluated_scenarios.append((scenario, result))
+    return result
 
 
 def run_scenarios(scenarios):

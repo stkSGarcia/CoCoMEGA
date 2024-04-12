@@ -25,8 +25,7 @@ from impl.config import CONFIG
 from impl.scenario.exceptions import StoppingScenarioFailedError, SimulationError, InvalidScenarioDefinitionError, \
     LoadingScenarioFailedError, AgentSetupFailedError
 
-if CONFIG["simulation"]["docker"]["enabled"]:
-    from impl.scenario.docker_utils import setup_carla, restart_carla
+from impl.scenario.docker_utils import setup_carla
 
 from impl.scenario.scenario_definition import ScenarioDefinition
 from srunner.scenariomanager.carla_data_provider import *
