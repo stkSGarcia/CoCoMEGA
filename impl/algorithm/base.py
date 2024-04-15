@@ -37,11 +37,11 @@ class BaseAlgorithm:
             setattr(creator.Fitness, "dominates", BaseAlgorithm._dominates)
 
         # Initialize statistics object.
-        self.stats = tools.Statistics(lambda ind: ind.fitness.values)
-        self.stats.register("avg", np.mean, axis=0)
-        self.stats.register("std", np.std, axis=0)
-        self.stats.register("min", np.min, axis=0)
-        self.stats.register("max", np.max, axis=0)
+        self.stats = tools.Statistics(lambda ind: ind.fitness.values if ind.fitness.valid else (np.nan,))
+        self.stats.register("avg", np.nanmean, axis=0)
+        self.stats.register("std", np.nanstd, axis=0)
+        self.stats.register("min", np.nanmin, axis=0)
+        self.stats.register("max", np.nanmax, axis=0)
 
         self.logbook = tools.Logbook()
         self.logbook.header = "pop", "gen", "len", "std", "min", "avg", "max"
@@ -53,11 +53,9 @@ class BaseAlgorithm:
 
     def _record_statistics(self, population: List, num_of_generation: int, pop_name: str = ""):
         """Record the statistics of the population."""
-        if len(population) > 0:
-            record = self.stats.compile(population)
-        else:
-            record = {'avg': float('nan'), 'std': float('nan'), 'min': float('nan'), 'max': float('nan')}
-        self.logbook.record(pop=pop_name, gen=num_of_generation, evals=len(population), **record)
+        record = self.stats.compile(population) if len(population) > 0 \
+            else {"avg": [np.nan], "std": [np.nan], "min": [np.nan], "max": [np.nan]}
+        self.logbook.record(pop=pop_name, gen=num_of_generation, len=len(population), **record)
 
     def population_diversity(self, population):
         """Calculate the Pure Diversity (PD) of the given population."""
