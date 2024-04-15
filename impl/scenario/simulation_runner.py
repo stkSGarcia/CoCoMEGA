@@ -66,10 +66,14 @@ def _init_carla(instance_configs):
 
 
 def run_scenario(scenario: ScenarioDefinition):
+    """Run a scenario defined in ScenarioDefinition.
+
+    @return: The simulation result and whether the scenario was actually executed.
+    """
     for evaluated_scenario, evaluated_result in evaluated_scenarios:
         if scenario == evaluated_scenario:
             logger.debug(f"Scenario evaluated: {evaluated_scenario}.")
-            return evaluated_result
+            return evaluated_result, False
 
     global carla_host, carla_port, tm_port
     assert carla_host is not None and carla_port is not None and tm_port is not None
@@ -89,7 +93,7 @@ def run_scenario(scenario: ScenarioDefinition):
         # if CONFIG['debug']:
         #     traceback.print_exc()
         del evaluator
-        return None
+        return None, False
     except Exception as e:
         logger.error(f"Scenario failed: {scenario}, message: {e}.")
         if CONFIG['debug']:
@@ -98,15 +102,19 @@ def run_scenario(scenario: ScenarioDefinition):
         if CONFIG['simulation']['docker']['enabled']:
             container_name = f"{CONFIG['simulation']['docker']['image']}-{carla_port}"
             restart_carla(container_name, carla_port)
-        return None
+        return None, False
 
     result = pd.read_csv(os.path.join(CONFIG["workspace"], CONFIG["simulation"]["result"], f"{scenario.id_}.csv"))
     result.set_index(result.columns[0], inplace=True)
     evaluated_scenarios.append((scenario, result))
-    return result
+    return result, True
 
 
 def run_scenarios(scenarios):
+    """Run scenarios.
+
+    @return: A list of simulation results and the number of simulations.
+    """
     if CONFIG["simulation"]["parallel"]:
         queue = Queue()
         [queue.put((instance["host"], instance["port"], instance["tm_port"]))
@@ -121,4 +129,6 @@ def run_scenarios(scenarios):
         carla_port = instance["port"]
         tm_port = instance["tm_port"]
         results = map(run_scenario, scenarios)
-    return list(results)
+
+    results, is_executed = zip(*results)
+    return results, is_executed.count(True)

@@ -57,7 +57,6 @@ class BaseAlgorithm:
             else {"avg": [np.nan], "std": [np.nan], "min": [np.nan], "max": [np.nan]}
         self.logbook.record(pop=pop_name, gen=num_of_generation, len=len(population), **record)
 
-
     def population_diversity(self, population):
         """Calculate the Pure Diversity (PD) of the given population."""
         n = len(population)

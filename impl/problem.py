@@ -92,7 +92,10 @@ def _fitness(source, follow_up):
 
 
 def _evaluate_solutions(solutions):
-    """Evaluate the complete solutions."""
+    """Evaluate the complete solutions.
+
+    @return: A list of complete solutions evaluated and the number of simulations.
+    """
     scenarios = []
     for solution in solutions:
         scenarios.append(solution[0])
@@ -102,15 +105,14 @@ def _evaluate_solutions(solutions):
             perturbation.perturb(follow_up)
         scenarios.append(follow_up)
     assert len(scenarios) == len(solutions) * 2
-    results = run_scenarios(scenarios)
+    results, sim_num = run_scenarios(scenarios)
     for solution, source, follow_up in zip(solutions, results[::2], results[1::2]):
         if source is not None and follow_up is not None:
             solution.is_violated, solution.fitness.values = _fitness(source, follow_up)
         else:
             solution.is_violated = False
             del solution.fitness.values
-
-    return solutions
+    return solutions, sim_num
 
 
 def _evaluate_individual(individual, complete_solutions):
@@ -129,7 +131,6 @@ def _evaluate_individual(individual, complete_solutions):
         individual.fitness.values = max(involved),
     else:
         del individual.fitness.values
-
     return individual
 
 

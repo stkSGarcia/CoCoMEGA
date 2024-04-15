@@ -148,7 +148,7 @@ class CCEA(BaseAlgorithm):
         # Evaluate joint fitness.
         # TODO: avoid evaluating similar scenarios.
         candidates = [ind for ind in unique_solutions if ind not in evaluated_solutions]
-        candidates = self.toolbox.evaluate_solutions(candidates)
+        candidates, sim_num = self.toolbox.evaluate_solutions(candidates)
         evaluated_solutions.extend(candidates)
         archive_solution = [self.toolbox.clone(ind) for ind in evaluated_solutions
                             if ind.fitness.valid and ind in unique_solutions]
@@ -162,7 +162,7 @@ class CCEA(BaseAlgorithm):
             self.toolbox.evaluate_individual(perturbation, archive_solution)
         self.toolbox.fitness_sharing(pop_perturbation)
 
-        return archive_solution, len(candidates) * 2
+        return archive_solution, sim_num
 
     def _update_archive(self, population):
         """Update the archive."""
