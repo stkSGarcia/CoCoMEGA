@@ -150,7 +150,8 @@ class CCEA(BaseAlgorithm):
         candidates = [ind for ind in unique_solutions if ind not in evaluated_solutions]
         candidates = self.toolbox.evaluate_solutions(candidates)
         evaluated_solutions.extend(candidates)
-        archive_solution = [self.toolbox.clone(ind) for ind in evaluated_solutions if ind in unique_solutions and ind.is_valid]
+        archive_solution = [self.toolbox.clone(ind) for ind in evaluated_solutions
+                            if ind.fitness.valid and ind in unique_solutions]
 
         # Evaluate individual fitness.
         for scenario in pop_scenario:

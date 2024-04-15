@@ -6,7 +6,9 @@ import time
 import logging
 
 logger = logging.getLogger(__name__)
-docker_client = docker.from_env()
+
+if CONFIG["simulation"]["docker"]["enabled"]:
+    docker_client = docker.from_env()
 
 
 def get_container(container_name):

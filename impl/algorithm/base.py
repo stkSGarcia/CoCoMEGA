@@ -53,7 +53,10 @@ class BaseAlgorithm:
 
     def _record_statistics(self, population: List, num_of_generation: int, pop_name: str = ""):
         """Record the statistics of the population."""
-        record = self.stats.compile(population)
+        if len(population) > 0:
+            record = self.stats.compile(population)
+        else:
+            record = {'avg': float('nan'), 'std': float('nan'), 'min': float('nan'), 'max': float('nan')}
         self.logbook.record(pop=pop_name, gen=num_of_generation, evals=len(population), **record)
 
     def population_diversity(self, population):
