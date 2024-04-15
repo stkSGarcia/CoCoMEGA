@@ -3,11 +3,13 @@ import os
 import pickle
 import random
 import time
+from multiprocessing import Manager
 
 from deap import base, tools
 
 from impl.algorithm.base import BaseAlgorithm
 from impl.config import CONFIG
+from impl.scenario import simulation_runner
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +51,7 @@ class CCEA(BaseAlgorithm):
                 archive_perturbation = pickle.load(f)
                 archive_solution = pickle.load(f)
                 evaluated_solutions = pickle.load(f)
+                simulation_runner.evaluated_scenarios = Manager().list(pickle.load(f))
         else:
             gen = 0
             sim_num = 0
@@ -108,6 +111,7 @@ class CCEA(BaseAlgorithm):
                 pickle.dump(archive_perturbation, f)
                 pickle.dump(archive_solution, f)
                 pickle.dump(evaluated_solutions, f)
+                pickle.dump(list(simulation_runner.evaluated_scenarios), f)
 
         return archive_solution
 
