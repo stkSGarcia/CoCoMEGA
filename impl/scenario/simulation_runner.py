@@ -84,24 +84,31 @@ def run_scenario(scenario: ScenarioDefinition):
                  f"traffic manager port: {config.trafficManagerPort}.")
     logger.debug(scenario)
 
-    try:
-        evaluator = ScenarioEvaluator(scenario, config)
-        evaluator.run(config)
-        del evaluator
-    except InvalidScenarioDefinitionError as e:
-        logger.error(f"Scenario failed: {scenario}, message: {e}.")
-        # if CONFIG['debug']:
-        #     traceback.print_exc()
-        del evaluator
-        return None, False
-    except Exception as e:
-        logger.error(f"Scenario failed: {scenario}, message: {e}.")
-        if CONFIG['debug']:
-            traceback.print_exc()
-        del evaluator
-        if CONFIG['simulation']['docker']['enabled']:
-            container_name = f"{CONFIG['simulation']['docker']['image']}-{carla_port}"
-            restart_carla(container_name, carla_port)
+    is_successful = False
+    for _ in range(1 + CONFIG["simulation"]["retry_times"]):
+        try:
+            evaluator = ScenarioEvaluator(scenario, config)
+            evaluator.run(config)
+            del evaluator
+            is_successful = True
+            break
+        except InvalidScenarioDefinitionError as e:
+            logger.error(f"Scenario failed: {scenario}, message: {e}.")
+            # if CONFIG['debug']:
+            #     traceback.print_exc()
+            del evaluator
+            is_successful = False
+            break
+        except Exception as e:
+            logger.error(f"Scenario failed: {scenario}, message: {e}.")
+            if CONFIG['debug']:
+                traceback.print_exc()
+            del evaluator
+            if CONFIG['simulation']['docker']['enabled']:
+                container_name = f"{CONFIG['simulation']['docker']['image']}-{carla_port}"
+                restart_carla(container_name, carla_port)
+            is_successful = False
+    if not is_successful:
         return None, False
 
     result = pd.read_csv(os.path.join(CONFIG["workspace"], CONFIG["simulation"]["result"], f"{scenario.id_}.csv"))

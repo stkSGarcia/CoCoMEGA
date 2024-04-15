@@ -7,6 +7,7 @@ simulation:
   parallel: true
   result: results
   save: data/eval
+  retry_times: 1
   display_agent: false
   timeout: 20
   client_timeout: 10
