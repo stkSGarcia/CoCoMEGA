@@ -104,7 +104,12 @@ def _evaluate_solutions(solutions):
     assert len(scenarios) == len(solutions) * 2
     results = run_scenarios(scenarios)
     for solution, source, follow_up in zip(solutions, results[::2], results[1::2]):
-        solution.is_violated, solution.fitness.values = _fitness(source, follow_up)
+        if source is not None and follow_up is not None:
+            solution.is_violated, solution.fitness.values = _fitness(source, follow_up)
+        else:
+            solution.is_violated = False
+            del solution.fitness.values
+
     return solutions
 
 
@@ -120,7 +125,11 @@ def _evaluate_individual(individual, complete_solutions):
     for solution in complete_solutions:
         if solution[index] == individual:
             involved.append(solution.fitness.values[0])
-    individual.fitness.values = max(involved),
+    if len(involved) > 0:
+        individual.fitness.values = max(involved),
+    else:
+        del individual.fitness.values
+
     return individual
 
 
@@ -151,12 +160,13 @@ def _fitness_sharing(population):
     radius = max_dist / (2 * len(population))
     sh = np.vectorize(lambda raw: 1 - pow(raw / radius, CONFIG["punishment"]) if raw < radius else 0)
     dist_matrix = sh(dist_matrix)
-    if radius == 0.0:  # FIXME
+    if radius == 0.0:
         np.fill_diagonal(dist_matrix, 1.0)
     dist_sum = dist_matrix.sum(axis=1)
     for i, individual in enumerate(population):
-        raw_fitness = individual.fitness.values[0]
-        individual.fitness.values = pow(raw_fitness, CONFIG["scaling"]) / dist_sum[i],
+        if individual.fitness.valid:
+            raw_fitness = individual.fitness.values[0]
+            individual.fitness.values = pow(raw_fitness, CONFIG["scaling"]) / dist_sum[i],
 
 
 toolbox.register("fitness_sharing", _fitness_sharing)
