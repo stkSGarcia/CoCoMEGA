@@ -8,9 +8,11 @@ handlers:
     formatter: simple
     stream: ext://sys.stdout
   file:
-    class: logging.handlers.RotatingFileHandler
+    class: logging.handlers.TimedRotatingFileHandler
     formatter: simple
     filename: all.log
+    when: D
+    interval: 1
 loggers:
   impl:
     level: INFO
