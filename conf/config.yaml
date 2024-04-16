@@ -1,5 +1,6 @@
 workspace: out
 log: logs
+result: solutions
 checkpoint: checkpoints
 debug: false
 
