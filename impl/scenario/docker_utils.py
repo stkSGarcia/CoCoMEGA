@@ -30,7 +30,8 @@ def setup_carla(container_name, port):
         process = subprocess.Popen([
             f"docker run --privileged --rm --net=host --memory {container_conf['memory']}" \
             + f" --cpus {container_conf['cpu']} --gpus '\"device={container_conf['gpu_device']}\"'" \
-            + f" --name {container_name} {CONFIG['simulation']['docker']['image']} ./CarlaUE4.sh --world-port={port} -opengl"
+            + f" --name {container_name} {CONFIG['simulation']['docker']['image']} ./CarlaUE4.sh --world-port={port}" \
+            + f" --quality-level={'Epic' if CONFIG['simulation']['high_graphics'] else 'Low'} -opengl"
         ],
             shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 

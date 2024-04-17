@@ -6,6 +6,7 @@ import argformat
 
 from impl import config
 from impl.algorithm import *
+from impl.visualization.visualization import EvolutionVisualization
 
 logger = logging.getLogger("impl")
 
@@ -23,6 +24,9 @@ def ccea(algorithm: str, resume: bool):
     else:
         raise ValueError(f"Unsupported algorithm: {algorithm}.")
     solver.solve(resume)
+
+    visualizer = EvolutionVisualization(solver.logbook)
+    visualizer.visualize(show=False)
 
 
 def simulate():

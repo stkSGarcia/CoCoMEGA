@@ -3,6 +3,8 @@ deap~=1.4.1
 argformat~=0.0.3
 PyYAML~=6.0.1
 docker
+plotly==5.18.0
+kaleido==0.2.1
 
 
 # Interfuser Requirements
