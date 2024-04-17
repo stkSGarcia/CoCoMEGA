@@ -7,6 +7,7 @@ debug: false
 simulation:
   parallel: true
   result: results
+  visualization: visualizations
   save: data/eval
   retry_times: 1
   display_agent: false
@@ -14,6 +15,7 @@ simulation:
   client_timeout: 10
   wait_for_world: 20
   frame_rate: 10
+  high_graphics: true
   docker:
     enabled: true
     image: carla-0.9.10

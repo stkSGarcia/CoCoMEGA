@@ -157,8 +157,12 @@ class CCEA(BaseAlgorithm):
         # Evaluate joint fitness.
         # TODO: avoid evaluating similar scenarios.
         candidates = [ind for ind in unique_solutions if ind not in evaluated_solutions]
-        candidates, sim_num = self.toolbox.evaluate_solutions(candidates)
-        evaluated_solutions.extend(candidates)
+        if len(candidates) > 0:
+            candidates, sim_num = self.toolbox.evaluate_solutions(candidates)
+            evaluated_solutions.extend(candidates)
+        else:
+            logger.warning("Candidate solution list is empty!")
+            sim_num = 0
         archive_solution = [self.toolbox.clone(ind) for ind in evaluated_solutions
                             if ind.fitness.valid and ind in unique_solutions]
 
