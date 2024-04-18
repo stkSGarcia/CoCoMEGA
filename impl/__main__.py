@@ -6,7 +6,7 @@ import argformat
 
 from impl import config
 from impl.algorithm import *
-from impl.visualization.visualization import EvolutionVisualization
+from impl.utils.visualization import EvolutionVisualization
 
 logger = logging.getLogger("impl")
 

@@ -56,6 +56,9 @@ class CCEA(BaseAlgorithm):
             gen = 0
             sim_num = 0
             pop_scenario = self.toolbox.pop_scenario()
+            if CONFIG["scenario"]["init_selection_factor"] > 1:
+                pop_scenario = sorted(pop_scenario, key=lambda x: x.trajectory_collision_score(),
+                                      reverse=True)[:CONFIG["scenario"]["pop_size"]]
             pop_perturbation = self.toolbox.pop_perturbation()
             archive_scenario = pop_scenario
             archive_perturbation = pop_perturbation
