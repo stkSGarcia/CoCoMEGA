@@ -4,8 +4,8 @@ __all__ = ["mr_set1"]
 
 from impl.scenario.scenario_definition import Boundary
 
-relation_slow = Decreasing("throttle")
-relation_slow_30 = Decreasing("throttle", threshold=0.3)
+relation_slow = Decreasing("velocity")
+relation_slow_30 = Decreasing("velocity", threshold=0.3)
 relation_steer = Invariance("steering")
 
 vehicle_pert_factory = PerturbationFactory("vehicle", Boundary({

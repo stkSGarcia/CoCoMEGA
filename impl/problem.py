@@ -1,3 +1,4 @@
+import math
 import random
 
 import numpy as np
@@ -86,6 +87,10 @@ def _fitness(source, follow_up):
     @return: A tuple containing a bool value indicating whether it violates the relation and the fitness value.
     """
     field = mr_set.field()
+    if field == "velocity":
+        func = lambda row: math.sqrt(row.velocity_x ** 2 + row.velocity_y ** 2)
+        source["velocity"] = source.apply(func, axis=1)
+        follow_up["velocity"] = follow_up.apply(func, axis=1)
     idx = (source[field] - follow_up[field]).abs().idxmax()
     is_violated, extent = mr_set.is_violated(source.loc[idx, field], follow_up.loc[idx, field])
     return is_violated, (extent,)
