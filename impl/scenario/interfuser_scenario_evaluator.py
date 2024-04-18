@@ -431,6 +431,7 @@ class ScenarioEvaluator(object):
             # self.statistics_manager.resume(args.checkpoint)
         else:
             # self.statistics_manager.clear_record(args.checkpoint)
+            os.makedirs(os.path.dirname(args.checkpoint), exist_ok=True)
             route_indexer.save_state(args.checkpoint)
 
         config = route_indexer.next()

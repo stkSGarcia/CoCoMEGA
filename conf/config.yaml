@@ -1,14 +1,14 @@
 workspace: out
 log: logs
-result: solutions
 checkpoint: checkpoints
+solution: solutions
+visualization: visualizations
 debug: false
 
 simulation:
   parallel: true
   result: results
-  visualization: visualizations
-  save: data/eval
+  save: results/eval
   retry_times: 1
   display_agent: false
   timeout: 20

@@ -25,7 +25,7 @@ class EvolutionVisualization:
                       'avg' for average fitness, 'max' for maximum fitness, etc.
         """
         self.stats = pd.DataFrame(stats)
-        self.out_dir = os.path.join(CONFIG["workspace"], CONFIG["simulation"]["visualization"])
+        self.out_dir = os.path.join(CONFIG["workspace"], CONFIG["visualization"])
 
         if not os.path.exists(self.out_dir):
             os.mkdir(self.out_dir)

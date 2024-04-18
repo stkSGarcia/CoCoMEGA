@@ -78,7 +78,7 @@ class CCEA(BaseAlgorithm):
                 logger.info(f"Terminate due to the number of violations reaching the threshold: "
                             f"{violated_solutions_count} > {CONFIG['convergence_threshold']}*{len(archive_solution)}.")
                 # Store the complete solutions.
-                result_dir = os.path.join(CONFIG["workspace"], CONFIG["result"])
+                result_dir = os.path.join(CONFIG["workspace"], CONFIG["solution"])
                 os.makedirs(result_dir, exist_ok=True)
                 with open(os.path.join(result_dir, f"solutions-{int(round(time.time() * 1000))}.pickle"), "wb") as f:
                     pickle.dump(archive_solution, f)
