@@ -42,8 +42,17 @@ class VehicleMeasurementTest(Criterion):
         self.ticks += 1
         if self.ticks % self.measurement_interval == 0:
             control = self.actor.get_control()
-            self.values.append(
-                {'tick': self.ticks, **{measure: getattr(control, measure, None) for measure in self.measures}})
+            measure_dict = {
+                'tick': self.ticks,
+                **{measure: getattr(control, measure, None) for measure in self.measures if
+                   hasattr(control, measure)},
+            }
+            if 'velocity' in self.measures:
+                velocity = self.actor.get_velocity()
+                measure_dict['velocity_x'] = velocity.x
+                measure_dict['velocity_y'] = velocity.y
+
+            self.values.append(measure_dict)
 
         # throttle = control.throttle
         # steer = control.steer
@@ -74,7 +83,7 @@ class VehicleMeasurementTest(Criterion):
         keys = self.values[0].keys()
         dir_path = os.path.join(CONFIG["workspace"], CONFIG["simulation"]["result"])
         os.makedirs(dir_path, exist_ok=True)
-        with open(os.path.join(dir_path, f"{self.scenario_def_id}.csv") , 'w', newline='') as output_file:
+        with open(os.path.join(dir_path, f"{self.scenario_def_id}.csv"), 'w', newline='') as output_file:
             dict_writer = csv.DictWriter(output_file, keys)
             dict_writer.writeheader()
             dict_writer.writerows(self.values)
