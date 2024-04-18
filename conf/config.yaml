@@ -39,6 +39,7 @@ max_iter: 20
 
 scenario:
   pop_size: 10
+  init_selection_factor: 1
   tournament: 3
   cxpb: 0.8
   eta: 10.0

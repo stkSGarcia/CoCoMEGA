@@ -24,7 +24,8 @@ toolbox.register("scenario", tools.initIterate, creator.Scenario, creator.Scenar
 toolbox.register("perturbation", tools.initIterate, creator.Perturbation,
                  lambda: [random.choice(mr_set.mrs).generate_perturbation()])
 # TODO: Initialize diverse individuals
-toolbox.register("pop_scenario", tools.initRepeat, list, toolbox.scenario, n=CONFIG["scenario"]["pop_size"])
+toolbox.register("pop_scenario", tools.initRepeat, list, toolbox.scenario,
+                 n=CONFIG["scenario"]["pop_size"] * CONFIG["scenario"]["init_selection_factor"])
 toolbox.register("pop_perturbation", tools.initRepeat, list, toolbox.perturbation, n=CONFIG["perturbation"]["pop_size"])
 
 # Create a complete solution from two individuals.

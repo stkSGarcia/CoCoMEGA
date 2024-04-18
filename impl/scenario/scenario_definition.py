@@ -6,6 +6,7 @@ from copy import deepcopy
 from typing import List, Dict
 
 from impl.config import CONFIG
+from impl.utils.trajectory import TrajectorySolver
 
 
 class Boundary:
@@ -262,6 +263,40 @@ class ScenarioDefinition:
         _mutate_attrs(self, ScenarioDefinition._ATTRIBUTES, ScenarioDefinition._BOUNDARY)
         for actor in self.vehicles + self.walkers + self.statics:
             actor.mutate()
+
+    def build_actor_trajectory(self, actor_def):
+        spawn_point = actor_def.transform
+        yaw_rad = math.radians(spawn_point.yaw)
+
+        if hasattr(actor_def, "speed"):
+            total_distance = actor_def.speed * CONFIG['simulation']['timeout']
+            source = (
+                spawn_point.x,
+                spawn_point.y
+            )
+            destination = (
+                spawn_point.x + total_distance * math.cos(yaw_rad),
+                spawn_point.y + total_distance * math.sin(yaw_rad)
+            )
+        else:
+            eps = 0.5
+            source = (
+                spawn_point.x - eps,
+                spawn_point.y - eps
+            )
+            destination = (
+                spawn_point.x + eps,
+                spawn_point.y + eps,
+            )
+        return (source, destination)
+
+    def trajectory_collision_score(self):
+        score = 0
+        for actor in self.vehicles + self.walkers + self.statics:
+            actor_traj = self.build_actor_trajectory(actor)
+            if TrajectorySolver.solve([(p['x'], p['y']) for p in self.trajectory], actor_traj):
+                score += 1
+        return score
 
     @staticmethod
     def _list_eq(this, that):
