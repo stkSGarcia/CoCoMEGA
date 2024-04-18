@@ -474,7 +474,7 @@ class RouteScenario(BasicScenario):
         criteria = []
         route = convert_transform_to_location(self.route)
 
-        brake_test = VehicleMeasurementTest(self.ego_vehicles[0], measures=['brake', 'throttle', 'steer'],
+        vehicle_measurement = VehicleMeasurementTest(self.ego_vehicles[0], measures=['brake', 'throttle', 'steer', 'velocity'],
                                             measurement_interval=10, scenario_def_id=self.scenario_definition.id_)
 
         collision_criterion = CollisionTest(self.ego_vehicles[0], terminate_on_failure=False)
@@ -497,7 +497,7 @@ class RouteScenario(BasicScenario):
                                                          below_threshold_max_time=180.0,
                                                          terminate_on_failure=True,
                                                          name="AgentBlockedTest")
-        criteria.append(brake_test)
+        criteria.append(vehicle_measurement)
         criteria.append(completion_criterion)
         criteria.append(outsidelane_criterion)
         criteria.append(collision_criterion)
