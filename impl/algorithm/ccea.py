@@ -52,6 +52,7 @@ class CCEA(BaseAlgorithm):
                 archive_solution = pickle.load(f)
                 evaluated_solutions = pickle.load(f)
                 simulation_runner.evaluated_scenarios = Manager().list(pickle.load(f))
+                self.logbook = pickle.load(f)
         else:
             gen = 0
             sim_num = 0
@@ -120,6 +121,7 @@ class CCEA(BaseAlgorithm):
                 pickle.dump(archive_solution, f)
                 pickle.dump(evaluated_solutions, f)
                 pickle.dump(list(simulation_runner.evaluated_scenarios), f)
+                pickle.dump(self.logbook, f)
 
         return archive_solution
 
