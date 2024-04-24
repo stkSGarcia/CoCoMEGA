@@ -39,18 +39,20 @@
 
 ## Usage
 
-1. Run CARLA servers
+1. Build docker image
 
    ```shell
+   docker build -t [tag_name] .
    ```
+   
+2. Local configurations
 
-2. Run automatic-potato
+3. Run automatic-potato
 
    ```shell
    python -m impl
    ```
 
-3. Local configurations
 
 ## Scenario encoding
 
