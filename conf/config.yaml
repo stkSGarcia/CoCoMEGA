@@ -6,6 +6,7 @@ visualization: visualizations
 debug: false
 
 simulation:
+  root: "../InterFuser"
   parallel: true
   result: results
   save: results/eval

@@ -1,6 +1,5 @@
 import logging
 import os
-import sys
 import traceback
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import Queue, Manager
@@ -12,31 +11,19 @@ from impl.scenario.docker_utils import restart_carla
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
 from impl.scenario.scenario_definition import ScenarioDefinition
 
-root = "impl/scenario"
-for p in [
-    os.path.join(root, "carla/PythonAPI"),
-    os.path.join(root, "carla/PythonAPI/carla"),
-    os.path.join(root, "carla/PythonAPI/carla/dist/carla-0.9.10-py3.7-linux-x86_64.egg"),
-    os.path.join(root, "leaderboard"),
-    os.path.join(root, "leaderboard", "team_code"),
-    os.path.join(root, "scenario_runner"),
-]:
-    sys.path.append(p)
-
 arguments = [
-    ("SCENARIOS", "scenarios", os.path.join(root, "leaderboard/data/scenarios/town05_all_scenarios.json")),
-    ("ROUTES", "routes", os.path.join(root, "leaderboard/data/training_routes/routes_town05_long.xml")),
+    ("SCENARIOS", "scenarios",
+     os.path.join(CONFIG["simulation"]["root"], "leaderboard/data/scenarios/town05_all_scenarios.json")),
+    ("ROUTES", "routes",
+     os.path.join(CONFIG["simulation"]["root"], "leaderboard/data/training_routes/routes_town05_long.xml")),
     ("REPETITIONS", "repetitions", 1),
     ("CHALLENGE_TRACK_CODENAME", "track", "SENSORS"),
     ("CHECKPOINT_ENDPOINT", "checkpoint",
      os.path.join(CONFIG["workspace"], CONFIG["simulation"]["result"], "checkpoint.json")),
-    ("TEAM_AGENT", "agent", os.path.join(root, "leaderboard/team_code/interfuser_agent.py")),
-    ("TEAM_CONFIG", "agent_config", os.path.join(root, "leaderboard/team_code/interfuser_config.py")),
+    ("TEAM_AGENT", "agent", os.path.join(CONFIG["simulation"]["root"], "leaderboard/team_code/interfuser_agent.py")),
+    ("TEAM_CONFIG", "agent_config", "conf/interfuser_config.py"),
     ("DEBUG_CHALLENGE", "debug", 0),
     ("RESUME", "resume", False),
-    # ("CARLA_ROOT", None, os.path.join(root, "carla")),
-    # ("CARLA_SERVER", None, os.path.join(root, "carla/CarlaUE4.sh")),
-    # ("LEADERBOARD_ROOT", None, os.path.join(root, "leaderboard")),
     ("SAVE_PATH", None, os.path.join(CONFIG["workspace"], CONFIG["simulation"]["save"])),
     (None, "trafficManagerSeed", "1"),
     (None, "carlaProviderSeed", "2000"),

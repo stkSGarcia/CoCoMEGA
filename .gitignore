@@ -1,9 +1,7 @@
 ### Example user template
 .idea
 *.yaml
-/impl/scenario/data
-/impl/scenario/leaderboard/team_code/interfuser.pth.tar
-impl/scenario/results/
+/conf/interfuser.pth.tar
 
 ### VisualStudioCode template
 .vscode/*

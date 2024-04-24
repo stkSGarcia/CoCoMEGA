@@ -1,6 +1,7 @@
 import collections
 import logging.config
 import os
+import sys
 
 import yaml
 
@@ -61,3 +62,14 @@ def init_config():
         logging.config.dictConfig(log_config)
     else:
         logger.warning("Cannot find log configuration file.")
+
+    # Add InterFuser to path
+    for path in [
+        "carla/PythonAPI",
+        "carla/PythonAPI/carla",
+        "carla/PythonAPI/carla/dist/carla-0.9.10-py3.7-linux-x86_64.egg",
+        "leaderboard",
+        "leaderboard/team_code",
+        "scenario_runner",
+    ]:
+        sys.path.append(os.path.join(CONFIG["simulation"]["root"], path))

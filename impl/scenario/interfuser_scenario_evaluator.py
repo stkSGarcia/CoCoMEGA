@@ -33,7 +33,7 @@ from srunner.scenariomanager.timer import GameTime
 from srunner.scenariomanager.watchdog import Watchdog
 
 from leaderboard.scenarios.scenario_manager import ScenarioManager
-from leaderboard.scenarios.route_scenario import RouteScenario
+from impl.scenario.route_scenario import RouteScenario
 from leaderboard.envs.sensor_interface import SensorInterface, SensorConfigurationInvalid
 from leaderboard.autoagents.agent_wrapper import AgentWrapper, AgentError
 from leaderboard.utils.statistics_manager import StatisticsManager

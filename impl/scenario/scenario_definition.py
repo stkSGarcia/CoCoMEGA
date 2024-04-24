@@ -188,12 +188,12 @@ class ScenarioDefinition:
             ),
         ]
         scenario.walkers = [
-            # Walker(
-            #     id_="pedestrian1",
-            #     transform=Transform(x=-182.0, y=100.0, z=1.0, pitch=0.0, yaw=180.0, roll=0.0),
-            #     speed=1,
-            #     model=0,
-            # ),
+            Walker(
+                id_="pedestrian1",
+                transform=Transform(x=-182.0, y=100.0, z=0.5, pitch=0.0, yaw=180.0, roll=0.0),
+                speed=1,
+                model=0,
+            ),
             Walker(
                 id_="pedestrian2",
                 transform=Transform(x=-182.0, y=102.0, z=0.0, pitch=0.0, yaw=180.0, roll=0.0),
