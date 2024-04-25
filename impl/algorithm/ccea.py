@@ -66,6 +66,10 @@ class CCEA(BaseAlgorithm):
             archive_solution = []
             evaluated_solutions = []
 
+        # Create a directory to store the complete solutions.
+        result_dir = os.path.join(CONFIG["workspace"], CONFIG["solution"])
+        os.makedirs(result_dir, exist_ok=True)
+
         start_time = time.perf_counter()
         while ((self.max_sim is None or sim_num < self.max_sim) and
                (self.max_time is None or time.perf_counter() - start_time < self.max_time) and
@@ -82,8 +86,6 @@ class CCEA(BaseAlgorithm):
                 logger.info(f"Terminate due to the number of violations reaching the threshold: "
                             f"{violated_solutions_count} > {CONFIG['convergence_threshold']}*{len(archive_solution)}.")
                 # Store the complete solutions.
-                result_dir = os.path.join(CONFIG["workspace"], CONFIG["solution"])
-                os.makedirs(result_dir, exist_ok=True)
                 with open(os.path.join(result_dir, f"solutions-{int(round(time.time() * 1000))}.pickle"), "wb") as f:
                     pickle.dump(archive_solution, f)
                 break
@@ -122,6 +124,11 @@ class CCEA(BaseAlgorithm):
                 pickle.dump(evaluated_solutions, f)
                 pickle.dump(list(simulation_runner.evaluated_scenarios), f)
                 pickle.dump(self.logbook, f)
+
+            logger.info(f"Terminate due to reaching the threshold.")
+            # Store the complete solutions.
+            with open(os.path.join(result_dir, f"solutions-{int(round(time.time() * 1000))}.pickle"), "wb") as f:
+                pickle.dump(archive_solution, f)
 
         return archive_solution
 
