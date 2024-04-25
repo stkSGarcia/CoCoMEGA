@@ -49,6 +49,7 @@ class EvolutionVisualization:
         """
         Generates line plots for evolutionary algorithm statistics across generations.
         """
+        timestamp = int(round(time.time() * 1000))
         figs = []
         for pop_name, pop in self.stats.groupby('pop'):
             pop = pop.sort_values('gen', ascending=True)
@@ -91,7 +92,7 @@ class EvolutionVisualization:
                 legend_title='Metrics',
                 xaxis_range=[-0.5, max(pop['gen']) + 0.5],
             )
-            self.save_fig(fig, name=f'{pop_name}_{int(round(time.time() * 1000))}.png')
+            self.save_fig(fig, name=f'{pop_name}_{timestamp}.png')
             figs.append(fig)
         return figs
 
