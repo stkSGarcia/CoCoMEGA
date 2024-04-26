@@ -103,6 +103,8 @@ class CCEA(BaseAlgorithm):
 
             # Generate offsprings.
             pop_scenario = self._breed(pop_scenario, len(pop_scenario) - len(archive_scenario))
+            for scenario in pop_scenario:
+                scenario.assign_new_id()
             pop_perturbation = self._breed(pop_perturbation, len(pop_perturbation) - len(archive_perturbation))
 
             pop_scenario += archive_scenario
