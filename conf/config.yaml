@@ -89,7 +89,7 @@ boundary:
     pitch: [ -45.0, 45.0 ]
     yaw: [ -180.0, 180.0 ]
     roll: [ -45.0, 45.0 ]
-    model: [ 0, 89 ]
+    model: [ 0, 87 ]
     size: [ 0.0, 100.0 ]
   env:
     weather: [ 0, 13 ]
@@ -155,7 +155,6 @@ blueprint:
       - "static.prop.bench02"
       - "static.prop.bench03"
       - "static.prop.bike helmet"
-      - "static.prop.bikeparking"
       - "static.prop.bin"
       - "static.prop.box01"
       - "static.prop.box02"
@@ -211,7 +210,6 @@ blueprint:
       - "static.prop.plastictable"
       - "static.prop.platformgarbage01"
       - "static.prop.purse"
-      - "static.prop.shop01"
       - "static.prop.shoppingbag"
       - "static.prop.shoppingcart"
       - "static.prop.shoppingtrolley"
@@ -237,7 +235,6 @@ blueprint:
       - "static.prop.travelcase"
       - "static.prop.vendingmachine"
       - "static.prop.wateringcan"
-      - "static.trigger.friction"
   scenario:
     weather:
       - "ClearNoon"

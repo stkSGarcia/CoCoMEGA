@@ -9,12 +9,12 @@ relation_slow_30 = Decreasing("velocity", threshold=0.3)
 relation_steer = Invariance("steering")
 
 vehicle_pert_factory = PerturbationFactory("vehicle", Boundary({
-    "x": [-240.0, -185.0],
-    "y": [85.0, 115.0],
-    "z": [0.0, 1.0],
-    "pitch": [-45.0, 45.0],
+    "x": [-202.0, -178.0],
+    "y": [77.0, 102.0],
+    "z": [1.0, 1.0],
+    "pitch": [0.0, 0.0],
     "yaw": [-180.0, 180.0],
-    "roll": [-45.0, 45.0],
+    "roll": [0.0, 0.0],
     "speed": [0.0, 100.0],
     "model": [0, 26],
     "color": [0, 2],
@@ -22,25 +22,25 @@ vehicle_pert_factory = PerturbationFactory("vehicle", Boundary({
 }))
 
 walker_pert_factory = PerturbationFactory("walker", Boundary({
-    "x": [-240.0, -185.0],
-    "y": [85.0, 115.0],
-    "z": [0.0, 1.0],
-    "pitch": [-45.0, 45.0],
+    "x": [-202.0, -178.0],
+    "y": [77.0, 102.0],
+    "z": [1.0, 1.0],
+    "pitch": [0.0, 0.0],
     "yaw": [-180.0, 180.0],
-    "roll": [-45.0, 45.0],
+    "roll": [0.0, 0.0],
     "speed": [0.0, 10.0],
     "model": [0, 14],
 }), "walker_roadside1")
 
 static_pert_factory = PerturbationFactory("static", Boundary({
-    "x": [-240.0, -185.0],
-    "y": [85.0, 115.0],
-    "z": [0.0, 1.0],
-    "pitch": [-45.0, 45.0],
+    "x": [-202.0, -178.0],
+    "y": [77.0, 102.0],
+    "z": [0.0, 0.0],
+    "pitch": [0.0, 0.0],
     "yaw": [-180.0, 180.0],
-    "roll": [-45.0, 45.0],
-    "model": [71, 73],
-    "size": [0, 50],
+    "roll": [0.0, 0.0],
+    "model": [69, 71],
+    "size": [0, 0],
 }), "static_roadside1")
 
 mr1 = MR([walker_pert_factory], relation_slow)
