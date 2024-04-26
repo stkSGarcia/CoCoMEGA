@@ -127,10 +127,10 @@ class CCEA(BaseAlgorithm):
                 pickle.dump(list(simulation_runner.evaluated_scenarios), f)
                 pickle.dump(self.logbook, f)
 
-            logger.info(f"Terminate due to reaching the threshold.")
-            # Store the complete solutions.
-            with open(os.path.join(result_dir, f"solutions-{int(round(time.time() * 1000))}.pickle"), "wb") as f:
-                pickle.dump(archive_solution, f)
+        logger.info(f"Terminate due to reaching the threshold.")
+        # Store the complete solutions.
+        with open(os.path.join(result_dir, f"solutions-{int(round(time.time() * 1000))}.pickle"), "wb") as f:
+            pickle.dump(archive_solution, f)
 
         return archive_solution
 
