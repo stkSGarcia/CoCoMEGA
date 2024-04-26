@@ -35,7 +35,7 @@ def _dist_attrs(this, that, attrs, boundary: Boundary):
     for attr in attrs:
         lower, upper = boundary.get(attr)
         if isinstance(lower, float):
-            dist += pow(abs(getattr(this, attr) - getattr(that, attr)) / (upper - lower), 2)
+            dist += pow(abs(getattr(this, attr) - getattr(that, attr)) / (upper - lower), 2) if upper != lower else 0
         elif isinstance(lower, int):
             # TODO: within the same category.
             dist += pow(CONFIG["dist_scaling"] * (0.0 if getattr(this, attr) == getattr(that, attr) else 1.0), 2)
@@ -63,7 +63,7 @@ def _mutate_attrs(this, attrs, boundary: Boundary):
     for attr in attrs:
         if random.random() >= CONFIG["scenario"]["mutpb"]: continue
         lower, upper = boundary.get(attr)
-        if isinstance(lower, float):  # Polynomial mutation
+        if isinstance(lower, float) and lower != upper:  # Polynomial mutation
             x = getattr(this, attr)
             delta_1 = (x - lower) / (upper - lower)
             delta_2 = (upper - x) / (upper - lower)
