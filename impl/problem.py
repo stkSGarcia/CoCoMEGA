@@ -80,7 +80,7 @@ toolbox.register("operators",
                      else (toolbox.select_perturbation, toolbox.mate_perturbation, toolbox.mutate_perturbation))
 
 
-def _fitness(source, follow_up):
+def _fitness(source, follow_up, mr_set=mr_set):
     """Calculate the fitness value and check if it violates the relation.
 
     @param source: Simulation results of the source scenario.
