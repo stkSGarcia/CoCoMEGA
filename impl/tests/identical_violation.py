@@ -1,5 +1,6 @@
 import logging
 import os.path
+import sys
 
 from impl.config import CONFIG
 from impl.problem import _fitness, mr_set, toolbox
@@ -53,7 +54,11 @@ class IdenticalViolationTest:
 
 
 if __name__ == '__main__':
-    violation_rates = IdenticalViolationTest([mr_set], num_experiments=3).test()
+    if len(sys.argv) > 1:
+        num_experiments = int(sys.argv[1])
+    else:
+        num_experiments = 10
+    violation_rates = IdenticalViolationTest([mr_set], num_experiments=num_experiments).test()
     for mr, violation_rate in violation_rates.items():
         logging.info(
             f"""
