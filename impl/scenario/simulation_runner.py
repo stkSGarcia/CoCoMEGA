@@ -65,15 +65,16 @@ def _init_carla(instance_configs):
     carla_host, carla_port, tm_port = instance_configs.get()
 
 
-def run_scenario(scenario: ScenarioDefinition):
+def run_scenario(scenario: ScenarioDefinition, rerun=False):
     """Run a scenario defined in ScenarioDefinition.
 
     @return: The simulation result and whether the scenario was actually executed.
     """
-    for evaluated_scenario, evaluated_result in evaluated_scenarios:
-        if scenario == evaluated_scenario:
-            logger.debug(f"Scenario evaluated: {evaluated_scenario}.")
-            return evaluated_result, False
+    if not rerun:
+        for evaluated_scenario, evaluated_result in evaluated_scenarios:
+            if scenario == evaluated_scenario:
+                logger.debug(f"Scenario evaluated: {evaluated_scenario}.")
+                return evaluated_result, False
 
     global carla_host, carla_port, tm_port
     assert carla_host is not None and carla_port is not None and tm_port is not None
@@ -117,7 +118,7 @@ def run_scenario(scenario: ScenarioDefinition):
     return result, True
 
 
-def run_scenarios(scenarios):
+def run_scenarios(scenarios, rerun=False):
     """Run scenarios.
 
     @return: A list of simulation results and the number of simulations.
@@ -128,14 +129,14 @@ def run_scenarios(scenarios):
          for instance in CONFIG["simulation"]["docker"]["instances"]]
         with ProcessPoolExecutor(max_workers=len(CONFIG["simulation"]["docker"]["instances"]),
                                  initializer=_init_carla, initargs=(queue,)) as executor:
-            results = executor.map(run_scenario, scenarios)
+            results = executor.map(lambda s: run_scenario(s, rerun=rerun), scenarios)
     else:
         global carla_host, carla_port, tm_port
         instance = CONFIG["simulation"]["docker"]["instances"][0]
         carla_host = instance["host"]
         carla_port = instance["port"]
         tm_port = instance["tm_port"]
-        results = map(run_scenario, scenarios)
+        results = map(lambda s: run_scenario(s, rerun=rerun), scenarios)
 
     results, is_executed = zip(*results)
     return results, is_executed.count(True)

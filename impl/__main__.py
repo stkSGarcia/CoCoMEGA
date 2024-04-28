@@ -1,12 +1,13 @@
 import argparse
 import logging.config
+import os
 import sys
 
 import argformat
 
 from impl import config
 from impl.algorithm import *
-from impl.utils.visualization import EvolutionVisualization
+from impl.utils.visualization import Visualizer
 
 logger = logging.getLogger("impl")
 
@@ -25,8 +26,12 @@ def ccea(algorithm: str, resume: bool):
         raise ValueError(f"Unsupported algorithm: {algorithm}.")
     solver.solve(resume)
 
-    visualizer = EvolutionVisualization(solver.logbook)
-    visualizer.visualize(show=False)
+    visualizer = Visualizer()
+    visualizer.visualize_gen_stats(
+        stats=solver.logbook,
+        show=False,
+        out_dir=os.path.join(config.CONFIG["workspace"], config.CONFIG["visualization"]),
+    )
 
 
 def simulate():
