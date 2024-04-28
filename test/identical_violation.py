@@ -1,4 +1,4 @@
-import logging
+
 import os.path
 import sys
 
@@ -60,7 +60,7 @@ if __name__ == '__main__':
         num_experiments = 10
     violation_rates = IdenticalViolationTest([mr_set], num_experiments=num_experiments).test()
     for mr, violation_rate in violation_rates.items():
-        logging.info(
+        print(
             f"""
             ##########################################
             Test Result:
