@@ -1,4 +1,4 @@
-
+import logging
 import os.path
 import sys
 
@@ -8,6 +8,7 @@ from impl.scenario.scenario_definition import ScenarioDefinition
 from impl.scenario.simulation_runner import run_scenarios
 from impl.utils.visualization import Visualizer
 
+logger = logging.getLogger("impl")
 
 class IdenticalViolationTest:
     def __init__(self, mr_list, num_experiments=20):
@@ -58,6 +59,8 @@ if __name__ == '__main__':
         num_experiments = int(sys.argv[1])
     else:
         num_experiments = 10
+
+    print(f"Starting the test with {num_experiments} experiments...")
     violation_rates = IdenticalViolationTest([mr_set], num_experiments=num_experiments).test()
     for mr, violation_rate in violation_rates.items():
         print(
