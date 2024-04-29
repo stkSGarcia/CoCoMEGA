@@ -384,7 +384,8 @@ class ScenarioEvaluator(object):
 
         except Exception as e:
             logger.error(f"\n\033[91mError during the simulation: {e}")
-            # traceback.print_exc()
+            if CONFIG['debug']:
+                traceback.print_exc()
             raise SimulationError(f"\n\033[91mError during the simulation: {e}")
 
             # crash_message = "Simulation crashed"

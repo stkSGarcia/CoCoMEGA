@@ -47,7 +47,7 @@ def restart_carla(container_name, port):
     ],
         shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if process.returncode == 0:
-        logger.info("Setting up Carla...")
+        time.sleep(10)
         setup_carla(container_name, port)
     else:
         raise Exception(
