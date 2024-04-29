@@ -23,6 +23,10 @@ class Visualizer:
     """
 
     @classmethod
+    def plot_violation_monitor(cls, stats, show, out_dir, title=None, name=None, verbose_name=None):
+        pass
+
+    @classmethod
     def visualize_gen_stats(cls, stats, show, out_dir):
         """
             Visualization of generation statistics data.

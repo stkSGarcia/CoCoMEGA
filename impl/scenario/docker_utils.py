@@ -35,7 +35,7 @@ def setup_carla(container_name, port):
         ],
             shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-        time.sleep(10)
+        time.sleep(20)
         carla_container = get_container(container_name)
     return carla_container
 
