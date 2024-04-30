@@ -27,7 +27,8 @@ class TestIdenticalViolation:
             os.mkdir(self.base_dir)
         self.out_dir = os.path.join(self.base_dir,
                                     f'identical_violation_{int(round(time.time() * 1000))}')
-
+        if not os.path.exists(self.out_dir):
+            os.mkdir(self.out_dir)
     def run(self):
         fitnesses, violations, meta = self._test()
         violation_rate = len([v for v in violations if v]) / len(violations)
@@ -61,14 +62,14 @@ class TestIdenticalViolation:
                 follow_up.assign_new_id()
                 scenarios += [source, follow_up]
             results, sim_num = run_scenarios(scenarios, rerun=True)
-            for source, follow_up in zip(results[::2], results[1::2]):
+            for source, follow_up, source_scenario, follow_up_scenario in zip(results[::2], results[1::2], scenarios[::2], scenarios[1::2]):
                 if source is not None and follow_up is not None:
                     is_violated, fitness_value = _fitness(source, follow_up, mr_set=self.mr_set)
                     fitnesses.append(fitness_value[0])
                     violations.append(is_violated)
                     meta.append({
-                        'source': source.id_,
-                        'follow-up': follow_up.id_,
+                        'source': source_scenario.id_,
+                        'follow-up': follow_up_scenario.id_,
                         'is_violated': is_violated,
                         'fitness': fitness_value[0],
                     })
@@ -77,8 +78,8 @@ class TestIdenticalViolation:
         meta = pd.DataFrame(meta)
         if self.write_meta:
             meta.to_pickle(os.path.join(self.out_dir, 'meta.pkl'))
-            with open(os.path.join(self.out_dir, 'mr.pkl'), 'wb') as _file:
-                pickle.dump(self.mr_set, _file)
+            # with open(os.path.join(self.out_dir, 'mr.pkl'), 'wb') as _file:
+            #     pickle.dump(self.mr_set, _file)
         return fitnesses, violations, meta
 
 
@@ -86,7 +87,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         num_experiments = int(sys.argv[1])
     else:
-        num_experiments = 10
+        num_experiments = 1
 
     print(f"Starting the test with {num_experiments} experiments...")
     violation_rate = TestIdenticalViolation(mr_set, num_experiments=num_experiments).run()
