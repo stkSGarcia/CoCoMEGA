@@ -38,7 +38,8 @@ def _dist_attrs(this, that, attrs, boundary: Boundary):
             dist += pow(abs(getattr(this, attr) - getattr(that, attr)) / (upper - lower), 2) if upper != lower else 0
         elif isinstance(lower, int):
             # TODO: within the same category.
-            dist += pow(CONFIG["dist_scaling"] * (0.0 if getattr(this, attr) == getattr(that, attr) else 1.0), 2)
+            dist += pow(CONFIG["scenario"]["dist_scaling"] *
+                        (0.0 if getattr(this, attr) == getattr(that, attr) else 1.0), 2)
     return dist
 
 
@@ -245,7 +246,7 @@ class ScenarioDefinition:
             other_actor_dict = {actor.id_: actor for actor in other_actors}
             common_ids = set(actor_dict.keys()).intersection(set(other_actor_dict.keys()))
             size = max(len(actors), len(other_actors))
-            dist += (size - len(common_ids)) * pow(CONFIG["dist_scaling"], 2)
+            dist += (size - len(common_ids)) * pow(CONFIG["scenario"]["dist_scaling"], 2)
             for actor_id in common_ids:
                 dist += actor_dict[actor_id].dist(other_actor_dict[actor_id])
         return math.sqrt(dist)

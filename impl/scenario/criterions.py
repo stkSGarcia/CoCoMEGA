@@ -81,9 +81,8 @@ class VehicleMeasurementTest(Criterion):
 
     def _write_to_file(self):
         keys = self.values[0].keys()
-        dir_path = os.path.join(CONFIG["workspace"], CONFIG["simulation"]["result"])
-        os.makedirs(dir_path, exist_ok=True)
-        with open(os.path.join(dir_path, f"{self.scenario_def_id}.csv"), 'w', newline='') as output_file:
+        with open(os.path.join(CONFIG["workspace"]["sim_result"], f"{self.scenario_def_id}.csv"),
+                  'w', newline='') as output_file:
             dict_writer = csv.DictWriter(output_file, keys)
             dict_writer.writeheader()
             dict_writer.writerows(self.values)

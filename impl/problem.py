@@ -3,15 +3,22 @@ import random
 
 import numpy as np
 from deap import creator, base, tools
-from scipy.spatial.distance import pdist, squareform
 
+from impl.algorithm.base import Budget
 from impl.config import CONFIG
 from impl.mr.mr import Perturbation
 from impl.mr.predefined import *
 from impl.scenario.scenario_definition import ScenarioDefinition
 from impl.scenario.simulation_runner import run_scenarios
 
+# Define the metamorphic relation set.
 mr_set = mr_set1
+
+# Define the budget.
+budget = Budget(max_sim=CONFIG["budget"]["max_sim"],
+                max_time=CONFIG["budget"]["max_time"],
+                max_gen=CONFIG["budget"]["max_gen"],
+                convergence_threshold=CONFIG["budget"]["convergence_threshold"])
 
 # Define individuals.
 creator.create("Fitness", base.Fitness, weights=(1.0,))
@@ -23,9 +30,18 @@ toolbox = base.Toolbox()
 toolbox.register("scenario", tools.initIterate, creator.Scenario, creator.Scenario.generate_random)
 toolbox.register("perturbation", tools.initIterate, creator.Perturbation,
                  lambda: [random.choice(mr_set.mrs).generate_perturbation()])
-# TODO: Initialize diverse individuals
-toolbox.register("pop_scenario", tools.initRepeat, list, toolbox.scenario,
-                 n=CONFIG["scenario"]["pop_size"] * CONFIG["scenario"]["init_selection_factor"])
+
+
+def _pop_scenario():
+    pop_scenario = tools.initRepeat(list, toolbox.scenario,
+                                    n=CONFIG["scenario"]["pop_size"] * CONFIG["scenario"]["init_selection_factor"])
+    if CONFIG["scenario"]["init_selection_factor"] > 1:
+        pop_scenario = sorted(pop_scenario, key=lambda x: x.trajectory_collision_score(),
+                              reverse=True)[:CONFIG["scenario"]["pop_size"]]
+    return pop_scenario
+
+
+toolbox.register("pop_scenario", _pop_scenario)
 toolbox.register("pop_perturbation", tools.initRepeat, list, toolbox.perturbation, n=CONFIG["perturbation"]["pop_size"])
 
 # Create a complete solution from two individuals.
@@ -153,27 +169,3 @@ def _prepare_ind_for_dist(population):
 
 
 toolbox.register("prepare_ind_for_dist", _prepare_ind_for_dist)
-
-
-def _fitness_sharing(population):
-    """Adjust the individual fitness using fitness sharing.
-
-    @param population: The population whose fitness needs to be adjusted.
-    @return: The population with fitness adjusted.
-    """
-    individuals = _prepare_ind_for_dist(population)
-    dist_matrix = squareform(pdist(individuals, lambda x, y: x[0].dist(y[0])))
-    max_dist = np.max(dist_matrix)
-    radius = max_dist / (2 * len(population))
-    sh = np.vectorize(lambda raw: 1 - pow(raw / radius, CONFIG["punishment"]) if raw < radius else 0)
-    dist_matrix = sh(dist_matrix)
-    if radius == 0.0:
-        np.fill_diagonal(dist_matrix, 1.0)
-    dist_sum = dist_matrix.sum(axis=1)
-    for i, individual in enumerate(population):
-        if individual.fitness.valid:
-            raw_fitness = individual.fitness.values[0]
-            individual.fitness.values = pow(raw_fitness, CONFIG["scaling"]) / dist_sum[i],
-
-
-toolbox.register("fitness_sharing", _fitness_sharing)

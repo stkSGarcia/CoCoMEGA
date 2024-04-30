@@ -178,7 +178,7 @@ def request_new_actor(model, spawn_point, rolename='scenario', autopilot=False,
             actor = None
             while not actor:
                 spawn_point = CarlaDataProvider._rng.choice(CarlaDataProvider._spawn_points)
-                actor = CarlaDataProvider._world.try_spawn_actor(blueprint, spawn_point)
+                actor = CarlaDataProvider._world.spawn_actor(blueprint, spawn_point)
 
         else:
             # slightly lift the actor to avoid collisions with ground when spawning the actor
@@ -187,7 +187,7 @@ def request_new_actor(model, spawn_point, rolename='scenario', autopilot=False,
             _spawn_point.location.x = spawn_point.location.x
             _spawn_point.location.y = spawn_point.location.y
             _spawn_point.location.z = spawn_point.location.z + 0.2
-            actor = CarlaDataProvider._world.try_spawn_actor(blueprint, _spawn_point)
+            actor = CarlaDataProvider._world.spawn_actor(blueprint, _spawn_point)
 
         if actor in CarlaDataProvider._blueprint_library.filter('vehicle.*'):
             actor.set_autopilot(autopilot)

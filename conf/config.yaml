@@ -1,15 +1,17 @@
-workspace: out
-log: logs
-checkpoint: checkpoints
-solution: solutions
-visualization: visualizations
 debug: false
 
+workspace:
+  root: out
+  log: logs
+  checkpoint: checkpoints
+  solution: solutions
+  visualization: visualizations
+  sim_result: results
+  sim_save: results/eval
+
 simulation:
-  root: "../InterFuser"
+  repo: "../InterFuser"
   parallel: true
-  result: results
-  save: results/eval
   retry_times: 1
   display_agent: false
   timeout: 20
@@ -34,13 +36,17 @@ simulation:
         memory: 8g
         cpu: 4
 
-max_sim: 1000
-max_time: 3600
-max_iter: 20
+budget:
+  max_sim: 1000
+  max_time: 3600
+  max_gen: 20
+  convergence_threshold: 0.9
 
 scenario:
   pop_size: 10
+  archive_size: 3
   init_selection_factor: 1
+  dist_scaling: 0.4
   tournament: 3
   cxpb: 0.8
   eta: 10.0
@@ -48,18 +54,20 @@ scenario:
 
 perturbation:
   pop_size: 10
+  archive_size: 3
   tournament: 3
   cxpb: 0.8
   mutpb: 0.5
   mut_add: 0.6
   mut_del: 0.2
 
-convergence_threshold: 0.9
-archive_size: 3
-diversity_opt: true
-punishment: 1.0
-scaling: 1.0
-dist_scaling: 0.4
+opt:
+  niching:
+    strategy: "sharing" # options: none, sharing, clearing
+    punishment: 1.0
+    scaling: 1.0
+    capacity: 2
+  diversity: true
 
 boundary:
   vehicle:

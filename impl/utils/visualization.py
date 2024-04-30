@@ -1,9 +1,11 @@
-import plotly.graph_objects as go
 import logging
 import os
-import pandas as pd
-from impl.config import CONFIG
 import time
+
+import pandas as pd
+import plotly.graph_objects as go
+
+from impl.config import CONFIG
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +27,7 @@ class EvolutionVisualization:
                       'avg' for average fitness, 'max' for maximum fitness, etc.
         """
         self.stats = pd.DataFrame(stats)
-        self.out_dir = os.path.join(CONFIG["workspace"], CONFIG["visualization"])
+        self.out_dir = CONFIG["workspace"]["visualization"]
 
         if not os.path.exists(self.out_dir):
             os.mkdir(self.out_dir)

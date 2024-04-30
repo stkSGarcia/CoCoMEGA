@@ -4,7 +4,6 @@ import sys
 
 import argformat
 
-from impl import config
 from impl.algorithm import *
 from impl.utils.visualization import EvolutionVisualization
 
@@ -15,11 +14,8 @@ def ccea(algorithm: str, resume: bool):
     from impl import problem
     if algorithm == "ccea":
         solver = CCEA(
-            archive_size=config.CONFIG["archive_size"],
             toolbox=problem.toolbox,
-            max_sim=config.CONFIG["max_sim"],
-            max_time=config.CONFIG["max_time"],
-            max_iter=config.CONFIG["max_iter"],
+            budget=problem.budget,
         )
     else:
         raise ValueError(f"Unsupported algorithm: {algorithm}.")

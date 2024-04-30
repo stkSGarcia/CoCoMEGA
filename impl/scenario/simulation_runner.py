@@ -13,18 +13,17 @@ from impl.scenario.scenario_definition import ScenarioDefinition
 
 arguments = [
     ("SCENARIOS", "scenarios",
-     os.path.join(CONFIG["simulation"]["root"], "leaderboard/data/scenarios/town05_all_scenarios.json")),
+     os.path.join(CONFIG["simulation"]["repo"], "leaderboard/data/scenarios/town05_all_scenarios.json")),
     ("ROUTES", "routes",
-     os.path.join(CONFIG["simulation"]["root"], "leaderboard/data/training_routes/routes_town05_long.xml")),
+     os.path.join(CONFIG["simulation"]["repo"], "leaderboard/data/training_routes/routes_town05_long.xml")),
     ("REPETITIONS", "repetitions", 1),
     ("CHALLENGE_TRACK_CODENAME", "track", "SENSORS"),
-    ("CHECKPOINT_ENDPOINT", "checkpoint",
-     os.path.join(CONFIG["workspace"], CONFIG["simulation"]["result"], "checkpoint.json")),
+    ("CHECKPOINT_ENDPOINT", "checkpoint", os.path.join(CONFIG["workspace"]["sim_result"], "checkpoint.json")),
     ("TEAM_AGENT", "agent", "impl/scenario/interfuser_agent.py"),
     ("TEAM_CONFIG", "agent_config", "impl/scenario/interfuser_config.py"),
     ("DEBUG_CHALLENGE", "debug", 0),
     ("RESUME", "resume", False),
-    ("SAVE_PATH", None, os.path.join(CONFIG["workspace"], CONFIG["simulation"]["save"])),
+    ("SAVE_PATH", None, CONFIG["workspace"]["sim_save"]),
     (None, "trafficManagerSeed", "1"),
     (None, "carlaProviderSeed", "2000"),
     (None, "record", ""),
@@ -98,7 +97,7 @@ def run_scenario(scenario: ScenarioDefinition):
     if not is_successful:
         return None, False
 
-    result = pd.read_csv(os.path.join(CONFIG["workspace"], CONFIG["simulation"]["result"], f"{scenario.id_}.csv"))
+    result = pd.read_csv(os.path.join(CONFIG["workspace"]["sim_result"], f"{scenario.id_}.csv"))
     result.set_index(result.columns[0], inplace=True)
     evaluated_scenarios.append((scenario, result))
     return result, True
