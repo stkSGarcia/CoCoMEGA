@@ -1,5 +1,6 @@
 import math
 import random
+from functools import partial
 
 import numpy as np
 from deap import creator, base, tools
@@ -47,12 +48,17 @@ toolbox.register("pop_perturbation", tools.initRepeat, list, toolbox.perturbatio
 # Create a complete solution from two individuals.
 toolbox.register("collaborate", lambda scenario, perturbation: creator.Solution((scenario, perturbation)))
 
-# Define genetic operators.
-toolbox.register("select_scenario", tools.selTournament, tournsize=CONFIG["scenario"]["tournament"])
-toolbox.register("select_perturbation", tools.selTournament, tournsize=CONFIG["scenario"]["tournament"])
 
-toolbox.register("mate_scenario", lambda x, y: x.mate(y))
-toolbox.register("mate_perturbation", tools.cxUniform, indpb=CONFIG["perturbation"]["cxpb"])
+# Define genetic operators.
+def _determine_individual_type(individual):
+    if str(type(individual)) == str(creator.Scenario):
+        # if isinstance(individual, creator.Scenario):
+        return 0
+    elif str(type(individual)) == str(creator.Perturbation):
+        # elif isinstance(individual, creator.Perturbation):
+        return 1
+    else:
+        raise ValueError(f"Unrecognized individual type: {type(individual)}.")
 
 
 def _mutate_perturbation(individual):
@@ -75,25 +81,18 @@ def _mutate_perturbation(individual):
     return individual
 
 
-toolbox.register("mutate_scenario", ScenarioDefinition.mutate)
-toolbox.register("mutate_perturbation", _mutate_perturbation)
-
-
-def _determine_individual_type(individual):
-    if str(type(individual)) == str(creator.Scenario):
-        # if isinstance(individual, creator.Scenario):
-        return 0
-    elif str(type(individual)) == str(creator.Perturbation):
-        # elif isinstance(individual, creator.Perturbation):
-        return 1
-    else:
-        raise ValueError(f"Unrecognized individual type: {type(individual)}.")
-
-
 toolbox.register("operators",
-                 lambda individual: (toolbox.select_scenario, toolbox.mate_scenario, toolbox.mutate_scenario) \
-                     if _determine_individual_type(individual) == 0 \
-                     else (toolbox.select_perturbation, toolbox.mate_perturbation, toolbox.mutate_perturbation))
+                 lambda individual: (  # Operators for scenarios.
+                     partial(tools.selTournament, tournsize=CONFIG["scenario"]["tournament"]),  # selection
+                     lambda ind1, ind2: ind1.mate(ind2),  # crossover
+                     ScenarioDefinition.mutate,  # mutation
+                     lambda ind: ind.assign_new_id()  # correction
+                 ) if _determine_individual_type(individual) == 0 else (  # Operators for perturbations.
+                     partial(tools.selTournament, tournsize=CONFIG["perturbation"]["tournament"]),
+                     partial(tools.cxUniform, indpb=CONFIG["perturbation"]["cxpb"]),
+                     _mutate_perturbation,
+                     lambda ind: ind,
+                 ))
 
 
 def _fitness(source, follow_up):
@@ -106,10 +105,9 @@ def _fitness(source, follow_up):
     field = mr_set.field()
     if field == "velocity":
         func = lambda row: math.sqrt(row.velocity_x ** 2 + row.velocity_y ** 2)
-        source["velocity"] = source.apply(func, axis=1)
-        follow_up["velocity"] = follow_up.apply(func, axis=1)
-    idx = (source[field] - follow_up[field]).abs().idxmax()
-    is_violated, extent = mr_set.is_violated(source.loc[idx, field], follow_up.loc[idx, field])
+        source[field] = source.apply(func, axis=1, result_type="reduce")
+        follow_up[field] = follow_up.apply(func, axis=1, result_type="reduce")
+    is_violated, extent = mr_set.is_violated(source, follow_up)
     return is_violated, (extent,)
 
 

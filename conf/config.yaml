@@ -63,7 +63,7 @@ perturbation:
 
 opt:
   niching:
-    strategy: "sharing" # options: none, sharing, clearing
+    strategy: "clearing" # options: none, sharing, clearing
     punishment: 1.0
     scaling: 1.0
     capacity: 2

@@ -207,7 +207,7 @@ class CCEA(BaseAlgorithm):
         @return: A list of offsprings.
         """
         assert len(population) > 0
-        select_operator, mate_operator, mutate_operator = self.toolbox.operators(population[0])
+        select_operator, mate_operator, mutate_operator, correction_operator = self.toolbox.operators(population[0])
 
         population = self.toolbox.clone(population)
         offsprings = []
@@ -219,14 +219,12 @@ class CCEA(BaseAlgorithm):
                 mutate_operator(parents[1])
                 del parents[0].fitness.values
                 del parents[1].fitness.values
-                if (self.population_diversity(offsprings + [parents[0]]) >
-                        self.population_diversity(offsprings + [parents[1]])):
-                    offsprings.append(parents[0])
-                else:
-                    offsprings.append(parents[1])
+                offspring = parents[0] if (self.population_diversity(offsprings + [parents[0]]) >
+                                           self.population_diversity(offsprings + [parents[1]])) else parents[1]
             else:
                 offspring = random.choice(parents)
                 mutate_operator(offspring)
                 del offspring.fitness.values
-                offsprings.append(offspring)
+            correction_operator(offspring)
+            offsprings.append(offspring)
         return offsprings
