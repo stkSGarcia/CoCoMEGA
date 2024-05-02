@@ -57,10 +57,6 @@ class CCEA(BaseAlgorithm):
                     violated_solutions_count > self.budget.convergence_threshold * len(archive_solution)):
                 logger.info(f"Terminate due to the number of violations reaching the threshold: "
                             f"{violated_solutions_count} > {self.budget.convergence_threshold}*{len(archive_solution)}.")
-                # Store the complete solutions.
-                with open(os.path.join(CONFIG["workspace"]["solution"],
-                                       f"solutions-{int(round(time.time() * 1000))}.pickle"), "wb") as f:
-                    pickle.dump(archive_solution, f)
                 break
 
             self.budget.acc_sim(sim_num)
@@ -99,9 +95,11 @@ class CCEA(BaseAlgorithm):
 
         logger.info(f"Terminate due to reaching the threshold.")
         # Store the complete solutions.
-        with open(os.path.join(CONFIG["workspace"]["solution"], f"solutions-{int(round(time.time() * 1000))}.pickle"),
-                  "wb") as f:
+        suffix = int(round(time.time() * 1000))
+        with open(os.path.join(CONFIG["workspace"]["solution"], f"solutions-{suffix}.pickle"), "wb") as f:
             pickle.dump(archive_solution, f)
+        with open(os.path.join(CONFIG["workspace"]["solution"], f"statistics-{suffix}.pickle"), "wb") as f:
+            pickle.dump(self.logbook, f)
 
         return archive_solution
 
@@ -168,6 +166,8 @@ class CCEA(BaseAlgorithm):
         elif CONFIG["opt"]["niching"]["strategy"] == "clearing":
             self.fitness_clearing(pop_scenario, CONFIG["opt"]["niching"]["capacity"])
             self.fitness_clearing(pop_perturbation, CONFIG["opt"]["niching"]["capacity"])
+        elif CONFIG["opt"]["niching"]["strategy"] != "none":
+            logger.warning("Unrecognized niching strategy, falling back to `none`.")
 
         return archive_solution, sim_num
 

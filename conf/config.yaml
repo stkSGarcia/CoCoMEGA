@@ -61,9 +61,16 @@ perturbation:
   mut_add: 0.6
   mut_del: 0.2
 
+violation:
+  strategy: curve  # options: curve, simulation
+  threshold:
+    velocity: 0.5
+    steer: 0.1
+  dtw: true
+
 opt:
   niching:
-    strategy: "clearing" # options: none, sharing, clearing
+    strategy: clearing  # options: none, sharing, clearing
     punishment: 1.0
     scaling: 1.0
     capacity: 2

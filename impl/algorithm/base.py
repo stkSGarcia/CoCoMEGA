@@ -121,6 +121,7 @@ class BaseAlgorithm:
         """Adjust the fitness using fitness clearing.
 
         @param population: The population whose fitness needs to be adjusted.
+        @param capacity: The maximum number of winners in a niche.
         @return: The population with fitness adjusted.
         """
         dist_matrix = squareform(pdist(self.toolbox.prepare_ind_for_dist(population), lambda x, y: x[0].dist(y[0])))
