@@ -1,5 +1,5 @@
 import logging
-import os.path
+import os
 import pickle
 import sys
 import time
