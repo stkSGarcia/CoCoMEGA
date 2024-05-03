@@ -92,6 +92,7 @@ def run_scenario(scenario: ScenarioDefinition, rerun=False):
             evaluator.run(config)
             del evaluator
             is_successful = True
+            # raise Exception('test')
             break
         except InvalidScenarioDefinitionError as e:
             logger.error(f"Scenario failed: {scenario}, message: {e}.")
@@ -104,7 +105,7 @@ def run_scenario(scenario: ScenarioDefinition, rerun=False):
             logger.error(f"Scenario failed: {scenario}, message: {e}.")
             if CONFIG['debug']:
                 traceback.print_exc()
-            del evaluator
+            # del evaluator
             if CONFIG['simulation']['docker']['enabled']:
                 container_name = f"{CONFIG['simulation']['docker']['image']}-{carla_port}"
                 restart_carla(container_name, carla_port)
