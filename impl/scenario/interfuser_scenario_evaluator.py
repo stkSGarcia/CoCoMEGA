@@ -252,9 +252,9 @@ class ScenarioEvaluator(object):
         # self.statistics_manager.save_record(current_stats_record, config.index, checkpoint)
         # self.statistics_manager.save_entry_status(entry_status, False, checkpoint)
 
-    def _load_and_run_scenario(self, args, config):
+    def _load_and_run_scenario(self, args, repetition_index):
         """
-        Load and run the scenario given by config.
+        Load and run the scenario given by args.
 
         Depending on what code fails, the simulation will either stop the route and
         continue from the next one, or report a crash and stop.
@@ -263,7 +263,7 @@ class ScenarioEvaluator(object):
         crash_message = ""
         entry_status = "Started"
 
-        logger.info(f"\n\033[1m========= Preparing {config.name} (repetition {config.repetition_index}) =========")
+        logger.info(f"\n\033[1m========= Preparing {self.scenario_definition.id_} (repetition {repetition_index}) =========")
         logger.info("> Setting up the agent\033[0m")
 
         # Prepare the statistics of the route
@@ -274,7 +274,7 @@ class ScenarioEvaluator(object):
             self._agent_watchdog.start()
             agent_class_name = getattr(self.module_agent, 'get_entry_point')()
             self.agent_instance = getattr(self.module_agent, agent_class_name)(args.agent_config)
-            config.agent = self.agent_instance
+            agent = self.agent_instance
 
             # Check and store the sensors
             if not self.sensors:
@@ -317,7 +317,7 @@ class ScenarioEvaluator(object):
 
         # Load the world and the scenario
         try:
-            self._load_and_wait_for_world(args, config.town, config.ego_vehicles)
+            self._load_and_wait_for_world(args, self.scenario_definition.town, ego_vehicles=[])
             self._prepare_ego_vehicles(config.ego_vehicles, False)
 
             # scenario_def = {
@@ -425,21 +425,26 @@ class ScenarioEvaluator(object):
         """
         # agent_class_name = getattr(self.module_agent, 'get_entry_point')()
         # self.agent_instance = getattr(self.module_agent, agent_class_name)(args.agent_config)
-        route_indexer = RouteIndexer(args.routes, args.scenarios, args.repetitions)
-
-        if args.resume:
-            route_indexer.resume(args.checkpoint)
+        # route_indexer = RouteIndexer(args.routes, args.scenarios, args.repetitions)
+        #
+        # if args.resume:
+        #     route_indexer.resume(args.checkpoint)
             # self.statistics_manager.resume(args.checkpoint)
-        else:
+        # else:
             # self.statistics_manager.clear_record(args.checkpoint)
-            os.makedirs(os.path.dirname(args.checkpoint), exist_ok=True)
-            route_indexer.save_state(args.checkpoint)
+            # os.makedirs(os.path.dirname(args.checkpoint), exist_ok=True)
+            # route_indexer.save_state(args.checkpoint)
 
-        config = route_indexer.next()
+        # config = route_indexer.next()
+        
+        # config = RouteScenarioConfiguration()
+        # config.town = route.attrib['town']
+        # new_config.name = "RouteScenario_{}".format(route_id)
+        # new_config.weather = RouteParser.parse_weather(route)
 
         for i in range(args.repetitions):
             # run
-            self._load_and_run_scenario(args, config)
+            self._load_and_run_scenario(args, repetition_index=i)
 
             # for obj in gc.get_objects():
             #     try:
@@ -448,7 +453,7 @@ class ScenarioEvaluator(object):
             #     except:
             #         pass
 
-            route_indexer.save_state(args.checkpoint)
+            # route_indexer.save_state(args.checkpoint)
 
 
 # save global statistics
