@@ -33,7 +33,7 @@ class CCEA(BaseAlgorithm):
                 archive_solution = pickle.load(f)
                 evaluated_solutions = pickle.load(f)
                 simulation_runner.evaluated_scenarios = Manager().list(pickle.load(f))
-                self.budget = pickle.load(f)
+                self.budget.initialize(other=pickle.load(f))
                 self.logbook = pickle.load(f)
         else:
             pop_scenario = self.toolbox.pop_scenario()
