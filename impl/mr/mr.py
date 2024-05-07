@@ -1,5 +1,4 @@
 import logging
-import math
 import random
 from abc import ABC
 from typing import List
@@ -93,8 +92,7 @@ class Relation(ABC):
         extents = df.apply(self._extent_func, axis=1, result_type="reduce")
         extents = extents[extents > 0]
         if extents.empty: return False, 0.0
-        extent = extents.pow(2).sum()
-        return True, math.sqrt(extent)
+        return True, extents.mean()
 
     def __eq__(self, other):
         return (isinstance(other, self.__class__) and
