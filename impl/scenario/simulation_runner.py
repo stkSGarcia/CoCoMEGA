@@ -92,7 +92,6 @@ def run_scenario(scenario: ScenarioDefinition, rerun=False):
             evaluator.run(config)
             del evaluator
             is_successful = True
-            # raise Exception('test')
             break
         except InvalidScenarioDefinitionError as e:
             logger.error(f"Scenario failed: {scenario}, message: {e}.")
@@ -138,10 +137,6 @@ def run_scenarios(scenarios, rerun=False):
         carla_port = instance["port"]
         tm_port = instance["tm_port"]
         results = map(lambda s: run_scenario(s, rerun=rerun), scenarios)
-
-        # results = []
-        # for scenario in scenarios:
-        #     results.append(run_scenario(scenario, rerun=rerun))
 
     results, is_executed = zip(*results)
     return results, is_executed.count(True)
