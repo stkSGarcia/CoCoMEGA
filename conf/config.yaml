@@ -3,6 +3,7 @@ debug: false
 workspace:
   root: out
   log: logs
+  test_result: tests
   checkpoint: checkpoints
   solution: solutions
   visualization: visualizations
