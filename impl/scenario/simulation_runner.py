@@ -105,7 +105,7 @@ def run_scenario(scenario: ScenarioDefinition, rerun=False):
             logger.error(f"Scenario failed: {scenario}, message: {e}.")
             if CONFIG['debug']:
                 traceback.print_exc()
-            # del evaluator
+            del evaluator
             if CONFIG['simulation']['docker']['enabled']:
                 container_name = f"{CONFIG['simulation']['docker']['image']}-{carla_port}"
                 restart_carla(container_name, carla_port)
