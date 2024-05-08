@@ -230,6 +230,9 @@ class RouteScenario(BasicScenario):
         self.timeout = CONFIG['simulation']['timeout']
         trajectory = [Location(loc['x'], loc['y'], loc['z']) for loc in scenario_definition.trajectory]
         self._update_route(world, trajectory, debug_mode > 0)
+        self._vehicle_lights = carla.VehicleLightState.Position | carla.VehicleLightState.LowBeam
+        self.weather_preset, self.weather_preset_name = \
+            CarlaDataProvider.find_weather_presets()[self.scenario_definition.weather]
         ego_vehicle = self._update_ego_vehicle()
         scenario_config = self._build_scenario_configuration(scenario_definition, ego_vehicle, agent_instance)
 
@@ -317,6 +320,9 @@ class RouteScenario(BasicScenario):
         ego_trans = ego_vehicle.get_transform()
         spectator.set_transform(carla.Transform(ego_trans.location + carla.Location(z=50),
                                                 carla.Rotation(pitch=-90)))
+
+        if self.weather_preset.sun_altitude_angle < 0.0:
+            ego_vehicle.set_light_state(carla.VehicleLightState(self._vehicle_lights))
 
         return ego_vehicle
 
@@ -440,6 +446,10 @@ class RouteScenario(BasicScenario):
                                                                ego_vehicle.get_transform(),
                                                                'hero')]
         scenario_config.agent = agent_instance
+
+        # Set weather
+        scenario_config.weather = self.weather_preset
+
         return scenario_config
 
     def _get_actors_instances(self, list_of_antagonist_actors):
@@ -472,7 +482,7 @@ class RouteScenario(BasicScenario):
         """
         """
         criteria = []
-        route = convert_transform_to_location(self.route)
+        # route = convert_transform_to_location(self.route)
 
         vehicle_measurement = VehicleMeasurementTest(
             actor=self.ego_vehicles[0],
@@ -482,34 +492,35 @@ class RouteScenario(BasicScenario):
             scenario_def_id=self.scenario_definition.id_,
         )
 
-        collision_criterion = CollisionTest(self.ego_vehicles[0], terminate_on_failure=False)
 
-        route_criterion = InRouteTest(self.ego_vehicles[0],
-                                      route=route,
-                                      offroad_max=30,
-                                      terminate_on_failure=True)
+        # collision_criterion = CollisionTest(self.ego_vehicles[0], terminate_on_failure=False)
 
-        completion_criterion = RouteCompletionTest(self.ego_vehicles[0], route=route)
+        # route_criterion = InRouteTest(self.ego_vehicles[0],
+        #                               route=route,
+        #                               offroad_max=30,
+        #                               terminate_on_failure=True)
 
-        outsidelane_criterion = OutsideRouteLanesTest(self.ego_vehicles[0], route=route)
+        # completion_criterion = RouteCompletionTest(self.ego_vehicles[0], route=route)
 
-        red_light_criterion = RunningRedLightTest(self.ego_vehicles[0])
+        # outsidelane_criterion = OutsideRouteLanesTest(self.ego_vehicles[0], route=route)
 
-        stop_criterion = RunningStopTest(self.ego_vehicles[0])
+        # red_light_criterion = RunningRedLightTest(self.ego_vehicles[0])
 
-        blocked_criterion = ActorSpeedAboveThresholdTest(self.ego_vehicles[0],
-                                                         speed_threshold=0.1,
-                                                         below_threshold_max_time=180.0,
-                                                         terminate_on_failure=True,
-                                                         name="AgentBlockedTest")
+        # stop_criterion = RunningStopTest(self.ego_vehicles[0])
+
+        # blocked_criterion = ActorSpeedAboveThresholdTest(self.ego_vehicles[0],
+        #                                                  speed_threshold=0.1,
+        #                                                  below_threshold_max_time=180.0,
+        #                                                  terminate_on_failure=True,
+        #                                                  name="AgentBlockedTest")
         criteria.append(vehicle_measurement)
-        criteria.append(completion_criterion)
-        criteria.append(outsidelane_criterion)
-        criteria.append(collision_criterion)
-        criteria.append(red_light_criterion)
-        criteria.append(stop_criterion)
-        criteria.append(route_criterion)
-        criteria.append(blocked_criterion)
+        # criteria.append(completion_criterion)
+        # criteria.append(outsidelane_criterion)
+        # criteria.append(collision_criterion)
+        # criteria.append(red_light_criterion)
+        # criteria.append(stop_criterion)
+        # criteria.append(route_criterion)
+        # criteria.append(blocked_criterion)
 
         return criteria
 

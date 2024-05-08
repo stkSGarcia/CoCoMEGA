@@ -95,7 +95,7 @@ toolbox.register("operators",
                  ))
 
 
-def _fitness(source, follow_up):
+def _fitness(source, follow_up, mr_set=mr_set):
     """Calculate the fitness value and check if it violates the relation.
 
     @param source: Simulation results of the source scenario.

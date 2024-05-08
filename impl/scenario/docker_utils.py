@@ -35,7 +35,7 @@ def setup_carla(container_name, port):
         ],
             shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-        time.sleep(10)
+        time.sleep(15)
         carla_container = get_container(container_name)
     return carla_container
 
@@ -43,11 +43,11 @@ def setup_carla(container_name, port):
 def restart_carla(container_name, port):
     logger.info("Stopping Carla container to restart...")
     process = subprocess.run([
-        f"docker stop {container_name}"
+        f"docker container stop {container_name}"
     ],
         shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if process.returncode == 0:
-        logger.info("Setting up Carla...")
+        time.sleep(5)
         setup_carla(container_name, port)
     else:
         raise Exception(

@@ -27,13 +27,13 @@ simulation:
         port: 2000
         tm_port: 2500
         gpu_device: 0
-        memory: 8g
+        memory: 16g
         cpu: 4
       - host: localhost
         port: 2002
         tm_port: 2502
         gpu_device: 1
-        memory: 8g
+        memory: 16g
         cpu: 4
 
 budget:

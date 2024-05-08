@@ -1,7 +1,8 @@
 import logging
 import os
-import time
 
+import time
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -18,42 +19,72 @@ verbose_map = {
 }
 
 
-class EvolutionVisualization:
-    def __init__(self, stats):
+class Visualizer:
+    """
+        Visualization module with statistics data.
+    """
+
+    @classmethod
+    def plot_violation_monitor(cls, stats, show, out_dir, title=None, name=None, verbose_name=None):
+        pass
+
+    @classmethod
+    def visualize_gen_stats(cls, stats, show, out_dir):
         """
-        Initialize the visualization with statistics data.
-        :param stats: A dictionary containing lists of statistics per generation.
-                      Expected keys are 'gen' for generation numbers,
-                      'avg' for average fitness, 'max' for maximum fitness, etc.
+            Visualization of generation statistics data.
+            :param stats: A dictionary containing lists of statistics per generation.
+                              Expected keys are 'gen' for generation numbers,
+                              'avg' for average fitness, 'max' for maximum fitness, etc.
+            :param show: A boolean to determine whether to show the plots or not.
+            :param out_dir: Output directory of plots
         """
-        self.stats = pd.DataFrame(stats)
-        self.out_dir = CONFIG["workspace"]["visualization"]
-
-        if not os.path.exists(self.out_dir):
-            os.mkdir(self.out_dir)
-
-        self.metrics = [col for col in self.stats.columns if col not in ['pop', 'gen', 'len']]
-
-        for metric in self.metrics:
-            self.stats[metric] = self.stats[metric].apply(lambda x: x[0])
-
-    def visualize(self, show):
-        if len(self.stats) == 0:
+        stats = pd.DataFrame(stats)
+        if len(stats) == 0:
             logger.warning('No statistics provided. Nothing to visualize.')
             return
 
-        gen_stat_figs = self.plot_generation_statistics()
+        metrics = [col for col in stats.columns if col not in ['pop', 'gen', 'len']]
+        for metric in metrics:
+            stats[metric] = stats[metric].apply(lambda x: x[0])
+
+        gen_stat_figs = cls._plot_generation_statistics(stats, out_dir)
         if show:
             for fig in gen_stat_figs:
-                self.show_plot(fig)
+                cls._show_plot(fig)
 
-    def plot_generation_statistics(self):
+    @classmethod
+    def plot_histogram(cls, stats, color, show, out_dir, title=None, name=None, verbose_name=None):
+        fig = go.Figure()
+
+        # Adding histogram trace
+        fig.add_trace(go.Histogram(
+            x=stats,
+            histnorm='percent',
+            marker=dict(
+                color=np.where(color, '#DC143C', '#4682B4')
+            ),
+        ))
+
+        fig.update_layout(
+            title_text=title if title else 'Multicolored Histogram',
+            xaxis_title_text=verbose_name if verbose_name else 'Value',
+            yaxis_title_text='Percent',
+            bargap=0,
+        )
+
+        if show:
+            cls._show_plot(fig)
+
+        cls._save_fig(fig, out_dir, f'hist_{name}_{int(round(time.time() * 1000))}.png')
+
+    @classmethod
+    def _plot_generation_statistics(cls, stats, out_dir):
         """
-        Generates line plots for evolutionary algorithm statistics across generations.
+            Generates line plots for evolutionary algorithm statistics across generations.
         """
         timestamp = int(round(time.time() * 1000))
         figs = []
-        for pop_name, pop in self.stats.groupby('pop'):
+        for pop_name, pop in stats.groupby('pop'):
             pop = pop.sort_values('gen', ascending=True)
             fig = go.Figure()
             fig.add_trace(go.Scatter(
@@ -94,28 +125,23 @@ class EvolutionVisualization:
                 legend_title='Metrics',
                 xaxis_range=[-0.5, max(pop['gen']) + 0.5],
             )
-            self.save_fig(fig, name=f'{pop_name}_{timestamp}.png')
+
+            cls._save_fig(fig, out_dir=out_dir, name=f'{pop_name}_{int(round(time.time() * 1000))}.png')
             figs.append(fig)
         return figs
 
-    def show_plot(self, fig):
+    @staticmethod
+    def _show_plot(fig):
         """
-        Displays the plot.
+            Displays the plot.
         """
         fig.show()
 
-    def save_fig(self, fig, name):
+    @staticmethod
+    def _save_fig(fig, out_dir, name):
         """
-        Save figure as image
+            Saves figure as image
         """
-        fig.write_image(os.path.join(self.out_dir, name))
-
-        # Example usage:
-        # stats = {
-        #     'gen': [1, 2, 3, ...],
-        #     'avg': [0.5, 0.7, 0.9, ...],
-        #     'max': [0.8, 0.9, 1.0, ...],
-        # }
-        # evol_vis = EvolutionVisualization(stats)
-        # fig = evol_vis.plot_generation_statistics()
-        # evol_vis.show_plot(fig)
+        if not os.path.exists(out_dir):
+            os.mkdir(out_dir)
+        fig.write_image(os.path.join(out_dir, name))

@@ -80,7 +80,7 @@ class ScenarioEvaluator(object):
 
         self.sensors = None
         self.sensor_icons = []
-        self._vehicle_lights = carla.VehicleLightState.Position | carla.VehicleLightState.LowBeam
+        # self._vehicle_lights = carla.VehicleLightState.Position | carla.VehicleLightState.LowBeam
 
         # First of all, we need to create the client that will send the requests
         # to the simulator. Here we'll assume the simulator is accepting
@@ -99,7 +99,8 @@ class ScenarioEvaluator(object):
 
         # Load agent
         module_name = os.path.basename(args.agent).split('.')[0]
-        sys.path.insert(0, os.path.dirname(args.agent))
+        if os.path.dirname(args.agent) not in sys.path:
+            sys.path.insert(0, os.path.dirname(args.agent))
         self.module_agent = importlib.import_module(module_name)
 
         # Create the ScenarioManager
@@ -112,6 +113,16 @@ class ScenarioEvaluator(object):
         # Create the agent timer
         self._agent_watchdog = Watchdog(int(float(args.timeout)))
         signal.signal(signal.SIGINT, self._signal_handler)
+
+        # self.weather_preset, self.weather_preset_name = \
+        #     CarlaDataProvider.find_weather_presets()[self.scenario_definition.weather]
+
+        # self.weather_preset.sun_altitude_angle = -30
+
+        # self.weather_preset, self.weather_preset_name = \
+        # CarlaDataProvider.find_weather_presets()[1]
+
+        # print(self.weather_preset_name)
 
     def _signal_handler(self, signum, frame):
         """
@@ -142,6 +153,7 @@ class ScenarioEvaluator(object):
         if self.manager and self.manager.get_running_status() \
                 and hasattr(self, 'world') and self.world:
             # Reset to asynchronous mode
+            self.world.set_weather(CarlaDataProvider.find_weather_presets()[0][0])
             settings = self.world.get_settings()
             settings.synchronous_mode = False
             settings.fixed_delta_seconds = None
@@ -151,6 +163,7 @@ class ScenarioEvaluator(object):
         if self.manager:
             self.manager.cleanup()
 
+        GameTime.restart()
         CarlaDataProvider.cleanup()
 
         for i, _ in enumerate(self.ego_vehicles):
@@ -205,18 +218,20 @@ class ScenarioEvaluator(object):
         # sync state
         CarlaDataProvider.get_world().tick()
 
-    def _load_and_wait_for_world(self, args, town, ego_vehicles=None):
+    def _load_and_wait_for_world(self, args):
         """
         Load a new CARLA world and provide data to CarlaDataProvider
         """
 
-        self.world = self.client.load_world(town)
+        self.world = self.client.load_world(self.scenario_definition.town)
         settings = self.world.get_settings()
         settings.fixed_delta_seconds = 1.0 / self.frame_rate
         settings.synchronous_mode = True
         self.world.apply_settings(settings)
 
         self.world.reset_all_traffic_lights()
+
+        # self.world.set_weather(self.weather_preset)
 
         CarlaDataProvider.set_client(self.client)
         CarlaDataProvider.set_world(self.world)
@@ -232,9 +247,9 @@ class ScenarioEvaluator(object):
         else:
             self.world.wait_for_tick()
 
-        if CarlaDataProvider.get_map().name != town:
+        if CarlaDataProvider.get_map().name != self.scenario_definition.town:
             raise Exception("The CARLA server uses the wrong map!"
-                            "This scenario requires to use map {}".format(town))
+                            "This scenario requires to use map {}".format(self.scenario_definition.town))
 
     def _register_statistics(self, config, checkpoint, entry_status, crash_message=""):
         """
@@ -252,9 +267,9 @@ class ScenarioEvaluator(object):
         # self.statistics_manager.save_record(current_stats_record, config.index, checkpoint)
         # self.statistics_manager.save_entry_status(entry_status, False, checkpoint)
 
-    def _load_and_run_scenario(self, args, config):
+    def _load_and_run_scenario(self, args, repetition_index):
         """
-        Load and run the scenario given by config.
+        Load and run the scenario given by args.
 
         Depending on what code fails, the simulation will either stop the route and
         continue from the next one, or report a crash and stop.
@@ -263,7 +278,8 @@ class ScenarioEvaluator(object):
         crash_message = ""
         entry_status = "Started"
 
-        logger.info(f"\n\033[1m========= Preparing {config.name} (repetition {config.repetition_index}) =========")
+        logger.info(
+            f"\n\033[1m========= Preparing {self.scenario_definition.id_} (repetition {repetition_index}) =========")
         logger.info("> Setting up the agent\033[0m")
 
         # Prepare the statistics of the route
@@ -274,7 +290,6 @@ class ScenarioEvaluator(object):
             self._agent_watchdog.start()
             agent_class_name = getattr(self.module_agent, 'get_entry_point')()
             self.agent_instance = getattr(self.module_agent, agent_class_name)(args.agent_config)
-            config.agent = self.agent_instance
 
             # Check and store the sensors
             if not self.sensors:
@@ -317,22 +332,9 @@ class ScenarioEvaluator(object):
 
         # Load the world and the scenario
         try:
-            self._load_and_wait_for_world(args, config.town, config.ego_vehicles)
-            self._prepare_ego_vehicles(config.ego_vehicles, False)
+            self._load_and_wait_for_world(args)
+            # self._prepare_ego_vehicles(config.ego_vehicles, False)
 
-            # scenario_def = {
-            #     'name': 'scenario1',
-            #     'other_actors': None,
-            #     'trigger_position': {
-            #         'x': "303.6751708984375",
-            #         'y': "-17.042945861816406",
-            #         'z': "0.0",
-            #         'yaw': "179.79132080078125",
-            #     },
-            #     'scenario_type': None
-            # }
-
-            # scenario_config = self._build_scenario_configuration(scenario_def)
             scenario = RouteScenario(world=self.world, scenario_definition=self.scenario_definition,
                                      agent_instance=self.agent_instance,
                                      debug_mode=args.debug)
@@ -341,21 +343,18 @@ class ScenarioEvaluator(object):
             # self.agent_instance._init()
             # self.agent_instance.sensor_interface = SensorInterface()
 
-            # Night mode
-            if config.weather.sun_altitude_angle < 0.0:
-                for vehicle in scenario.ego_vehicles:
-                    vehicle.set_light_state(carla.VehicleLightState(self._vehicle_lights))
-
             # Load scenario and run it
             if args.record:
-                self.client.start_recorder("{}/{}_rep{}.log".format(args.record, config.name, config.repetition_index))
-            self.manager.load_scenario(scenario, self.agent_instance, config.repetition_index)
+                self.client.start_recorder(
+                    "{}/{}_rep{}.log".format(args.record, self.scenario_definition.id_, repetition_index))
+            self.manager.load_scenario(scenario, self.agent_instance, repetition_index)
         except InvalidScenarioDefinitionError as e:
             raise e
         except Exception as e:
             # The scenario is wrong -> set the ejecution to crashed and stop
             logger.error(f"\n\033[91mThe scenario could not be loaded: {e}")
-            # traceback.print_exc()
+            if CONFIG['debug']:
+                traceback.print_exc()
             raise LoadingScenarioFailedError(f"\n\033[91mThe scenario could not be loaded: {e}")
 
             # crash_message = "Simulation crashed"
@@ -384,7 +383,8 @@ class ScenarioEvaluator(object):
 
         except Exception as e:
             logger.error(f"\n\033[91mError during the simulation: {e}")
-            # traceback.print_exc()
+            if CONFIG['debug']:
+                traceback.print_exc()
             raise SimulationError(f"\n\033[91mError during the simulation: {e}")
 
             # crash_message = "Simulation crashed"
@@ -424,21 +424,26 @@ class ScenarioEvaluator(object):
         """
         # agent_class_name = getattr(self.module_agent, 'get_entry_point')()
         # self.agent_instance = getattr(self.module_agent, agent_class_name)(args.agent_config)
-        route_indexer = RouteIndexer(args.routes, args.scenarios, args.repetitions)
+        # route_indexer = RouteIndexer(args.routes, args.scenarios, args.repetitions)
+        #
+        # if args.resume:
+        #     route_indexer.resume(args.checkpoint)
+        # self.statistics_manager.resume(args.checkpoint)
+        # else:
+        # self.statistics_manager.clear_record(args.checkpoint)
+        # os.makedirs(os.path.dirname(args.checkpoint), exist_ok=True)
+        # route_indexer.save_state(args.checkpoint)
 
-        if args.resume:
-            route_indexer.resume(args.checkpoint)
-            # self.statistics_manager.resume(args.checkpoint)
-        else:
-            # self.statistics_manager.clear_record(args.checkpoint)
-            os.makedirs(os.path.dirname(args.checkpoint), exist_ok=True)
-            route_indexer.save_state(args.checkpoint)
+        # config = route_indexer.next()
 
-        config = route_indexer.next()
+        # config = RouteScenarioConfiguration()
+        # config.town = route.attrib['town']
+        # new_config.name = "RouteScenario_{}".format(route_id)
+        # new_config.weather = RouteParser.parse_weather(route)
 
         for i in range(args.repetitions):
             # run
-            self._load_and_run_scenario(args, config)
+            self._load_and_run_scenario(args, repetition_index=i)
 
             # for obj in gc.get_objects():
             #     try:
@@ -447,7 +452,7 @@ class ScenarioEvaluator(object):
             #     except:
             #         pass
 
-            route_indexer.save_state(args.checkpoint)
+            # route_indexer.save_state(args.checkpoint)
 
 
 # save global statistics

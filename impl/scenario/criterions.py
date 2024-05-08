@@ -69,7 +69,8 @@ class VehicleMeasurementTest(Criterion):
         return new_status
 
     def terminate(self, new_status):
-        self._write_to_file()
+        if len(self.values) > 0:
+            self._write_to_file()
         super().terminate(new_status)
 
     def _write_to_file(self):
