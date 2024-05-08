@@ -1,3 +1,4 @@
+import itertools
 import logging
 import os
 import traceback
@@ -115,14 +116,14 @@ def run_scenarios(scenarios, rerun=False):
          for instance in CONFIG["simulation"]["docker"]["instances"]]
         with ProcessPoolExecutor(max_workers=len(CONFIG["simulation"]["docker"]["instances"]),
                                  initializer=_init_carla, initargs=(queue,)) as executor:
-            results = executor.map(lambda s: run_scenario(s, rerun=rerun), scenarios)
+            results = executor.map(run_scenario, scenarios, itertools.repeat(rerun, len(scenarios)))
     else:
         global carla_host, carla_port, tm_port
         instance = CONFIG["simulation"]["docker"]["instances"][0]
         carla_host = instance["host"]
         carla_port = instance["port"]
         tm_port = instance["tm_port"]
-        results = map(lambda s: run_scenario(s, rerun=rerun), scenarios)
+        results = map(run_scenario, scenarios, itertools.repeat(rerun, len(scenarios)))
 
     results, is_executed = zip(*results)
     return results, is_executed.count(True)

@@ -203,6 +203,7 @@ class ScenarioDefinition:
                 model=10,
             ),
         ]
+        scenario.weather = 0
         return scenario
 
     def get_trigger_position(self):

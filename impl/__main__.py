@@ -1,6 +1,5 @@
 import argparse
 import logging.config
-import os
 import sys
 
 import argformat
@@ -27,7 +26,7 @@ def ccea(algorithm: str, resume: bool):
     visualizer.visualize_gen_stats(
         stats=solver.logbook,
         show=False,
-        out_dir=os.path.join(config.CONFIG["workspace"]["root"], config.CONFIG["workspace"]["visualization"]),
+        out_dir=config.CONFIG["workspace"]["visualization"],
     )
 
 

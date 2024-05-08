@@ -109,7 +109,7 @@ boundary:
     model: [ 0, 87 ]
     size: [ 0.0, 100.0 ]
   env:
-    weather: [ 0, 13 ]
+    weather: [ 0, 14 ]
 
 blueprint:
   vehicle:
