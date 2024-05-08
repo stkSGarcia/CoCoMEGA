@@ -5,6 +5,7 @@ import sys
 
 import argformat
 
+from impl import config
 from impl.algorithm import *
 from impl.utils.visualization import Visualizer
 
@@ -26,7 +27,7 @@ def ccea(algorithm: str, resume: bool):
     visualizer.visualize_gen_stats(
         stats=solver.logbook,
         show=False,
-        out_dir=os.path.join(config.CONFIG["workspace"], config.CONFIG["visualization"]),
+        out_dir=os.path.join(config.CONFIG["workspace"]["root"], config.CONFIG["workspace"]["visualization"]),
     )
 
 

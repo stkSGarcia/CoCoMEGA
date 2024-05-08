@@ -271,7 +271,7 @@ class ScenarioDefinition:
         yaw_rad = math.radians(spawn_point.yaw)
 
         if hasattr(actor_def, "speed"):
-            total_distance = actor_def.speed * CONFIG['simulation']['timeout']
+            total_distance = actor_def.speed * CONFIG['simulation']['scenario_duration']
             source = (
                 spawn_point.x,
                 spawn_point.y

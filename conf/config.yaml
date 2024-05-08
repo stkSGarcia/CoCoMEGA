@@ -14,7 +14,7 @@ simulation:
   parallel: true
   retry_times: 1
   display_agent: false
-  timeout: 20
+  scenario_duration: 20
   client_timeout: 10
   wait_for_world: 20
   frame_rate: 10

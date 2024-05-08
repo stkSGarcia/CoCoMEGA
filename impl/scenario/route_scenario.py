@@ -227,7 +227,7 @@ class RouteScenario(BasicScenario):
         self.route = None
         self.scenario_definition = scenario_definition
         self.agent_instance = agent_instance
-        self.timeout = CONFIG['simulation']['timeout']
+        self.timeout = CONFIG['simulation']['scenario_duration']
         trajectory = [Location(loc['x'], loc['y'], loc['z']) for loc in scenario_definition.trajectory]
         self._update_route(world, trajectory, debug_mode > 0)
         self._vehicle_lights = carla.VehicleLightState.Position | carla.VehicleLightState.LowBeam
