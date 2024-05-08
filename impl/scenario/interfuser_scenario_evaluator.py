@@ -99,7 +99,8 @@ class ScenarioEvaluator(object):
 
         # Load agent
         module_name = os.path.basename(args.agent).split('.')[0]
-        sys.path.insert(0, os.path.dirname(args.agent))
+        if os.path.dirname(args.agent) not in sys.path:
+            sys.path.insert(0, os.path.dirname(args.agent))
         self.module_agent = importlib.import_module(module_name)
 
         # Create the ScenarioManager
@@ -122,8 +123,6 @@ class ScenarioEvaluator(object):
         # CarlaDataProvider.find_weather_presets()[1]
 
         # print(self.weather_preset_name)
-
-        self.default_weather = CarlaDataProvider.find_weather_presets()[0][0]
 
     def _signal_handler(self, signum, frame):
         """
@@ -154,7 +153,7 @@ class ScenarioEvaluator(object):
         if self.manager and self.manager.get_running_status() \
                 and hasattr(self, 'world') and self.world:
             # Reset to asynchronous mode
-            self.world.set_weather(self.default_weather)
+            self.world.set_weather(CarlaDataProvider.find_weather_presets()[0][0])
             settings = self.world.get_settings()
             settings.synchronous_mode = False
             settings.fixed_delta_seconds = None
@@ -164,6 +163,7 @@ class ScenarioEvaluator(object):
         if self.manager:
             self.manager.cleanup()
 
+        GameTime.restart()
         CarlaDataProvider.cleanup()
 
         for i, _ in enumerate(self.ego_vehicles):

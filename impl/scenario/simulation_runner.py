@@ -139,5 +139,9 @@ def run_scenarios(scenarios, rerun=False):
         tm_port = instance["tm_port"]
         results = map(lambda s: run_scenario(s, rerun=rerun), scenarios)
 
+        # results = []
+        # for scenario in scenarios:
+        #     results.append(run_scenario(scenario, rerun=rerun))
+
     results, is_executed = zip(*results)
     return results, is_executed.count(True)

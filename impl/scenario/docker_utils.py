@@ -35,7 +35,7 @@ def setup_carla(container_name, port):
         ],
             shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-        time.sleep(20)
+        time.sleep(15)
         carla_container = get_container(container_name)
     return carla_container
 
@@ -47,7 +47,7 @@ def restart_carla(container_name, port):
     ],
         shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if process.returncode == 0:
-        time.sleep(10)
+        time.sleep(5)
         setup_carla(container_name, port)
     else:
         raise Exception(
