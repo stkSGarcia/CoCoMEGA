@@ -102,6 +102,7 @@ class ScenarioDefinition:
         self.statics = []
         self.weather = None
         self._other_actors = None
+        self.town = 'Town05'
         return self
 
     def assign_new_id(self):

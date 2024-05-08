@@ -230,6 +230,9 @@ class RouteScenario(BasicScenario):
         self.timeout = CONFIG['simulation']['timeout']
         trajectory = [Location(loc['x'], loc['y'], loc['z']) for loc in scenario_definition.trajectory]
         self._update_route(world, trajectory, debug_mode > 0)
+        self._vehicle_lights = carla.VehicleLightState.Position | carla.VehicleLightState.LowBeam
+        self.weather_preset, self.weather_preset_name = \
+            CarlaDataProvider.find_weather_presets()[self.scenario_definition.weather]
         ego_vehicle = self._update_ego_vehicle()
         scenario_config = self._build_scenario_configuration(scenario_definition, ego_vehicle, agent_instance)
 
@@ -317,6 +320,9 @@ class RouteScenario(BasicScenario):
         ego_trans = ego_vehicle.get_transform()
         spectator.set_transform(carla.Transform(ego_trans.location + carla.Location(z=50),
                                                 carla.Rotation(pitch=-90)))
+
+        if self.weather_preset.sun_altitude_angle < 0.0:
+            ego_vehicle.set_light_state(carla.VehicleLightState(self._vehicle_lights))
 
         return ego_vehicle
 
@@ -440,6 +446,10 @@ class RouteScenario(BasicScenario):
                                                                ego_vehicle.get_transform(),
                                                                'hero')]
         scenario_config.agent = agent_instance
+
+        # Set weather
+        scenario_config.weather = self.weather_preset
+
         return scenario_config
 
     def _get_actors_instances(self, list_of_antagonist_actors):
@@ -474,8 +484,10 @@ class RouteScenario(BasicScenario):
         criteria = []
         # route = convert_transform_to_location(self.route)
 
-        vehicle_measurement = VehicleMeasurementTest(self.ego_vehicles[0], measures=['brake', 'throttle', 'steer', 'velocity'],
-                                            measurement_interval=10, scenario_def_id=self.scenario_definition.id_)
+        vehicle_measurement = VehicleMeasurementTest(self.ego_vehicles[0],
+                                                     measures=['brake', 'throttle', 'steer', 'velocity'],
+                                                     measurement_interval=10,
+                                                     scenario_def_id=self.scenario_definition.id_)
 
         # collision_criterion = CollisionTest(self.ego_vehicles[0], terminate_on_failure=False)
 
