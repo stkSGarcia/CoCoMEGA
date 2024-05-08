@@ -57,7 +57,7 @@ class PerturbationFactory:
 
 
 class Relation(ABC):
-    _s, _f = "source", "follow-up"
+    _s, _f, _d = "source", "follow-up", "ego-nearest-distance"
 
     def __init__(self, field, threshold):
         self.field = field
@@ -74,15 +74,25 @@ class Relation(ABC):
         """
         if CONFIG["violation"]["dtw"]:
             matches, _ = dtw_path(source[self.field], follow_up[self.field])
-            df = pd.DataFrame([(source.loc[source.index.values[i], self.field],
-                                follow_up.loc[follow_up.index.values[j], self.field]) for i, j in matches],
-                              columns=(Relation._s, Relation._f))
+            if CONFIG["violation"]["strategy"] == "simulation":
+                df = pd.DataFrame([(
+                    source.loc[source.index.values[i], self.field],
+                    follow_up.loc[follow_up.index.values[j], self.field],
+                    min(source.loc[source.index.values[i], Relation._d],
+                        follow_up.loc[follow_up.index.values[j], Relation._d]),
+                ) for i, j in matches], columns=(Relation._s, Relation._f, Relation._d))
+            else:
+                df = pd.DataFrame([(source.loc[source.index.values[i], self.field],
+                                    follow_up.loc[follow_up.index.values[j], self.field]) for i, j in matches],
+                                  columns=(Relation._s, Relation._f))
         else:
             df = pd.merge(source, follow_up, left_index=True, right_index=True)
             df.rename(columns={f"{self.field}_x": Relation._s, f"{self.field}_y": Relation._f}, inplace=True)
+            if CONFIG["violation"]["strategy"] == "simulation":
+                df[Relation._d] = min(df[f"{Relation._d}_x", df[f"{Relation._d}_y"]])
 
         if CONFIG["violation"]["strategy"] == "simulation":
-            pass  # TODO
+            df = df.loc[df[Relation._d] < CONFIG["violation"]["threshold"]["max_ego_distance"]]
         else:
             if CONFIG["violation"]["strategy"] != "curve":
                 logger.warning("Unrecognized strategy, falling back to `curve`.")

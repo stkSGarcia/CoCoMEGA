@@ -2,6 +2,8 @@
 .idea
 *.yaml
 /conf/interfuser.pth.tar
+/impl/scenario/data
+/impl/scenario/results
 
 ### VisualStudioCode template
 .vscode/*

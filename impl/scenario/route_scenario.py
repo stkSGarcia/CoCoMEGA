@@ -474,8 +474,13 @@ class RouteScenario(BasicScenario):
         criteria = []
         route = convert_transform_to_location(self.route)
 
-        vehicle_measurement = VehicleMeasurementTest(self.ego_vehicles[0], measures=['brake', 'throttle', 'steer', 'velocity'],
-                                            measurement_interval=10, scenario_def_id=self.scenario_definition.id_)
+        vehicle_measurement = VehicleMeasurementTest(
+            actor=self.ego_vehicles[0],
+            other_actors=self.other_actors,
+            measures=['brake', 'throttle', 'steer', 'velocity'],
+            measurement_interval=10,
+            scenario_def_id=self.scenario_definition.id_,
+        )
 
         collision_criterion = CollisionTest(self.ego_vehicles[0], terminate_on_failure=False)
 
