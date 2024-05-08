@@ -3,8 +3,15 @@ from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 import py_trees
 import csv
 import os
+import math
 
 from impl.config import CONFIG
+
+
+def _distance(actor1, actor2):
+    loc1 = actor1.get_location()
+    loc2 = actor2.get_location()
+    return math.sqrt((loc1.x - loc2.x) ** 2 + (loc1.y - loc2.y) ** 2)
 
 
 class VehicleMeasurementTest(Criterion):
@@ -18,11 +25,13 @@ class VehicleMeasurementTest(Criterion):
     - optional [optional]: If True, the result is not considered for an overall pass/fail result
     """
 
-    def __init__(self, actor, measures, measurement_interval, scenario_def_id, optional=False,
+    def __init__(self, actor, other_actors, measures, measurement_interval, scenario_def_id, optional=False,
                  name="VehicleMeasurement"):
         """
         Setup actor and measures
         """
+
+        self.other_actors = other_actors
         self.measures = measures
         self.measurement_interval = measurement_interval
         self.scenario_def_id = scenario_def_id
@@ -52,26 +61,10 @@ class VehicleMeasurementTest(Criterion):
                 measure_dict['velocity_x'] = velocity.x
                 measure_dict['velocity_y'] = velocity.y
 
+            measure_dict["ego-nearest-distance"] = min(
+                [_distance(self.actor, other_actor) for other_actor in self.other_actors])
+
             self.values.append(measure_dict)
-
-        # throttle = control.throttle
-        # steer = control.steer
-        # brake = control.brake
-        # hand_brake = control.hand_brake
-        # manual_gear_shift = control.manual_gear_shift
-        # reverse = control.reverse
-
-        # self.actual_value = max(velocity, self.actual_value)
-        #
-        # if velocity > self.expected_value_success:
-        #     self.test_status = "FAILURE"
-        # else:
-        #     self.test_status = "SUCCESS"
-        #
-        # if self._terminate_on_failure and (self.test_status == "FAILURE"):
-        #     new_status = py_trees.common.Status.FAILURE
-        #
-        # self.logger.debug("%s.update()[%s->%s]" % (self.__class__.__name__, self.status, new_status))
 
         return new_status
 
@@ -82,9 +75,8 @@ class VehicleMeasurementTest(Criterion):
 
     def _write_to_file(self):
         keys = self.values[0].keys()
-        dir_path = os.path.join(CONFIG["workspace"], CONFIG["simulation"]["result"])
-        os.makedirs(dir_path, exist_ok=True)
-        with open(os.path.join(dir_path, f"{self.scenario_def_id}.csv"), 'w', newline='') as output_file:
+        with open(os.path.join(CONFIG["workspace"]["sim_result"], f"{self.scenario_def_id}.csv"),
+                  'w', newline='') as output_file:
             dict_writer = csv.DictWriter(output_file, keys)
             dict_writer.writeheader()
             dict_writer.writerows(self.values)

@@ -16,11 +16,8 @@ def ccea(algorithm: str, resume: bool):
     from impl import problem
     if algorithm == "ccea":
         solver = CCEA(
-            archive_size=config.CONFIG["archive_size"],
             toolbox=problem.toolbox,
-            max_sim=config.CONFIG["max_sim"],
-            max_time=config.CONFIG["max_time"],
-            max_iter=config.CONFIG["max_iter"],
+            budget=problem.budget,
         )
     else:
         raise ValueError(f"Unsupported algorithm: {algorithm}.")
@@ -30,7 +27,7 @@ def ccea(algorithm: str, resume: bool):
     visualizer.visualize_gen_stats(
         stats=solver.logbook,
         show=False,
-        out_dir=os.path.join(config.CONFIG["workspace"], config.CONFIG["visualization"]),
+        out_dir=os.path.join(config.CONFIG["workspace"]["root"], config.CONFIG["workspace"]["visualization"]),
     )
 
 

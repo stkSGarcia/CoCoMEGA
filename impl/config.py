@@ -1,6 +1,7 @@
 import collections
 import logging.config
 import os
+import sys
 
 import yaml
 
@@ -39,10 +40,12 @@ def init_config():
     CONFIG = merge_dict(default_config, custom_config)
 
     # Create directories.
-    CONFIG["workspace"] = os.path.join(os.path.dirname(os.path.dirname(__file__)), CONFIG["workspace"])
-    os.makedirs(CONFIG["workspace"], exist_ok=True)
-    CONFIG["log"] = os.path.join(CONFIG["workspace"], CONFIG["log"])
-    os.makedirs(CONFIG["log"], exist_ok=True)
+    CONFIG["workspace"]["root"] = os.path.join(os.path.dirname(os.path.dirname(__file__)), CONFIG["workspace"]["root"])
+    os.makedirs(CONFIG["workspace"]["root"], exist_ok=True)
+    for k, v in CONFIG["workspace"].items():
+        if k == "root": continue
+        CONFIG["workspace"][k] = os.path.join(CONFIG["workspace"]["root"], v)
+        os.makedirs(CONFIG["workspace"][k], exist_ok=True)
 
     # Log configurations.
     def update_log_dir(dictionary):
@@ -50,7 +53,7 @@ def init_config():
             if isinstance(v, collections.abc.Mapping):
                 update_log_dir(v)
             elif k == "filename":
-                dictionary[k] = os.path.join(CONFIG["log"], dictionary[k])
+                dictionary[k] = os.path.join(CONFIG["workspace"]["log"], dictionary[k])
 
     default_log_config_path = os.path.join(default_config_base, log_config_name)
     default_log_config = load_yaml(default_log_config_path) if os.path.isfile(default_log_config_path) else {}
@@ -61,3 +64,14 @@ def init_config():
         logging.config.dictConfig(log_config)
     else:
         logger.warning("Cannot find log configuration file.")
+
+    # Add InterFuser to path
+    for path in [
+        "carla/PythonAPI",
+        "carla/PythonAPI/carla",
+        "carla/PythonAPI/carla/dist/carla-0.9.10-py3.7-linux-x86_64.egg",
+        "leaderboard",
+        "leaderboard/team_code",
+        "scenario_runner",
+    ]:
+        sys.path.append(os.path.join(CONFIG["simulation"]["repo"], path))

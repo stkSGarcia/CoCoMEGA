@@ -1,10 +1,12 @@
-import plotly.graph_objects as go
 import logging
 import os
-import numpy as np
-import pandas as pd
 
 import time
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+
+from impl.config import CONFIG
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +82,7 @@ class Visualizer:
         """
             Generates line plots for evolutionary algorithm statistics across generations.
         """
+        timestamp = int(round(time.time() * 1000))
         figs = []
         for pop_name, pop in stats.groupby('pop'):
             pop = pop.sort_values('gen', ascending=True)
@@ -122,6 +125,7 @@ class Visualizer:
                 legend_title='Metrics',
                 xaxis_range=[-0.5, max(pop['gen']) + 0.5],
             )
+
             cls._save_fig(fig, out_dir=out_dir, name=f'{pop_name}_{int(round(time.time() * 1000))}.png')
             figs.append(fig)
         return figs

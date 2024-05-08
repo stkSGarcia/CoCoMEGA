@@ -35,10 +35,11 @@ def _dist_attrs(this, that, attrs, boundary: Boundary):
     for attr in attrs:
         lower, upper = boundary.get(attr)
         if isinstance(lower, float):
-            dist += pow(abs(getattr(this, attr) - getattr(that, attr)) / (upper - lower), 2)
+            dist += pow(abs(getattr(this, attr) - getattr(that, attr)) / (upper - lower), 2) if upper != lower else 0
         elif isinstance(lower, int):
             # TODO: within the same category.
-            dist += pow(CONFIG["dist_scaling"] * (0.0 if getattr(this, attr) == getattr(that, attr) else 1.0), 2)
+            dist += pow(CONFIG["scenario"]["dist_scaling"] *
+                        (0.0 if getattr(this, attr) == getattr(that, attr) else 1.0), 2)
     return dist
 
 
@@ -63,7 +64,7 @@ def _mutate_attrs(this, attrs, boundary: Boundary):
     for attr in attrs:
         if random.random() >= CONFIG["scenario"]["mutpb"]: continue
         lower, upper = boundary.get(attr)
-        if isinstance(lower, float):  # Polynomial mutation
+        if isinstance(lower, float) and lower != upper:  # Polynomial mutation
             x = getattr(this, attr)
             delta_1 = (x - lower) / (upper - lower)
             delta_2 = (upper - x) / (upper - lower)
@@ -189,12 +190,12 @@ class ScenarioDefinition:
             ),
         ]
         scenario.walkers = [
-            # Walker(
-            #     id_="pedestrian1",
-            #     transform=Transform(x=-182.0, y=100.0, z=1.0, pitch=0.0, yaw=180.0, roll=0.0),
-            #     speed=1,
-            #     model=0,
-            # ),
+            Walker(
+                id_="pedestrian1",
+                transform=Transform(x=-182.0, y=100.0, z=0.5, pitch=0.0, yaw=180.0, roll=0.0),
+                speed=1,
+                model=0,
+            ),
             Walker(
                 id_="pedestrian2",
                 transform=Transform(x=-182.0, y=102.0, z=0.0, pitch=0.0, yaw=180.0, roll=0.0),
@@ -246,7 +247,7 @@ class ScenarioDefinition:
             other_actor_dict = {actor.id_: actor for actor in other_actors}
             common_ids = set(actor_dict.keys()).intersection(set(other_actor_dict.keys()))
             size = max(len(actors), len(other_actors))
-            dist += (size - len(common_ids)) * pow(CONFIG["dist_scaling"], 2)
+            dist += (size - len(common_ids)) * pow(CONFIG["scenario"]["dist_scaling"], 2)
             for actor_id in common_ids:
                 dist += actor_dict[actor_id].dist(other_actor_dict[actor_id])
         return math.sqrt(dist)
@@ -270,7 +271,7 @@ class ScenarioDefinition:
         yaw_rad = math.radians(spawn_point.yaw)
 
         if hasattr(actor_def, "speed"):
-            total_distance = actor_def.speed * CONFIG['simulation']['timeout']
+            total_distance = actor_def.speed * CONFIG['simulation']['scenario_duration']
             source = (
                 spawn_point.x,
                 spawn_point.y

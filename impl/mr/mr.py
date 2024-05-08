@@ -1,8 +1,15 @@
+import logging
 import random
-from abc import abstractmethod, ABC
+from abc import ABC
 from typing import List
 
+import pandas as pd
+from tslearn.metrics import dtw_path
+
+from impl.config import CONFIG
 from impl.scenario.scenario_definition import Boundary, ScenarioDefinition, Vehicle, Walker, Static
+
+logger = logging.getLogger(__name__)
 
 
 class Perturbation:
@@ -50,20 +57,52 @@ class PerturbationFactory:
 
 
 class Relation(ABC):
+    _s, _f, _d = "source", "follow-up", "ego-nearest-distance"
+
     def __init__(self, field, threshold):
         self.field = field
         self.threshold = threshold
+        self._extent_func = None
 
-    @abstractmethod
-    def is_violated(self, source, result) -> (bool, float):
+    def is_violated(self, source, follow_up) -> (bool, float):
         """Determine if this relation is violated and quantify the extent of violation.
 
-        @param source: The value of source result.
-        @param result: The value of follow-up result.
+        @param source: The `DataFrame` of the source result.
+        @param follow_up: The `DataFrame` of the follow-up result.
         @return: The `bool` value indicates whether the relation is violated.
         The `float` value denotes the extent to which this relation is violated.
         """
-        raise NotImplementedError
+        if CONFIG["violation"]["dtw"]:
+            matches, _ = dtw_path(source[self.field], follow_up[self.field])
+            if CONFIG["violation"]["strategy"] == "simulation":
+                df = pd.DataFrame([(
+                    source.loc[source.index.values[i], self.field],
+                    follow_up.loc[follow_up.index.values[j], self.field],
+                    min(source.loc[source.index.values[i], Relation._d],
+                        follow_up.loc[follow_up.index.values[j], Relation._d]),
+                ) for i, j in matches], columns=(Relation._s, Relation._f, Relation._d))
+            else:
+                df = pd.DataFrame([(source.loc[source.index.values[i], self.field],
+                                    follow_up.loc[follow_up.index.values[j], self.field]) for i, j in matches],
+                                  columns=(Relation._s, Relation._f))
+        else:
+            df = pd.merge(source, follow_up, left_index=True, right_index=True)
+            df.rename(columns={f"{self.field}_x": Relation._s, f"{self.field}_y": Relation._f}, inplace=True)
+            if CONFIG["violation"]["strategy"] == "simulation":
+                df[Relation._d] = min(df[f"{Relation._d}_x", df[f"{Relation._d}_y"]])
+
+        if CONFIG["violation"]["strategy"] == "simulation":
+            df = df.loc[df[Relation._d] < CONFIG["violation"]["threshold"]["max_ego_distance"]]
+        else:
+            if CONFIG["violation"]["strategy"] != "curve":
+                logger.warning("Unrecognized strategy, falling back to `curve`.")
+            df = df.loc[(df[Relation._s] - df[Relation._f]).abs() > CONFIG["violation"]["threshold"][self.field]]
+
+        if df.empty: return False, 0.0
+        extents = df.apply(self._extent_func, axis=1, result_type="reduce")
+        extents = extents[extents > 0]
+        if extents.empty: return False, 0.0
+        return True, extents.mean()
 
     def __eq__(self, other):
         return (isinstance(other, self.__class__) and
@@ -74,31 +113,19 @@ class Relation(ABC):
 class Invariance(Relation):
     def __init__(self, field, threshold=0.01):
         super().__init__(field, threshold)
-
-    def is_violated(self, source, result) -> (bool, float):
-        diff = abs(result - source)
-        extent = min(abs(result - source * (1 + self.threshold)), abs(result - source * (1 - self.threshold)))
-        return diff > self.threshold, extent
+        self._extent_func = lambda row: abs(row[Relation._f] - row[Relation._s]) - row[Relation._s] * self.threshold
 
 
 class Decreasing(Relation):
     def __init__(self, field, threshold=0.1):
         super().__init__(field, threshold)
-
-    def is_violated(self, source, result) -> (bool, float):
-        diff = source - result
-        extent = result - source * (1 - self.threshold)
-        return diff < source * self.threshold, extent
+        self._extent_func = lambda row: max(0, row[Relation._f] - row[Relation._s] * (1.0 - self.threshold))
 
 
 class Increasing(Relation):
     def __init__(self, field, threshold=0.1):
         super().__init__(field, threshold)
-
-    def is_violated(self, source, result) -> (bool, float):
-        diff = result - source
-        extent = source * (1 + self.threshold) - result
-        return diff < source * self.threshold, extent
+        self._extent_func = lambda row: max(0, row[Relation._s] * (1.0 + self.threshold) - row[Relation._f])
 
 
 class MR:
