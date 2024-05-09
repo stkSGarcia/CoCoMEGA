@@ -48,8 +48,8 @@ tm_port = None
 
 def _init_carla(instance_configs):
     assert instance_configs.qsize() > 0
-    global carla_host, carla_port, tm_port
-    carla_host, carla_port, tm_port = instance_configs.get()
+    global carla_host, carla_port, tm_port, cuda_device
+    carla_host, carla_port, tm_port, cuda_device = instance_configs.get()
 
 
 def run_scenario(scenario: ScenarioDefinition, rerun=False):
@@ -63,13 +63,14 @@ def run_scenario(scenario: ScenarioDefinition, rerun=False):
                 logger.debug(f"Scenario evaluated: {evaluated_scenario}.")
                 return evaluated_result, False
 
-    global carla_host, carla_port, tm_port
-    assert carla_host is not None and carla_port is not None and tm_port is not None
+    global carla_host, carla_port, tm_port, cuda_device
+    assert carla_host is not None and carla_port is not None and tm_port is not None and cuda_device is not None
     setattr(config, "host", carla_host)
     setattr(config, "port", carla_port)
     setattr(config, "trafficManagerPort", tm_port)
+    setattr(config, "cuda_device", cuda_device)
     logger.debug(f"Starting simulation, scenario id: {scenario.id_}, carla instance: {config.host}:{config.port}, "
-                 f"traffic manager port: {config.trafficManagerPort}.")
+                 f"traffic manager port: {config.trafficManagerPort} on cuda device {config.cuda_device}.")
     logger.debug(scenario)
 
     is_successful = False
@@ -112,17 +113,18 @@ def run_scenarios(scenarios, rerun=False):
     """
     if CONFIG["simulation"]["parallel"]:
         queue = Queue()
-        [queue.put((instance["host"], instance["port"], instance["tm_port"]))
+        [queue.put((instance["host"], instance["port"], instance["tm_port"], instance["gpu_device"]))
          for instance in CONFIG["simulation"]["docker"]["instances"]]
         with ProcessPoolExecutor(max_workers=len(CONFIG["simulation"]["docker"]["instances"]),
                                  initializer=_init_carla, initargs=(queue,)) as executor:
             results = executor.map(run_scenario, scenarios, itertools.repeat(rerun, len(scenarios)))
     else:
-        global carla_host, carla_port, tm_port
+        global carla_host, carla_port, tm_port, cuda_device
         instance = CONFIG["simulation"]["docker"]["instances"][0]
         carla_host = instance["host"]
         carla_port = instance["port"]
         tm_port = instance["tm_port"]
+        cuda_device = instance["gpu_device"]
         results = map(run_scenario, scenarios, itertools.repeat(rerun, len(scenarios)))
 
     results, is_executed = zip(*results)
