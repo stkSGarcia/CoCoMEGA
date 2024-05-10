@@ -44,6 +44,7 @@ evaluated_scenarios = Manager().list()
 carla_host = None
 carla_port = None
 tm_port = None
+cuda_device = None
 
 
 def _init_carla(instance_configs):
