@@ -509,7 +509,7 @@ def main():
     arguments = parser.parse_args()
 
     # statistics_manager = StatisticsManager()
-    scenario_definition = ScenarioDefinition.mock()
+    scenario_definition = ScenarioDefinition.generate_random()
 
     try:
         leaderboard_evaluator = ScenarioEvaluator(scenario_definition, arguments)

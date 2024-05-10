@@ -166,7 +166,7 @@ def compare_scenarios(scenario_choice, existent_scenario):
     return False
 
 
-def request_new_actor(model, spawn_point, rolename='scenario', autopilot=False,
+def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot=False,
                       random_location=False, color=None, actor_category="car"):
     """
     This method tries to create a new actor, returning it if successful (raises InvalidScenarioConfError otherwise).
@@ -183,11 +183,9 @@ def request_new_actor(model, spawn_point, rolename='scenario', autopilot=False,
         else:
             # slightly lift the actor to avoid collisions with ground when spawning the actor
             # DO NOT USE spawn_point directly, as this will modify spawn_point permanently
-            _spawn_point = carla.Transform(carla.Location(), spawn_point.rotation)
-            _spawn_point.location.x = spawn_point.location.x
-            _spawn_point.location.y = spawn_point.location.y
-            _spawn_point.location.z = spawn_point.location.z + 0.2
-            actor = CarlaDataProvider._world.spawn_actor(blueprint, _spawn_point)
+            actor = CarlaDataProvider._world.spawn_actor(blueprint,
+                                                         carla.Transform(anchor.transform(spawn_point.location),
+                                                                         spawn_point.rotation))
 
         if actor in CarlaDataProvider._blueprint_library.filter('vehicle.*'):
             actor.set_autopilot(autopilot)
@@ -258,11 +256,24 @@ class RouteScenario(BasicScenario):
         """
         initialization of other actors.
         """
+        anchor = carla.Transform(
+            carla.Location(
+                x=self.route[0][0].location.x,
+                y=self.route[0][0].location.y,
+                z=self.route[0][0].location.z - 0.5,
+            ),
+            carla.Rotation(
+                pitch=self.route[0][0].rotation.pitch,
+                yaw=self.route[0][0].rotation.yaw,
+                roll=self.route[0][0].rotation.roll,
+            )
+        )
         if config.other_actors:
             for actor_conf in config.other_actors:
                 new_actor = request_new_actor(
                     model=actor_conf.model,
                     spawn_point=actor_conf.transform,
+                    anchor=anchor,
                     rolename='scenario',
                     autopilot=actor_conf.autopilot,
                     random_location=actor_conf.random_location,
@@ -431,10 +442,7 @@ class RouteScenario(BasicScenario):
         return sampled_scenarios
 
     def _build_scenario_configuration(self, scenario_def, ego_vehicle, agent_instance):
-        if scenario_def.get_other_actors() is not None:
-            list_of_actor_conf_instances = self._get_actors_instances(scenario_def.get_other_actors())
-        else:
-            list_of_actor_conf_instances = []
+        list_of_actor_conf_instances = self._get_actors_instances(scenario_def.get_other_actors())
         # Create an actor configuration for the ego-vehicle trigger position
 
         egoactor_trigger_position = convert_json_to_transform(scenario_def.get_trigger_position())

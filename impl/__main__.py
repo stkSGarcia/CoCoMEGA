@@ -6,6 +6,8 @@ import argformat
 
 from impl import config
 from impl.algorithm import *
+from impl.scenario.scenario_definition import ScenarioDefinition
+from impl.scenario.simulation_runner import run_scenarios
 from impl.utils.visualization import Visualizer
 
 logger = logging.getLogger("impl")
@@ -14,10 +16,7 @@ logger = logging.getLogger("impl")
 def ccea(algorithm: str, resume: bool):
     from impl import problem
     if algorithm == "ccea":
-        solver = CCEA(
-            toolbox=problem.toolbox,
-            budget=problem.budget,
-        )
+        solver = CCEA(toolbox=problem.toolbox, budget=problem.budget)
     else:
         raise ValueError(f"Unsupported algorithm: {algorithm}.")
     solver.solve(resume)
@@ -30,10 +29,8 @@ def ccea(algorithm: str, resume: bool):
     )
 
 
-def simulate():
-    from impl.scenario.scenario_definition import ScenarioDefinition
-    from impl.scenario.simulation_runner import run_scenarios
-    run_scenarios([ScenarioDefinition.mock()])
+def simulate(n):
+    run_scenarios([ScenarioDefinition.generate_random() for _ in range(n)])
 
 
 if __name__ == "__main__":
@@ -57,7 +54,8 @@ if __name__ == "__main__":
     parser_search.set_defaults(func=lambda args: ccea(args.algorithm, args.resume))
 
     parser_sim = subparsers.add_parser("simulate", aliases=["sim"], help="")
-    parser_sim.set_defaults(func=lambda args: simulate())
+    parser_sim.add_argument("-n", "--number", type=int, default=1, help="Number of scenarios")
+    parser_sim.set_defaults(func=lambda args: simulate(args.number))
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)

@@ -49,63 +49,77 @@ scenario:
   tournament: 3
   cxpb: 0.8
   eta: 10.0
-  mutpb: 0.9
+  mutpb: 0.2
 
 perturbation:
   pop_size: 10
   archive_size: 3
   tournament: 3
   cxpb: 0.8
-  mutpb: 0.5
+  mutpb: 0.2
   mut_add: 0.6
   mut_del: 0.2
 
 violation:
-  strategy: curve  # options: curve, simulation
+  strategy: simulation  # Options: curve, simulation
   threshold:
-    velocity: 0.5
+    velocity: 1.0
     steer: 0.1
     max_ego_distance: 5 # Maximum distance in meters between ego-vehicle and closest object in simulation-based strategy
   dtw: true
 
 opt:
   niching:
-    strategy: clearing  # options: none, sharing, clearing
+    strategy: clearing  # Options: none, sharing, clearing
     punishment: 1.0
     scaling: 1.0
     capacity: 2
   diversity: true
 
+trajectory:
+  - town: Town05
+    trajectory:
+      - x: -188.04
+        y: 111.89
+        z: 0.0
+        yaw: -90.0
+      - x: -208.309
+        y: 87.82
+        z: 0.0
+        yaw: 180.0
+      - x: -241.01
+        y: 87.77
+        z: 0.0
+        yaw: 180.0
+
 boundary:
   vehicle:
-    x: [ -300.0, 300.0 ]
-    y: [ -300.0, 300.0 ]
-    z: [ 0.5, 1.0 ]
-    pitch: [ 0, 0 ]
-    yaw: [ -180.0, 180.0 ]
-    roll: [ 0, 0 ]
-    speed: [ 0.0, 100.0 ]
+    x: &x [ 2.0, 20.0 ]
+    y: &y [ -9.0, 9.0 ]
+    z: &z [ 1.0, 1.0 ]
+    pitch: &pitch [ 0.0, 0.0 ]
+    yaw: &yaw [ -180.0, 180.0 ]
+    roll: &roll [ 0.0, 0.0 ]
+    speed: [ 0.0, 50.0 ]
     model: [ 0, 26 ]
-    color: [ 0, 2 ]
     autopilot: [ 0, 1 ]
   walker:
-    x: [ -300.0, 300.0 ]
-    y: [ -300.0, 300.0 ]
-    z: [ 0.5, 1.0 ]
-    pitch: [ 0, 0 ]
-    yaw: [ -180.0, 180.0 ]
-    roll: [ 0, 0 ]
-    speed: [ 0.0, 5.0 ]
+    x: *x
+    y: *y
+    z: *z
+    pitch: *pitch
+    yaw: *yaw
+    roll: *roll
+    speed: [ 0.0, 10.0 ]
     model: [ 0, 14 ]
   static:
-    x: [ -300.0, 300.0 ]
-    y: [ -300.0, 300.0 ]
-    z: [ 0.5, 1.0 ]
-    pitch: [ 0, 0 ]
-    yaw: [ -180.0, 180.0 ]
-    roll: [ 0, 0 ]
+    x: *x
+    y: *y
+    z: *z
+    pitch: *pitch
+    yaw: *yaw
+    roll: *roll
     model: [ 0, 87 ]
-    size: [ 0.0, 100.0 ]
   env:
     weather: [ 0, 14 ]
 
@@ -139,10 +153,6 @@ blueprint:
       - "vehicle.toyota.prius"
       - "vehicle.volkswagen.t2"
       - "vehicle.yamaha.yzf"
-    color:
-      - "(240, 20, 20)"
-      - "(20, 240, 20)"
-      - "(20, 20, 240)"
   walker:
     model:
       - "walker.pedestrian.0001"
@@ -253,16 +263,17 @@ blueprint:
   scenario:
     weather:
       - "ClearNoon"
-      - "CloudyNoon"
-      - "WetNoon"
-      - "WetCloudyNoon"
-      - "SoftRainNoon"
-      - "MidRainyNoon"
-      - "HardRainNoon"
       - "ClearSunset"
+      - "CloudyNoon"
       - "CloudySunset"
-      - "WetSunset"
-      - "WetCloudySunset"
-      - "SoftRainSunset"
-      - "MidRainSunset"
+      - "Default"
+      - "HardRainNoon"
       - "HardRainSunset"
+      - "MidRainSunset"
+      - "MidRainyNoon"
+      - "SoftRainNoon"
+      - "SoftRainSunset"
+      - "WetCloudyNoon"
+      - "WetCloudySunset"
+      - "WetNoon"
+      - "WetSunset"

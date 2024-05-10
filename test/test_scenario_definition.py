@@ -36,12 +36,12 @@ class TestActor(TestCase):
             print(a)
             print(b)
 
-            self.assertEqual(getattr(a, "id_"), getattr(a_origin, "id_"))
-            self.assertEqual(getattr(b, "id_"), getattr(b_origin, "id_"))
             for attr in ["x", "y", "z", "pitch", "yaw", "roll"]:
                 self.assertEqual(getattr(a.transform, attr), getattr(b_origin.transform, attr))
                 self.assertEqual(getattr(b.transform, attr), getattr(a_origin.transform, attr))
-            for attr in ["speed", "model", "color", "autopilot", "size"]:
+            self.assertEqual(getattr(a, "position"), getattr(b_origin, "position"))
+            self.assertEqual(getattr(b, "position"), getattr(a_origin, "position"))
+            for attr in ["speed", "model", "autopilot"]:
                 self.assertEqual(getattr(a, attr, None), getattr(b_origin, attr, None))
                 self.assertEqual(getattr(b, attr, None), getattr(a_origin, attr, None))
 
@@ -49,13 +49,9 @@ class TestActor(TestCase):
         for c in self.clazz:
             print(f"=========={c.__name__}: Mutate==========")
             a = c.generate_random()
-            b = c.generate_random()
             print(a)
-            print(b)
             a.mutate()
-            b.mutate()
             print(a)
-            print(b)
 
 
 class TestScenarioDefinition(TestCase):
@@ -63,10 +59,6 @@ class TestScenarioDefinition(TestCase):
         test.CONFIG["scenario"]["cxpb"] = 1.0
         test.CONFIG["scenario"]["mutpb"] = 1.0
         test.CONFIG["scenario"]["eta"] = 0.1
-
-    def test_mock(self):
-        print("==========Mock==========")
-        print(ScenarioDefinition.mock())
 
     def test_dist(self):
         print("==========Dist==========")
@@ -119,9 +111,6 @@ class TestScenarioDefinition(TestCase):
                 self.assertEqual(len(actors1_origin), len(actors2))
                 size = min(len(actors1), len(actors2), len(actors1_origin), len(actors2_origin))
                 for i in range(size):
-                    self.assertEqual(actors1[i].id_, actors1_origin[i].id_)
-                    self.assertEqual(actors2[i].id_, actors2_origin[i].id_)
-                    actors1[i].id_ = actors1_origin[i].id_ = actors2[i].id_ = actors2_origin[i].id_ = "temp"
                     self.assertEqual(actors1[i], actors2_origin[i])
                     self.assertEqual(actors1_origin[i], actors2[i])
             else:
@@ -130,23 +119,16 @@ class TestScenarioDefinition(TestCase):
 
     def test_mutate(self):
         print("==========Mutate==========")
-        scenario1 = ScenarioDefinition.generate_random()
-        scenario2 = ScenarioDefinition.generate_random()
-        scenario1_origin = deepcopy(scenario1)
-        scenario2_origin = deepcopy(scenario2)
-        print(scenario1)
-        print(scenario2)
-        scenario1.mutate()
-        scenario2.mutate()
-        print(scenario1)
-        print(scenario2)
+        scenario = ScenarioDefinition.generate_random()
+        scenario_origin = deepcopy(scenario)
+        print(scenario)
+        scenario.mutate()
+        print(scenario)
 
         invariants = ["id_", "ego_vehicle", "trajectory"]
         for invariant in invariants:
-            self.assertEqual(getattr(scenario1, invariant), getattr(scenario1_origin, invariant))
-            self.assertEqual(getattr(scenario2, invariant), getattr(scenario2_origin, invariant))
+            self.assertEqual(getattr(scenario, invariant), getattr(scenario_origin, invariant))
 
         variants = ["vehicles", "walkers", "statics", "weather"]
         for variant in variants:
-            self.assertNotEqual(getattr(scenario1, variant), getattr(scenario1_origin, variant))
-            self.assertNotEqual(getattr(scenario2, variant), getattr(scenario2_origin, variant))
+            self.assertNotEqual(getattr(scenario, variant), getattr(scenario_origin, variant))
