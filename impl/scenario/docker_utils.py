@@ -25,11 +25,15 @@ def setup_carla(container_name, port):
     carla_container = get_container(container_name)
     if carla_container is None or carla_container.status != 'running':
         logger.info("Setting up Carla...")
-        container_conf = [conf for conf in CONFIG["simulation"]["docker"]["instances"] \
+        default_conf = CONFIG["simulation"]["docker"]
+        container_conf = [conf for conf in default_conf["instances"] \
                           if int(conf["port"]) == int(port)][0]
+
         process = subprocess.Popen([
-            f"docker run --privileged --rm --net=host --memory {container_conf['memory']}" \
-            + f" --cpus {container_conf['cpu']} --gpus '\"device={container_conf['gpu_device']}\"'" \
+            f"docker run --privileged --rm --net=host" \
+            + f" --memory {container_conf.get('memory', default_conf['memory'])}" \
+            + f" --cpus {container_conf.get('cpu', default_conf['cpu'])}" \
+            + f" --gpus '\"device={container_conf['gpu_device']}\"'" \
             + f" --name {container_name} {CONFIG['simulation']['docker']['image']} ./CarlaUE4.sh --world-port={port}" \
             + f" --quality-level={'Epic' if CONFIG['simulation']['high_graphics'] else 'Low'} -opengl"
         ],
