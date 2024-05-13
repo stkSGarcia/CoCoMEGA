@@ -23,19 +23,17 @@ simulation:
   docker:
     enabled: true
     image: carla-0.9.10
+    memory: 2g
+    cpu: 1.5
     instances:
       - host: localhost
         port: 2000
         tm_port: 2500
         gpu_device: 0
-        memory: 16g
-        cpu: 4
       - host: localhost
         port: 2002
         tm_port: 2502
         gpu_device: 1
-        memory: 16g
-        cpu: 4
 
 budget:
   max_sim: 1000
