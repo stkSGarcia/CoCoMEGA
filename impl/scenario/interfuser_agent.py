@@ -160,13 +160,6 @@ def create_carla_rgb_transform(
 
 
 class InterfuserAgent(autonomous_agent.AutonomousAgent):
-
-    def __init__(self, path_to_conf_file, cuda_device=0):
-        self.cuda_device = cuda_device
-        super().__init__(path_to_conf_file)
-
-
-
     def setup(self, path_to_conf_file):
         if display_agent:
             self._hic = DisplayInterface()
@@ -207,7 +200,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
                 path_to_model_file = self.config.model_path[i]
                 print('load model: %s' % path_to_model_file)
                 net.load_state_dict(torch.load(path_to_model_file)["state_dict"])
-                net.cuda(self.cuda_device)
+                net.cuda()
                 net.eval()
                 self.nets.append(net)
         else:
@@ -215,7 +208,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             path_to_model_file = self.config.model_path
             print('load model: %s' % path_to_model_file)
             self.net.load_state_dict(torch.load(path_to_model_file)["state_dict"])
-            self.net.cuda(self.cuda_device)
+            self.net.cuda()
             self.net.eval()
         self.softmax = torch.nn.Softmax(dim=1)
         self.traffic_meta_moving_avg = np.zeros((400, 7))
@@ -404,25 +397,25 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         rgb = (
             self.rgb_front_transform(Image.fromarray(tick_data["rgb"]))
             .unsqueeze(0)
-            .cuda(self.cuda_device)
+            .cuda()
             .float()
         )
         rgb_left = (
             self.rgb_left_transform(Image.fromarray(tick_data["rgb_left"]))
             .unsqueeze(0)
-            .cuda(self.cuda_device)
+            .cuda()
             .float()
         )
         rgb_right = (
             self.rgb_right_transform(Image.fromarray(tick_data["rgb_right"]))
             .unsqueeze(0)
-            .cuda(self.cuda_device)
+            .cuda()
             .float()
         )
         rgb_center = (
             self.rgb_center_transform(Image.fromarray(tick_data["rgb"]))
             .unsqueeze(0)
-            .cuda(self.cuda_device)
+            .cuda()
             .float()
         )
 
@@ -431,7 +424,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         cmd_one_hot[cmd] = 1
         cmd_one_hot.append(velocity)
         mes = np.array(cmd_one_hot)
-        mes = torch.from_numpy(mes).float().unsqueeze(0).cuda(self.cuda_device)
+        mes = torch.from_numpy(mes).float().unsqueeze(0).cuda()
 
         input_data = {}
         input_data["rgb"] = rgb
@@ -440,10 +433,10 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         input_data["rgb_center"] = rgb_center
         input_data["measurements"] = mes
         input_data["target_point"] = (
-            torch.from_numpy(tick_data["target_point"]).float().cuda(self.cuda_device).view(1, -1)
+            torch.from_numpy(tick_data["target_point"]).float().cuda().view(1, -1)
         )
         input_data["lidar"] = (
-            torch.from_numpy(tick_data["lidar"]).float().cuda(self.cuda_device).unsqueeze(0)
+            torch.from_numpy(tick_data["lidar"]).float().cuda().unsqueeze(0)
         )
         if self.ensemble:
             outputs = []

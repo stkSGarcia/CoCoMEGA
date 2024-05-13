@@ -289,8 +289,7 @@ class ScenarioEvaluator(object):
         try:
             self._agent_watchdog.start()
             agent_class_name = getattr(self.module_agent, 'get_entry_point')()
-            self.agent_instance = getattr(self.module_agent, agent_class_name)(args.agent_config,
-                                                                               cuda_device=args.cuda_device)
+            self.agent_instance = getattr(self.module_agent, agent_class_name)(args.agent_config)
 
             # Check and store the sensors
             if not self.sensors:
