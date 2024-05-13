@@ -51,6 +51,7 @@ def _init_carla(instance_configs):
     assert instance_configs.qsize() > 0
     global carla_host, carla_port, tm_port, cuda_device
     carla_host, carla_port, tm_port, cuda_device = instance_configs.get()
+    os.environ['CUDA_VISIBLE_DEVICES'] = str(cuda_device)
 
 
 def run_scenario(scenario: ScenarioDefinition, rerun=False):
