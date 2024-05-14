@@ -1,13 +1,11 @@
 import math
-import random
 from functools import partial
 
-import numpy as np
 from deap import creator, base, tools
 
 from impl.algorithm.base import Budget
 from impl.config import CONFIG
-from impl.mr.mr import Perturbation
+from impl.mr.mr import Perturbations
 from impl.mr.predefined import *
 from impl.scenario.scenario_definition import ScenarioDefinition
 from impl.scenario.simulation_runner import run_scenarios
@@ -25,12 +23,11 @@ budget = Budget(max_sim=CONFIG["budget"]["max_sim"],
 creator.create("Fitness", base.Fitness, weights=(1.0,))
 creator.create("Solution", tuple, fitness=creator.Fitness, is_violated=False)
 creator.create("Scenario", ScenarioDefinition, fitness=creator.Fitness)
-creator.create("Perturbation", list, fitness=creator.Fitness)
+creator.create("Perturbation", Perturbations, fitness=creator.Fitness)
 
 toolbox = base.Toolbox()
 toolbox.register("scenario", tools.initIterate, creator.Scenario, creator.Scenario.generate_random)
-toolbox.register("perturbation", tools.initIterate, creator.Perturbation,
-                 lambda: [random.choice(mr_set.mrs).generate_perturbation()])
+toolbox.register("perturbation", tools.initIterate, creator.Perturbation, lambda: [mr_set.spawn()])
 
 
 def _pop_scenario():
@@ -61,26 +58,6 @@ def _determine_individual_type(individual):
         raise ValueError(f"Unrecognized individual type: {type(individual)}.")
 
 
-def _mutate_perturbation(individual):
-    """Mutate a give sequence of perturbations by appending more perturbations to the sequence.
-
-    @param individual: The sequence of perturbations (`creator.Perturbation`) to be mutated.
-    @return: The mutated sequence of perturbations.
-    """
-    if random.random() > CONFIG["perturbation"]["mutpb"]: return individual
-    if random.random() < CONFIG["perturbation"]["mut_del"]:
-        # Remove one previous perturbation.
-        if len(individual) > 1: individual.pop()
-    else:
-        # Add perturbations.
-        times = 1
-        while random.random() < CONFIG["perturbation"]["mut_add"] ** times:
-            perturbation = random.choice(mr_set.mrs).generate_perturbation()
-            individual.append(perturbation)
-            times += 1
-    return individual
-
-
 toolbox.register("operators",
                  lambda individual: (  # Operators for scenarios.
                      partial(tools.selTournament, tournsize=CONFIG["scenario"]["tournament"]),  # selection
@@ -88,10 +65,10 @@ toolbox.register("operators",
                      ScenarioDefinition.mutate,  # mutation
                      lambda ind: ind.assign_new_id()  # correction
                  ) if _determine_individual_type(individual) == 0 else (  # Operators for perturbations.
-                     partial(tools.selTournament, tournsize=CONFIG["perturbation"]["tournament"]),
-                     partial(tools.cxUniform, indpb=CONFIG["perturbation"]["cxpb"]),
-                     _mutate_perturbation,
-                     lambda ind: ind,
+                     partial(tools.selTournament, tournsize=CONFIG["perturbation"]["tournament"]),  # selection
+                     lambda ind1, ind2: ind1.mate(ind2),  # crossover
+                     mr_set.mutate,  # mutation
+                     lambda ind: ind,  # correction
                  ))
 
 
@@ -121,8 +98,7 @@ def _evaluate_solutions(solutions):
         scenarios.append(solution[0])
         follow_up = toolbox.clone(solution[0])
         follow_up.assign_new_id()
-        for perturbation in solution[1]:
-            perturbation.perturb(follow_up)
+        solution[1].perturb(follow_up)
         scenarios.append(follow_up)
     assert len(scenarios) == len(solutions) * 2
     results, sim_num = run_scenarios(scenarios)
@@ -156,14 +132,3 @@ def _evaluate_individual(individual, complete_solutions):
 
 toolbox.register("evaluate_solutions", _evaluate_solutions)
 toolbox.register("evaluate_individual", _evaluate_individual)
-
-
-def _prepare_ind_for_dist(population):
-    assert len(population) > 0
-    if _determine_individual_type(population[0]) == 0:
-        return np.reshape(population, (-1, 1))
-    else:
-        return np.array([[Perturbation.squash(perturbation)] for perturbation in population])
-
-
-toolbox.register("prepare_ind_for_dist", _prepare_ind_for_dist)

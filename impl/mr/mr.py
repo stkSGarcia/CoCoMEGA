@@ -1,59 +1,112 @@
 import logging
+import math
 import random
 from abc import ABC
+from enum import Enum, auto
 from typing import List
 
 import pandas as pd
 from tslearn.metrics import dtw_path
 
 from impl.config import CONFIG
-from impl.scenario.scenario_definition import Boundary, ScenarioDefinition, Vehicle, Walker, Static
+from impl.scenario import scenario_definition
+from impl.scenario.scenario_definition import ScenarioDefinition
 
 logger = logging.getLogger(__name__)
 
 
+class Operation(Enum):
+    ADD = auto()
+    REMOVE = auto()
+    REPLACE = auto()
+
+
 class Perturbation:
-    def __init__(self, category: str, value):
+    def __init__(self, category: str, operation: Operation, value):
         self.category = category
+        self.operation = operation
         self.value = value
 
     def perturb(self, scenario: ScenarioDefinition):
-        scenario.update(self.category, self.value)
+        scenario.update(self.category, self.operation, self.value)
 
-    @staticmethod
-    def squash(perturbations: List) -> ScenarioDefinition:
-        assert len(perturbations) > 0
-        scenario = ScenarioDefinition()
-        for perturbation in perturbations:
-            scenario.update(perturbation.category, perturbation.value)
-        return scenario
+    def dist(self, other):
+        if self.category == other.category and self.operation == other.operation:
+            if self.operation == Operation.ADD:
+                return self.value.dist(other.value)
+            if self.operation == Operation.REMOVE:
+                return 0 if self.value == other.value else pow(CONFIG["perturbation"]["dist_scaling"], 2)
+            elif self.operation == Operation.REPLACE:
+                return self.value[1].dist(other.value[1])
+        return pow(CONFIG["perturbation"]["dist_scaling"], 2)
 
     def __eq__(self, other):
         return (isinstance(other, self.__class__) and
                 self.category == other.category and
+                self.operation == other.operation and
                 self.value == other.value)
 
     def __repr__(self):
-        return f"{self.category}: {self.value}"
+        return f"{self.__class__.__name__}(category={self.category}, operation={self.operation}, value={self.value})"
+
+
+class Perturbations(list):
+    def perturb(self, scenario: ScenarioDefinition):
+        for perturbation in self:
+            perturbation.perturb(scenario)
+
+    def dist(self, other):
+        if not isinstance(other, self.__class__):
+            raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
+        if len(self) == 0 or len(other) == 0: return 0.0
+
+        dp = [float("inf")] * (len(other) + 1)
+        prev = 0.0
+        for p in self:
+            for i in range(1, len(other) + 1):
+                temp = dp[i]
+                dp[i] = min(min(prev, temp), dp[i - 1]) + p.dist(other[i - 1])
+                prev = temp
+            prev = float("inf")
+        return math.sqrt(dp[-1])
+
+    def mate(self, other):
+        if not isinstance(other, self.__class__):
+            raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
+        common = min(len(self), len(other))
+        for i in range(common):
+            if random.random() < CONFIG["perturbation"]["cxpb"]:
+                self[i], other[i] = other[i], self[i]
+        less, more = (self, other) if len(self) < len(other) else (other, self)
+        while len(more) > common:
+            if random.random() < CONFIG["perturbation"]["cxpb"]:
+                less.append(more.pop(common))
+            else:
+                common += 1
 
 
 class PerturbationFactory:
-    _ATTR_MAP = {"vehicle": Vehicle, "walker": Walker, "static": Static}
-
-    def __init__(self, category: str, boundary: Boundary, id_: str = None):
-        self.id_ = id_
+    def __init__(self, category: str, boundary, operation: Operation = None):
         self.category = category
-        self.boundary = boundary
-        if self.category in ["vehicle", "walker", "static"]:
-            cls = PerturbationFactory._ATTR_MAP[self.category]
-            self._spawn_func = lambda x: cls.generate_random(self.boundary, id_=x)
-        elif self.category in ["weather", "darkness"]:
-            self._spawn_func = lambda x: self.boundary.random(self.category)
+        self.operation = operation
+
+        if category in ScenarioDefinition.DYNAMIC:
+            cls = getattr(scenario_definition, category.capitalize())
+            if operation == Operation.ADD:
+                self._spawn_func = lambda: cls.generate_random(region=boundary)
+            elif operation == Operation.REMOVE:
+                self._spawn_func = lambda: boundary
+            elif operation == Operation.REPLACE:
+                self._spawn_func = lambda: (boundary, cls.generate_random(region=boundary))
+            else:
+                raise ValueError(f"Unsupported perturbation operation: {operation}.")
+        elif category in ScenarioDefinition.ATTRIBUTES:
+            self._spawn_func = lambda: boundary.random(category)
         else:
-            raise ValueError(f"Unsupported actor category: {self.category}.")
+            raise ValueError(f"Unsupported perturbation category: {category}.")
 
     def spawn(self) -> Perturbation:
-        return Perturbation(self.category, self._spawn_func(self.id_))  # TODO: generate an actor with different id.
+        return Perturbation(self.category, self.operation, self._spawn_func())
 
 
 class Relation(ABC):
@@ -100,9 +153,8 @@ class Relation(ABC):
 
         if df.empty: return False, 0.0
         extents = df.apply(self._extent_func, axis=1, result_type="reduce")
-        extents = extents[extents > 0]
-        if extents.empty: return False, 0.0
-        return True, extents.mean()
+        extent = extents.mean()
+        return extent > 0, extent
 
     def __eq__(self, other):
         return (isinstance(other, self.__class__) and
@@ -119,13 +171,13 @@ class Invariance(Relation):
 class Decreasing(Relation):
     def __init__(self, field, threshold=0.1):
         super().__init__(field, threshold)
-        self._extent_func = lambda row: max(0, row[Relation._f] - row[Relation._s] * (1.0 - self.threshold))
+        self._extent_func = lambda row: row[Relation._f] - row[Relation._s] * (1.0 - self.threshold)
 
 
 class Increasing(Relation):
     def __init__(self, field, threshold=0.1):
         super().__init__(field, threshold)
-        self._extent_func = lambda row: max(0, row[Relation._s] * (1.0 + self.threshold) - row[Relation._f])
+        self._extent_func = lambda row: row[Relation._s] * (1.0 + self.threshold) - row[Relation._f]
 
 
 class MR:
@@ -133,7 +185,7 @@ class MR:
         self.perturbation_factories = perturbation_factories
         self.relation = relation
 
-    def generate_perturbation(self) -> Perturbation:
+    def spawn(self) -> Perturbation:
         return random.choice(self.perturbation_factories).spawn()
 
 
@@ -149,5 +201,26 @@ class MRSet:
     def field(self):
         return self.relation.field
 
-    def is_violated(self, source, result) -> (bool, float):
-        return self.relation.is_violated(source, result)
+    def spawn(self) -> Perturbation:
+        return random.choice(self.mrs).spawn()
+
+    def is_violated(self, source, follow_up) -> (bool, float):
+        return self.relation.is_violated(source, follow_up)
+
+    def mutate(self, perturbations: Perturbations):
+        """Mutate a give sequence of perturbations.
+
+        @param perturbations: The sequence of perturbations to be mutated.
+        @return: The mutated sequence of perturbations.
+        """
+        if random.random() > CONFIG["perturbation"]["mutpb"]: return perturbations
+        if random.random() < CONFIG["perturbation"]["mut_del"]:
+            # Remove one previous perturbation.
+            if len(perturbations) > 1: perturbations.pop()
+        else:
+            # Add perturbations.
+            times = 1
+            while random.random() < CONFIG["perturbation"]["mut_add"] ** times:
+                perturbations.append(self.spawn())
+                times += 1
+        return perturbations

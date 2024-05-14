@@ -1,70 +1,114 @@
-import random
 from copy import deepcopy
 from unittest import TestCase
 
 import test
-from impl.mr.mr import PerturbationFactory, Perturbation
+from impl.mr.mr import PerturbationFactory, Operation, Decreasing, MR, MRSet, Perturbations
 from impl.scenario.scenario_definition import Boundary, ScenarioDefinition
 
 config = test.CONFIG
-from impl.mr.predefined import mr_set1
 
 
 class TestMR(TestCase):
-    def test_perturbation(self):
-        print("==========Perturbation==========")
-        boundary = Boundary({
-            "x": [-100.0, 100.0],
-            "y": [-100.0, 100.0],
-            "z": [-100.0, 100.0],
-            "pitch": [-180.0, 180.0],
-            "yaw": [-180.0, 180.0],
-            "roll": [-180.0, 180.0],
-            "speed": [20.0, 60.0],
-            "model": [5, 20],
-            "color": [0, 2],
-            "autopilot": [0, 1],
-        })
-        actor_factory1 = PerturbationFactory("vehicle", boundary, "vehicle_nearby1")
-        perturbation1 = actor_factory1.spawn()
-        print(perturbation1)
+    def test_add(self):
+        print("==========Perturbation: Add==========")
+        for region in Boundary.REGION + [None]:
+            print(f"**********Region: {region}**********")
+            scenario = ScenarioDefinition.generate_random()
+            print(scenario)
+            origin_length = len(scenario.vehicles)
+            factory = PerturbationFactory("vehicle", region, Operation.ADD)
+            perturbation = factory.spawn()
+            print(perturbation)
+            if region is not None:
+                self.assertEqual(perturbation.value.position, region)
 
-        actor_factory2 = PerturbationFactory("vehicle", boundary, "vehicle1")
-        perturbation2 = actor_factory2.spawn()
-        print(perturbation2)
+            perturbation.perturb(scenario)
+            print(scenario)
+            self.assertEqual(origin_length + 1, len(scenario.vehicles))
 
-        env_factory = PerturbationFactory("weather", Boundary({"weather": [4, 10]}))
-        perturbation3 = env_factory.spawn()
-        print(perturbation3)
+    def test_remove(self):
+        print("==========Perturbation: Remove==========")
+        for region in Boundary.REGION + [None]:
+            print(f"**********Region: {region}**********")
+            scenario = ScenarioDefinition.generate_random()
+            print(scenario)
+            origin_length = len([v for v in scenario.vehicles if region is None or v.position == region])
+            factory = PerturbationFactory("vehicle", region, Operation.REMOVE)
+            perturbation = factory.spawn()
+            print(perturbation)
 
-        scenario = ScenarioDefinition.generate_random()
-        print(scenario)
+            perturbation.perturb(scenario)
+            print(scenario)
+            self.assertEqual((origin_length - 1) if origin_length > 0 else origin_length,
+                             len([v for v in scenario.vehicles if region is None or v.position == region]))
 
-        perturbation1.perturb(scenario)
-        print(scenario)
-        perturbation2.perturb(scenario)
-        print(scenario)
-        perturbation3.perturb(scenario)
-        print(scenario)
+    def test_replace(self):
+        print("==========Perturbation: Replace==========")
+        for region in Boundary.REGION + [None]:
+            print(f"**********Region: {region}**********")
+            scenario = ScenarioDefinition.generate_random()
+            print(scenario)
+            origin_scenario = deepcopy(scenario)
+            factory = PerturbationFactory("vehicle", region, Operation.REPLACE)
+            perturbation = factory.spawn()
+            print(perturbation)
+            if region is not None:
+                self.assertEqual(perturbation.value[0], region)
+                self.assertEqual(perturbation.value[1].position, region)
+
+            perturbation.perturb(scenario)
+            print(scenario)
+            origin_actors = [v for v in origin_scenario.vehicles if region is None or v.position == region]
+            if len(origin_actors) > 0:
+                self.assertEqual(len(origin_actors),
+                                 len([v for v in scenario.vehicles if region is None or v.position == region]))
+                self.assertNotEqual(scenario.dist(origin_scenario), 0.0)
 
     def test_dist(self):
-        print("==========Dist==========")
-        sequence1 = [random.choice(mr_set1.mrs).generate_perturbation() for _ in range(20)]
-        sequence2 = [random.choice(mr_set1.mrs).generate_perturbation() for _ in range(10)]
-        sequence1_origin = deepcopy(sequence1)
+        print("==========Perturbation: Dist==========")
+        relation_slow = Decreasing("velocity")
+        mr1 = MR([
+            PerturbationFactory("vehicle", "left", Operation.ADD),
+            PerturbationFactory("vehicle", "focus", Operation.REMOVE),
+            PerturbationFactory("vehicle", "right", Operation.REPLACE),
+        ], relation_slow)
+        mr2 = MR([
+            PerturbationFactory("static", "left", Operation.REPLACE),
+            PerturbationFactory("static", "focus", Operation.REMOVE),
+            PerturbationFactory("static", "right", Operation.ADD),
+        ], relation_slow)
+        mr_set = MRSet([mr1, mr2])
+
+        sequence1 = Perturbations([mr_set.spawn() for _ in range(10)])
+        sequence2 = Perturbations([mr_set.spawn() for _ in range(20)])
         print(sequence1)
         print(sequence2)
 
-        scenario1 = Perturbation.squash(sequence1)
-        scenario2 = Perturbation.squash(sequence2)
-        scenario1_origin = Perturbation.squash(sequence1_origin)
-        random.shuffle(scenario1_origin.walkers)
-        random.shuffle(scenario1_origin.statics)
-        print([a["id"] for a in scenario1.get_other_actors()])
-        print([a["id"] for a in scenario1_origin.get_other_actors()])
+        dist = sequence1.dist(sequence2)
+        print(dist)
 
-        dist1 = scenario1.dist(scenario2)
-        dist2 = scenario1.dist(scenario1_origin)
-        print(dist1)
-        print(dist2)
-        self.assertEqual(dist2, 0.0)
+    def test_same_dist(self):
+        print("==========Perturbation: Dist zero==========")
+        relation_slow = Decreasing("velocity")
+        mr1 = MR([
+            PerturbationFactory("vehicle", "left", Operation.ADD),
+            PerturbationFactory("vehicle", "focus", Operation.REMOVE),
+            PerturbationFactory("vehicle", "right", Operation.REPLACE),
+        ], relation_slow)
+        mr2 = MR([
+            PerturbationFactory("static", "left", Operation.REPLACE),
+            PerturbationFactory("static", "focus", Operation.REMOVE),
+            PerturbationFactory("static", "right", Operation.ADD),
+        ], relation_slow)
+        mr_set = MRSet([mr1, mr2])
+
+        sequence1 = Perturbations([mr_set.spawn() for _ in range(10)])
+        sequence2 = deepcopy(sequence1)
+        sequence2.perturbations.insert(5, deepcopy(sequence2.perturbations[5]))
+        sequence2.perturbations.insert(9, deepcopy(sequence2.perturbations[9]))
+        print(sequence1)
+        print(sequence2)
+
+        dist = sequence1.dist(sequence2)
+        print(dist)
+        self.assertEqual(dist, 0.0)

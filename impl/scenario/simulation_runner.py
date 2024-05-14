@@ -1,11 +1,14 @@
 import itertools
 import logging
 import os
+import pickle
 import traceback
 from concurrent.futures import ProcessPoolExecutor
+from copy import deepcopy
 from multiprocessing import Queue, Manager
 
 import pandas as pd
+from deap import tools
 
 from impl.config import CONFIG
 from impl.scenario.docker_utils import restart_carla
@@ -131,3 +134,20 @@ def run_scenarios(scenarios, rerun=False):
 
     results, is_executed = zip(*results)
     return results, is_executed.count(True)
+
+
+def run_solutions(file: str, top: int = 1):
+    """Run scenarios from a solution file.
+
+    @param file: The solution file.
+    @param top: Number of top scenarios to run.
+    """
+    with open(file, "rb") as f:
+        solutions = pickle.load(f)
+    solutions = tools.selBest([ind for ind in solutions if ind.is_violated], top)
+    for i, (source, perturbations) in enumerate(solutions):
+        source.id_ = f"top{i + 1}_source"
+        follow_up = deepcopy(source)
+        follow_up.id_ = f"top{i + 1}_follow-up"
+        perturbations.perturb(follow_up)
+        run_scenarios([source, follow_up], rerun=True)

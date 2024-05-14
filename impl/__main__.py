@@ -7,7 +7,7 @@ import argformat
 from impl import config
 from impl.algorithm import *
 from impl.scenario.scenario_definition import ScenarioDefinition
-from impl.scenario.simulation_runner import run_scenarios
+from impl.scenario.simulation_runner import run_scenarios, run_solutions
 from impl.utils.visualization import Visualizer
 
 logger = logging.getLogger("impl")
@@ -19,7 +19,7 @@ def ccea(algorithm: str, resume: bool):
         solver = CCEA(toolbox=problem.toolbox, budget=problem.budget)
     else:
         raise ValueError(f"Unsupported algorithm: {algorithm}.")
-    solver.solve(resume)
+    solver.solve(resume=resume)
 
     visualizer = Visualizer()
     visualizer.visualize_gen_stats(
@@ -29,8 +29,18 @@ def ccea(algorithm: str, resume: bool):
     )
 
 
-def simulate(n):
-    run_scenarios([ScenarioDefinition.generate_random() for _ in range(n)])
+def simulate(num: int, file: str):
+    if file:
+        logger.info(f"Loading solution file: {file}.")
+        run_solutions(file, num)
+    else:
+        logger.info(f"Running random scenarios.")
+        run_scenarios([ScenarioDefinition.generate_random() for _ in range(num)])
+
+
+def visualize(file: str):
+    logger.info(f"Plotting statistics data from file: {file}.")
+    Visualizer.visualize_in_one(file)
 
 
 if __name__ == "__main__":
@@ -53,9 +63,14 @@ if __name__ == "__main__":
     parser_search.add_argument("-r", "--resume", action="store_true", help="Resume previous run")
     parser_search.set_defaults(func=lambda args: ccea(args.algorithm, args.resume))
 
-    parser_sim = subparsers.add_parser("simulate", aliases=["sim"], help="")
-    parser_sim.add_argument("-n", "--number", type=int, default=1, help="Number of scenarios")
-    parser_sim.set_defaults(func=lambda args: simulate(args.number))
+    parser_sim = subparsers.add_parser("simulate", aliases=["sim"], help="Run the simulation")
+    parser_sim.add_argument("-n", "--number", type=int, default=1, help="Number of simulations to run")
+    parser_sim.add_argument("-f", "--file", default=None, help="Solution file")
+    parser_sim.set_defaults(func=lambda args: simulate(args.number, args.file))
+
+    parser_vis = subparsers.add_parser("visualize", aliases=["vis"], help="Visualize the results")
+    parser_vis.add_argument("-f", "--file", required=True, help="Statistics file")
+    parser_vis.set_defaults(func=lambda args: visualize(args.file))
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)

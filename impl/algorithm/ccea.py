@@ -63,7 +63,7 @@ class CCEA(BaseAlgorithm):
             self.budget.acc_sim(sim_num)
             self.record_statistics(pop_scenario, self.budget.gen_num, pop_name="pop_scen")
             self.record_statistics(pop_perturbation, self.budget.gen_num, pop_name="pop_pert")
-            self.record_statistics(violated_solutions, self.budget.gen_num, pop_name="solution")
+            self.record_statistics(violated_solutions, self.budget.gen_num, pop_name="solution", sim_num=sim_num)
 
             # Update archive.
             archive_scenario = self._update_archive(pop_scenario, CONFIG["scenario"]["archive_size"])

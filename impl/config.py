@@ -23,6 +23,14 @@ def merge_dict(default: dict, user: dict):
     return default
 
 
+def _update_log_dir(dictionary):
+    for k, v in dictionary.items():
+        if isinstance(v, collections.abc.Mapping):
+            _update_log_dir(v)
+        elif k == "filename":
+            dictionary[k] = os.path.join(CONFIG["workspace"]["log"], dictionary[k])
+
+
 def init_config():
     """Load configurations."""
     default_config_base = "conf"
@@ -48,19 +56,12 @@ def init_config():
         os.makedirs(CONFIG["workspace"][k], exist_ok=True)
 
     # Log configurations.
-    def update_log_dir(dictionary):
-        for k, v in dictionary.items():
-            if isinstance(v, collections.abc.Mapping):
-                update_log_dir(v)
-            elif k == "filename":
-                dictionary[k] = os.path.join(CONFIG["workspace"]["log"], dictionary[k])
-
     default_log_config_path = os.path.join(default_config_base, log_config_name)
     default_log_config = load_yaml(default_log_config_path) if os.path.isfile(default_log_config_path) else {}
     custom_log_config = load_yaml(log_config_name) if os.path.isfile(log_config_name) else {}
     log_config = merge_dict(default_log_config, custom_log_config)
     if log_config:
-        update_log_dir(log_config)
+        _update_log_dir(log_config)
         logging.config.dictConfig(log_config)
     else:
         logger.warning("Cannot find log configuration file.")

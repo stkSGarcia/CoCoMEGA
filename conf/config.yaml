@@ -44,6 +44,10 @@ budget:
 scenario:
   pop_size: 10
   archive_size: 3
+  init_pb:
+    vehicle: 0.4
+    walker: 0.5
+    static: 0.1
   init_selection_factor: 1
   dist_scaling: 0.4
   tournament: 3
@@ -54,6 +58,7 @@ scenario:
 perturbation:
   pop_size: 10
   archive_size: 3
+  dist_scaling: 1.0
   tournament: 3
   cxpb: 0.8
   mutpb: 0.2

@@ -30,14 +30,14 @@ class Budget:
         self.gen_num = None
 
     def initialize(self, other=None):
-        if other is None:
-            self.sim_num = 0
-            self.start_time = time.perf_counter()
-            self.gen_num = 0
-        else:
+        if other and isinstance(other, self.__class__):
             self.sim_num = other.sim_num
             self.start_time = other.start_time
             self.gen_num = other.gen_num
+        else:
+            self.sim_num = 0
+            self.start_time = time.perf_counter()
+            self.gen_num = 0
 
     def acc_sim(self, n):
         self.sim_num += n
@@ -83,23 +83,24 @@ class BaseAlgorithm:
         self.stats.register("max", np.nanmax, axis=0)
 
         self.logbook = tools.Logbook()
-        self.logbook.header = "pop", "gen", "len", "std", "min", "avg", "max"
+        self.logbook.header = "pop", "gen", "len", "sim", "std", "min", "avg", "max"
 
     @abstractmethod
-    def solve(self):
+    def solve(self, resume=False):
         """Run the algorithm."""
         raise NotImplementedError
 
-    def record_statistics(self, population: List, gen_num: int, pop_name: str = ""):
+    def record_statistics(self, population: List, gen_num: int, pop_name: str = "", sim_num: int = None):
         """Record the statistics of the population.
 
         @param population: The population that requires recording statistics.
         @param gen_num: The number of generations.
         @param pop_name: The name of the population.
+        @param sim_num: The number of simulations actually run.
         """
         record = self.stats.compile(population) if len(population) > 0 \
             else {"avg": [np.nan], "std": [np.nan], "min": [np.nan], "max": [np.nan]}
-        self.logbook.record(pop=pop_name, gen=gen_num, len=len(population), **record)
+        self.logbook.record(pop=pop_name, gen=gen_num, len=len(population), sim=sim_num, **record)
 
     def fitness_sharing(self, population, punishment=1.0, scaling=1.0):
         """Adjust the fitness using fitness sharing.
@@ -109,7 +110,8 @@ class BaseAlgorithm:
         @param scaling: Scaling factor.
         @return: The population with fitness adjusted.
         """
-        dist_matrix = squareform(pdist(self.toolbox.prepare_ind_for_dist(population), lambda x, y: x[0].dist(y[0])))
+        dist_matrix = squareform(pdist(np.array(population, dtype=object).reshape((-1, 1)),
+                                       lambda x, y: x[0].dist(y[0])))
         max_dist = np.max(dist_matrix)
         radius = max_dist / (2 * len(population))  # TODO: to be justified.
         sharing_func = np.vectorize(lambda raw: 1 - pow(raw / radius, punishment) if raw < radius else 0)
@@ -122,14 +124,15 @@ class BaseAlgorithm:
                 raw_fitness = individual.fitness.values[0]
                 individual.fitness.values = pow(raw_fitness, scaling) / dist_sum[i],
 
-    def fitness_clearing(self, population, capacity):
+    def fitness_clearing(self, population, capacity=2):
         """Adjust the fitness using fitness clearing.
 
         @param population: The population whose fitness needs to be adjusted.
         @param capacity: The maximum number of winners in a niche.
         @return: The population with fitness adjusted.
         """
-        dist_matrix = squareform(pdist(self.toolbox.prepare_ind_for_dist(population), lambda x, y: x[0].dist(y[0])))
+        dist_matrix = squareform(pdist(np.array(population, dtype=object).reshape((-1, 1)),
+                                       lambda x, y: x[0].dist(y[0])))
         max_dist = np.max(dist_matrix)
         radius = max_dist / (2 * len(population))  # TODO: to be justified.
 
@@ -147,9 +150,9 @@ class BaseAlgorithm:
     def population_diversity(self, population):
         """Calculate the Pure Diversity (PD) of the given population."""
         n = len(population)
-        individuals = self.toolbox.prepare_ind_for_dist(population)
         connected = np.eye(n, dtype=bool)
-        dist_matrix = squareform(pdist(individuals, lambda x, y: x[0].dist(y[0])))
+        dist_matrix = squareform(pdist(np.array(population, dtype=object).reshape((-1, 1)),
+                                       lambda x, y: x[0].dist(y[0])))
         np.fill_diagonal(dist_matrix, np.inf)
         pd = 0
         for _ in range(n - 1):

@@ -14,9 +14,11 @@ from impl.utils.trajectory import TrajectorySolver
 
 class Boundary:
     REGION = ["left", "focus", "right"]
+    _REGION_KEY = "y"
 
     def __init__(self, boundary: Dict[str, List]):
         self.boundary = boundary
+
         # Check type consistency and validity.
         for lower, upper in self.boundary.values():
             if type(lower) is not type(upper):
@@ -26,11 +28,29 @@ class Boundary:
             if lower > upper:
                 raise ValueError(f"The lower boundary is greater than the upper boundary: {lower} > {upper}.")
 
+        self.dividers = None
+        if Boundary._REGION_KEY in self.boundary:
+            lower, upper = self.boundary[Boundary._REGION_KEY]
+            interval = (upper - lower) / len(Boundary.REGION)
+            self.dividers = [lower + interval * i for i in range(1, len(Boundary.REGION))]
+
     def get(self, field: str):
         return self.boundary[field]
 
-    def random(self, field: str, none_pb=None):
+    def get_region(self, value):
+        if self.dividers is None: return None
+        for i, divider in enumerate(self.dividers):
+            if value < divider: return Boundary.REGION[i]
+        return Boundary.REGION[-1]
+
+    def random(self, field: str, region=None, none_pb=None):
         lower, upper = self.boundary[field]
+        if field == Boundary._REGION_KEY and region is not None:
+            i = Boundary.REGION.index(region)
+            if i > 0:
+                lower = self.dividers[i - 1]
+            if i < len(self.dividers):
+                upper = self.dividers[i]
         if isinstance(lower, float):
             return None if none_pb and random.random() < none_pb else random.uniform(lower, upper)
         elif isinstance(lower, int):
@@ -59,11 +79,16 @@ def _mate_attrs(this, that, attrs):
 
 
 def _mate_actors(this, that):
-    size = min(len(this), len(that))
-    for i in range(size):
+    common = min(len(this), len(that))
+    for i in range(common):
         if random.random() < CONFIG["scenario"]["cxpb"]:
             this[i], that[i] = that[i], this[i]
-    return this, that
+    less, more = (this, that) if len(this) < len(that) else (that, this)
+    while len(more) > common:
+        if random.random() < CONFIG["scenario"]["cxpb"]:
+            less.append(more.pop(common))
+        else:
+            common += 1
 
 
 def _mutate_attrs(this, attrs, boundary: Boundary):
@@ -94,8 +119,8 @@ def _mutate_attrs(this, attrs, boundary: Boundary):
 
 
 class ScenarioDefinition:
-    _ATTRIBUTES = ["weather"]
-    _DYNAMIC = ["vehicle", "walker", "static"]
+    ATTRIBUTES = ["weather"]
+    DYNAMIC = ["vehicle", "walker", "static"]
     _BLUEPRINTS = CONFIG["blueprint"]["scenario"]
     _BOUNDARY = Boundary(CONFIG["boundary"]["env"])
     _TRAJECTORY = CONFIG["trajectory"]
@@ -123,12 +148,20 @@ class ScenarioDefinition:
         trajectory = random.choice(ScenarioDefinition._TRAJECTORY)
         scenario.town = trajectory["town"]
         scenario.trajectory = trajectory["trajectory"]
-        scenario.vehicles = [Vehicle.generate_random()]
-        scenario.walkers = [Walker.generate_random()]
-        scenario.statics = [Static.generate_random()]
-        for attr in ScenarioDefinition._ATTRIBUTES:
+        scenario.vehicles = ScenarioDefinition._generate_actors(Vehicle, CONFIG["scenario"]["init_pb"]["vehicle"])
+        scenario.walkers = ScenarioDefinition._generate_actors(Walker, CONFIG["scenario"]["init_pb"]["walker"])
+        scenario.statics = ScenarioDefinition._generate_actors(Static, CONFIG["scenario"]["init_pb"]["static"])
+        for attr in ScenarioDefinition.ATTRIBUTES:
             setattr(scenario, attr, ScenarioDefinition._BOUNDARY.random(attr))
         return scenario
+
+    @staticmethod
+    def _generate_actors(cls, probability):
+        actors = []
+        times = 1
+        while random.random() < probability ** times:
+            actors.append(cls.generate_random())
+        return actors
 
     def get_trigger_position(self):
         return self.trajectory[0]
@@ -136,46 +169,66 @@ class ScenarioDefinition:
     def get_other_actors(self):
         return [actor.get_config() for actor in self.vehicles + self.walkers + self.statics]
 
-    def update(self, category: str, value):
-        if category in ScenarioDefinition._DYNAMIC:
+    def update(self, category: str, operation, value):
+        from impl.mr.mr import Operation
+        if category in ScenarioDefinition.DYNAMIC:
             actors = getattr(self, f"{category}s")
-            exist = False
-            for actor in actors:
-                if actor.id_ == value.id_:
-                    exist = True
-                    actor.update(value)
-                    break
-            if not exist:
+            if operation == Operation.ADD:
                 actors.append(deepcopy(value))
-        elif category in ScenarioDefinition._ATTRIBUTES:
+            elif operation == Operation.REMOVE:
+                index = ScenarioDefinition._random_pick_actor(actors, value)
+                if index >= 0:
+                    del actors[index]
+            elif operation == Operation.REPLACE:
+                index = ScenarioDefinition._random_pick_actor(actors, value[0])
+                if index >= 0:
+                    actors[index].update(value[1])
+            else:
+                raise ValueError(f"Unsupported operation: {operation}.")
+        elif category in ScenarioDefinition.ATTRIBUTES:
             setattr(self, category, value)
         else:
             raise ValueError(f"Unsupported category: {category}.")
+
+    @staticmethod
+    def _random_pick_actor(actors, region):
+        index, count = -1, 0
+        for i, actor in enumerate(actors):
+            if region is None or actor.position == region:
+                count += 1
+                if random.randint(1, count) == 1:
+                    index = i
+        return index
 
     def dist(self, other):
         # if not isinstance(other, self.__class__):
         if str(type(self)) != str(type(other)):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        dist = _dist_attrs(self, other, ScenarioDefinition._ATTRIBUTES, ScenarioDefinition._BOUNDARY)
+        dist = _dist_attrs(self, other, ScenarioDefinition.ATTRIBUTES, ScenarioDefinition._BOUNDARY)
         for actors, other_actors in zip([self.vehicles, self.walkers, self.statics],
                                         [other.vehicles, other.walkers, other.statics]):
-            dist_matrix = cdist(np.reshape(actors, (-1, 1)),
-                                np.reshape(other_actors, (-1, 1)),
-                                lambda x, y: x[0].dist(y[0]))
-            dist += dist_matrix.min(axis=1 if len(actors) > len(other_actors) else 0).sum()
+            if len(actors) == 0 and len(other_actors) == 0:
+                continue
+            elif len(actors) == 0 or len(other_actors) == 0:
+                dist += min(len(actors), len(other_actors)) * pow(CONFIG["scenario"]["dist_scaling"], 2)
+            else:
+                dist_matrix = cdist(np.array(actors, dtype=object).reshape((-1, 1)),
+                                    np.array(other_actors, dtype=object).reshape((-1, 1)),
+                                    lambda x, y: x[0].dist(y[0]))
+                dist += dist_matrix.min(axis=1 if len(actors) > len(other_actors) else 0).sum()
         return math.sqrt(dist)
 
     def mate(self, other):
         # if not isinstance(other, self.__class__):
         if str(type(self)) != str(type(other)):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        _mate_attrs(self, other, ScenarioDefinition._ATTRIBUTES)
+        _mate_attrs(self, other, ScenarioDefinition.ATTRIBUTES)
         _mate_actors(self.vehicles, other.vehicles)
         _mate_actors(self.walkers, other.walkers)
         _mate_actors(self.statics, other.statics)
 
     def mutate(self):
-        _mutate_attrs(self, ScenarioDefinition._ATTRIBUTES, ScenarioDefinition._BOUNDARY)
+        _mutate_attrs(self, ScenarioDefinition.ATTRIBUTES, ScenarioDefinition._BOUNDARY)
         for actor in self.vehicles + self.walkers + self.statics:
             actor.mutate()
 
@@ -288,28 +341,22 @@ class Actor(ABC):
     def __init__(self, transform: Transform, *args, **kwargs):
         self.transform = transform
         self.position = None
-        self._update_position()
+        self.update_position()
 
-    def _update_position(self):
-        lower, upper = self._BOUNDARY.get("y")
-        interval = (upper - lower) / len(Boundary.REGION)
-        for step in range(1, len(Boundary.REGION)):
-            if self.transform.y < lower + step * interval:
-                self.position = Boundary.REGION[step - 1]
-                return
-        self.position = Boundary.REGION[-1]
+    def update_position(self):
+        self.position = self._BOUNDARY.get_region(self.transform.y)
 
     @classmethod
-    def generate_random(cls, boundary: Boundary = None, none_pb=None):
-        if boundary is None:
-            boundary = cls._BOUNDARY
-        return cls(transform=Transform(**{attr: boundary.random(attr, none_pb) for attr in Transform.ATTRIBUTES}),
-                   **{attr: boundary.random(attr, none_pb) for attr in cls._ATTRIBUTES})
+    def generate_random(cls, region=None, none_pb=None):
+        return cls(
+            transform=Transform(**{attr: cls._BOUNDARY.random(attr, region, none_pb) for attr in Transform.ATTRIBUTES}),
+            **{attr: cls._BOUNDARY.random(attr, none_pb) for attr in cls._ATTRIBUTES}
+        )
 
     def update(self, other):
         for attr in Transform.ATTRIBUTES:
             setattr(self.transform, attr, getattr(other.transform, attr))
-        self._update_position()
+        self.update_position()
         for attr in self._ATTRIBUTES:
             setattr(self, attr, getattr(other, attr))
 
@@ -326,14 +373,14 @@ class Actor(ABC):
         if str(type(self)) != str(type(other)):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         _mate_attrs(self.transform, other.transform, Transform.ATTRIBUTES)
-        self._update_position()
-        other._update_position()
+        self.update_position()
+        other.update_position()
         _mate_attrs(self, other, self._ATTRIBUTES)
 
     def mutate(self):
         """Mutate actors in place."""
         _mutate_attrs(self.transform, Transform.ATTRIBUTES, self._BOUNDARY)
-        self._update_position()
+        self.update_position()
         _mutate_attrs(self, self._ATTRIBUTES, self._BOUNDARY)
 
     def get_config(self):

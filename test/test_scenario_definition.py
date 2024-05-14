@@ -1,9 +1,10 @@
 import math
+import random
 from copy import deepcopy
 from unittest import TestCase
 
 import test
-from impl.scenario.scenario_definition import ScenarioDefinition
+from impl.scenario.scenario_definition import ScenarioDefinition, Boundary
 from impl.scenario.scenario_definition import Vehicle, Walker, Static
 
 
@@ -53,6 +54,14 @@ class TestActor(TestCase):
             a.mutate()
             print(a)
 
+    def test_region(self):
+        for c in self.clazz:
+            print(f"=========={c.__name__}: Region==========")
+            for region in Boundary.REGION:
+                a = c.generate_random(region=region)
+                print(a)
+                self.assertEqual(a.position, region)
+
 
 class TestScenarioDefinition(TestCase):
     def setUp(self):
@@ -62,13 +71,15 @@ class TestScenarioDefinition(TestCase):
 
     def test_dist(self):
         print("==========Dist==========")
-        vehicle1 = Vehicle.generate_random()
-        vehicle2 = deepcopy(vehicle1)
-        vehicle2.mutate()
         scenario1 = ScenarioDefinition.generate_random()
         scenario2 = ScenarioDefinition.generate_random()
+        vehicle1 = Vehicle.generate_random()
+        vehicle2 = deepcopy(vehicle1)
         scenario1.vehicles.append(vehicle1)
         scenario2.vehicles.append(vehicle2)
+        scenario1.walkers = []
+        scenario1.statics = []
+        scenario2.statics = []
         print(scenario1)
         print(scenario2)
         dist = scenario1.dist(scenario2)
@@ -79,6 +90,14 @@ class TestScenarioDefinition(TestCase):
         scenario1 = ScenarioDefinition.generate_random()
         scenario2 = deepcopy(scenario1)
         print(scenario1)
+        dist = scenario1.dist(scenario2)
+        print(dist)
+        self.assertEqual(dist, 0.0)
+
+        random.shuffle(scenario2.vehicles)
+        random.shuffle(scenario2.walkers)
+        random.shuffle(scenario2.statics)
+        print(scenario2)
         dist = scenario1.dist(scenario2)
         print(dist)
         self.assertEqual(dist, 0.0)
@@ -109,10 +128,10 @@ class TestScenarioDefinition(TestCase):
                 actors2_origin = getattr(scenario2_origin, variant)
                 self.assertEqual(len(actors1), len(actors2_origin))
                 self.assertEqual(len(actors1_origin), len(actors2))
-                size = min(len(actors1), len(actors2), len(actors1_origin), len(actors2_origin))
-                for i in range(size):
+                for i in range(len(actors1)):
                     self.assertEqual(actors1[i], actors2_origin[i])
-                    self.assertEqual(actors1_origin[i], actors2[i])
+                for i in range(len(actors2)):
+                    self.assertEqual(actors2[i], actors1_origin[i])
             else:
                 self.assertEqual(getattr(scenario1, variant), getattr(scenario2_origin, variant))
                 self.assertEqual(getattr(scenario1_origin, variant), getattr(scenario2, variant))
@@ -131,4 +150,6 @@ class TestScenarioDefinition(TestCase):
 
         variants = ["vehicles", "walkers", "statics", "weather"]
         for variant in variants:
-            self.assertNotEqual(getattr(scenario, variant), getattr(scenario_origin, variant))
+            if ((isinstance(getattr(scenario, variant), list) and len(getattr(scenario, variant)) != 0) or
+                    not isinstance(getattr(scenario, variant), list)):
+                self.assertNotEqual(getattr(scenario, variant), getattr(scenario_origin, variant))
