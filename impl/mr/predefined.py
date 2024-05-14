@@ -24,7 +24,7 @@ vehicle_pert_factory = PerturbationFactory("vehicle", Boundary({
 walker_pert_factory = PerturbationFactory("walker", Boundary({
     "x": [-198.0, -178.0],
     "y": [89.0, 102.0],
-    "z": [1.0, 1.0],
+    "z": [0.5, 1.0],
     "pitch": [0.0, 0.0],
     "yaw": [-180.0, 180.0],
     "roll": [0.0, 0.0],
@@ -35,7 +35,7 @@ walker_pert_factory = PerturbationFactory("walker", Boundary({
 static_pert_factory = PerturbationFactory("static", Boundary({
     "x": [-198.0, -178.0],
     "y": [89.0, 102.0],
-    "z": [0.0, 0.0],
+    "z": [0.5, 1.0],
     "pitch": [0.0, 0.0],
     "yaw": [-180.0, 180.0],
     "roll": [0.0, 0.0],
