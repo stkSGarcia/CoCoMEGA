@@ -384,7 +384,10 @@ class Actor(ABC):
         _mutate_attrs(self, self._ATTRIBUTES, self._BOUNDARY)
 
     def get_config(self):
-        return {"spawn_point": self.transform.get_config()}
+        return {
+            "role_name": self.position,
+            "spawn_point": self.transform.get_config()
+        }
 
     def __eq__(self, other):
         # return (isinstance(other, self.__class__) and

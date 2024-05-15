@@ -113,7 +113,7 @@ def convert_json_to_actor(actor_dict):
     if actor_dict.get('random_location', False):
         node.set('random_location', 'true')
 
-    return ActorConfigurationData.parse_from_node(node, sp.get('rolename', 'simulation'))
+    return ActorConfigurationData.parse_from_node(node, actor_dict.get('role_name', 'simulation'))
 
 
 def convert_transform_to_location(transform_vec):
@@ -274,7 +274,7 @@ class RouteScenario(BasicScenario):
                     model=actor_conf.model,
                     spawn_point=actor_conf.transform,
                     anchor=anchor,
-                    rolename='scenario',
+                    rolename=actor_conf.rolename,
                     autopilot=actor_conf.autopilot,
                     random_location=actor_conf.random_location,
                     color=actor_conf.color,
