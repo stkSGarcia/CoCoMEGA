@@ -7,7 +7,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from matplotlib import pyplot as plt
+
+import pickle
+import matplotlib.pyplot as plt
+import pandas as pd
 from matplotlib.ticker import MaxNLocator
 
 from impl.config import CONFIG
@@ -80,6 +83,55 @@ class Visualizer:
             cls._show_plot(fig)
 
         cls._save_fig(fig, out_dir, f'hist_{name}_{int(round(time.time() * 1000))}.png')
+
+    @classmethod
+    def plot_pert_boundary_results(cls, meta, out_dir):
+        for i, row in meta.iterrows():
+            path = os.path.join(CONFIG["workspace"]["solution"], row['statistics_path'])
+            cls.visualize_algorithm_Stats(path, name=row['name'], out_dir=out_dir)
+
+    @classmethod
+    def visualize_algorithm_Stats(cls, path, name, out_dir):
+        with open(path, "rb") as f:
+            logbook = pickle.load(f)
+        stats = pd.DataFrame(logbook)
+        for metric in ["std", "min", "avg", "max"]:
+            stats[metric] = stats[metric].apply(lambda x: x[0])
+        verbose = {"pop_scen": "Population—Scenario",
+                   "pop_pert": "Population—Perturbation",
+                   "arc_scen": "Archive—Scenario",
+                   "arc_pert": "Archive—Perturbation",
+                   "solution": "Complete Solutions"}
+
+        fig, axs = plt.subplots(2, 3, figsize=[20, 8])
+        for (pop_name, pop), pos in zip(stats.groupby("pop", sort=False), [(0, 1), (0, 2), (0, 0), (1, 1), (1, 2)]):
+            pop = pop.sort_values("gen", ascending=True)
+            axs[pos].plot(pop["gen"], pop["std"], "--C0", label="std")
+            axs[pos].plot(pop["gen"], pop["min"], ":C1", label="min")
+            axs[pos].plot(pop["gen"], pop["avg"], "o-C2", label="avg")
+            axs[pos].plot(pop["gen"], pop["max"], ":C3", label="max")
+            axs[pos].set_title(verbose[pop_name], fontsize=20)
+            axs[pos].set_xlabel("Generations", fontsize=15)
+            axs[pos].set_ylabel("Fitness", fontsize=15)
+            axs[pos].tick_params(labelsize=13)
+            axs[pos].xaxis.set_major_locator(MaxNLocator(integer=True))
+
+            if pop_name == "solution":
+                pos = (1, 0)
+                axs[pos].plot(pop["gen"], pop["len"], "o-C4", label="#violations")
+                # axs[pos].plot(pop["gen"], data[0]["num"], "o-C5", label="#simulations")
+                axs[pos].set_title("#Violations", fontsize=20)
+                axs[pos].set_xlabel("Generations", fontsize=15)
+                axs[pos].set_ylabel("Num", fontsize=15)
+                axs[pos].tick_params(labelsize=13)
+                axs[pos].xaxis.set_major_locator(MaxNLocator(integer=True))
+                axs[pos].legend(fontsize=15)
+
+        handles, labels = axs[pos].get_legend_handles_labels()
+        fig.legend(handles, labels, loc="lower center", bbox_to_anchor=(0.52, -0.01), ncol=4, fontsize=15)
+        fig.tight_layout()
+        plt.subplots_adjust(bottom=0.13)
+        plt.savefig(os.path.join(out_dir, f"stats_{name}.png"), dpi=300)
 
     @classmethod
     def _plot_generation_statistics(cls, stats, out_dir):

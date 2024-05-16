@@ -22,7 +22,7 @@ class TestIdenticalViolation:
         self.mr_set = mr_set
         self.num_experiments = num_experiments
         self.write_meta = write_meta
-        self.base_dir = os.path.join(CONFIG["workspace"]["root"], CONFIG["workspace"]["test_result"])
+        self.base_dir = CONFIG["workspace"]["test_result"]
         if not os.path.exists(self.base_dir):
             os.mkdir(self.base_dir)
         self.out_dir = os.path.join(self.base_dir,
