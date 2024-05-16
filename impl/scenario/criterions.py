@@ -66,7 +66,7 @@ class VehicleMeasurementTest(Criterion):
                 measure_dict[f"ego-nearest-distance"] = min(
                     [_distance(self.actor, other_actor) for other_actor in self.other_actors])
                 role_names = set([other_actor.attributes['role_name'] for other_actor in self.other_actors])
-                if len(role_names) > 1:
+                if len(role_names) > 0:
                     for role_name in role_names:
                         measure_dict[f"ego-nearest-distance-{role_name}"] = min(
                             [_distance(self.actor, other_actor) for other_actor in self.other_actors if
