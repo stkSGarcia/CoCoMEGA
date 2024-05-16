@@ -171,42 +171,52 @@ def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot
     """
     This method tries to create a new actor, returning it if successful (raises InvalidScenarioConfError otherwise).
     """
-    try:
-        blueprint = CarlaDataProvider.create_blueprint(model, rolename, color, actor_category)
+    extra_height = 0
+    while True:
+        try:
+            blueprint = CarlaDataProvider.create_blueprint(model, rolename, color, actor_category)
 
-        if random_location:
-            actor = None
-            while not actor:
-                spawn_point = CarlaDataProvider._rng.choice(CarlaDataProvider._spawn_points)
-                actor = CarlaDataProvider._world.spawn_actor(blueprint, spawn_point)
+            if random_location:
+                actor = None
+                while not actor:
+                    spawn_point = CarlaDataProvider._rng.choice(CarlaDataProvider._spawn_points)
+                    actor = CarlaDataProvider._world.spawn_actor(blueprint, spawn_point)
 
-        else:
-            # slightly lift the actor to avoid collisions with ground when spawning the actor
-            # DO NOT USE spawn_point directly, as this will modify spawn_point permanently
-            actor = CarlaDataProvider._world.spawn_actor(blueprint,
-                                                         carla.Transform(anchor.transform(spawn_point.location),
-                                                                         spawn_point.rotation))
+            else:
+                # Incrementally lift the actor to avoid collisions with ground when spawning the actor
+                # DO NOT USE spawn_point directly, as this will modify spawn_point permanently
+                spawn_location = carla.Location(
+                    x=spawn_point.location.x,
+                    y=spawn_point.location.y,
+                    z=spawn_point.location.z + extra_height,
+                )
+                actor = CarlaDataProvider._world.spawn_actor(blueprint,
+                                                             carla.Transform(anchor.transform(spawn_location),
+                                                                             spawn_point.rotation))
 
-        if actor in CarlaDataProvider._blueprint_library.filter('vehicle.*'):
-            actor.set_autopilot(autopilot)
+            if actor in CarlaDataProvider._blueprint_library.filter('vehicle.*'):
+                actor.set_autopilot(autopilot)
 
-        # wait for the actor to be spawned properly before we do anything
-        if CarlaDataProvider.is_sync_mode():
-            CarlaDataProvider._world.tick()
-        else:
-            CarlaDataProvider._world.wait_for_tick()
+            # wait for the actor to be spawned properly before we do anything
+            if CarlaDataProvider.is_sync_mode():
+                CarlaDataProvider._world.tick()
+            else:
+                CarlaDataProvider._world.wait_for_tick()
 
-        if actor is None:
-            return None
+            if actor is None:
+                return None
 
-        CarlaDataProvider._carla_actor_pool[actor.id] = actor
-        CarlaDataProvider.register_actor(actor)
-        return actor
-    except Exception as e:
-        logger.error(f"Error has occurred while trying to spawn actor {model} on location {spawn_point}: {e}")
-        raise InvalidScenarioDefinitionError(
-            f"An error has occurred while trying to spawn actor {model} on location {spawn_point}: {e}"
-        )
+            CarlaDataProvider._carla_actor_pool[actor.id] = actor
+            CarlaDataProvider.register_actor(actor)
+            return actor
+        except Exception as e:
+            if extra_height > 1.5:
+                logger.error(f"Error has occurred while trying to spawn actor {model} on location {spawn_point}: {e}")
+                raise InvalidScenarioDefinitionError(
+                    f"An error has occurred while trying to spawn actor {model} on location {spawn_point}: {e}"
+                )
+            logger.debug("Increasing spawn height to avoid collision with the ground")
+            extra_height += 0.1
 
 
 class RouteScenario(BasicScenario):
@@ -499,7 +509,6 @@ class RouteScenario(BasicScenario):
             measurement_interval=10,
             scenario_def_id=self.scenario_definition.id_,
         )
-
 
         # collision_criterion = CollisionTest(self.ego_vehicles[0], terminate_on_failure=False)
 
