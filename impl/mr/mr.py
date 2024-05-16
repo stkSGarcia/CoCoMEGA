@@ -61,14 +61,14 @@ class Perturbations(list):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         if len(self) == 0 or len(other) == 0: return 0.0
 
-        dp = [float("inf")] * (len(other) + 1)
+        dp = [np.inf] * (len(other) + 1)
         prev = 0.0
         for p in self:
             for i in range(1, len(other) + 1):
                 temp = dp[i]
                 dp[i] = min(min(prev, temp), dp[i - 1]) + p.dist(other[i - 1])
                 prev = temp
-            prev = float("inf")
+            prev = np.inf
         return math.sqrt(dp[-1])
 
     def mate(self, other):
@@ -148,7 +148,7 @@ class Relation(ABC):
                 logger.warning("Unrecognized strategy, falling back to `curve`.")
             df = df.loc[(df[Relation._s] - df[Relation._f]).abs() > CONFIG["violation"]["threshold"][self.field]]
 
-        if df.empty: return False, 0.0
+        if df.empty: return False, -np.inf
         extents = df.apply(self._extent_func, axis=1, result_type="reduce")
         extent = extents.mean()
         return extent > 0, extent

@@ -35,7 +35,8 @@ arguments = [
 ]
 
 for env, _, v in arguments:
-    if env is not None: os.environ[env] = str(v)
+    if env is not None and v is not None:
+        os.environ[env] = str(v)
 
 from impl.scenario.interfuser_scenario_evaluator import ScenarioEvaluator
 
@@ -105,7 +106,12 @@ def run_scenario(scenario: ScenarioDefinition, rerun=False):
     if not is_successful:
         return None, False
 
-    result = pd.read_csv(os.path.join(CONFIG["workspace"]["sim_result"], f"{scenario.id_}.csv"))
+    result_path = os.path.join(CONFIG["workspace"]["sim_result"], f"{scenario.id_}.csv")
+    if not os.path.exists(result_path):
+        logger.warning(f"Scenario results cannot be found: {scenario.id_}.")
+        return None, False
+
+    result = pd.read_csv(result_path)
     result.set_index(result.columns[0], inplace=True)
     evaluated_scenarios.append((scenario, result))
     return result, True

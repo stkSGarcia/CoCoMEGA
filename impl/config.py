@@ -51,7 +51,7 @@ def init_config():
     CONFIG["workspace"]["root"] = os.path.join(os.path.dirname(os.path.dirname(__file__)), CONFIG["workspace"]["root"])
     os.makedirs(CONFIG["workspace"]["root"], exist_ok=True)
     for k, v in CONFIG["workspace"].items():
-        if k == "root": continue
+        if k == "root" or v is None: continue
         CONFIG["workspace"][k] = os.path.join(CONFIG["workspace"]["root"], v)
         os.makedirs(CONFIG["workspace"][k], exist_ok=True)
 
