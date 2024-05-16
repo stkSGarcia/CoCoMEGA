@@ -148,7 +148,7 @@ class Relation(ABC):
                 logger.warning("Unrecognized strategy, falling back to `curve`.")
             df = df.loc[(df[Relation._s] - df[Relation._f]).abs() > CONFIG["violation"]["threshold"][self.field]]
 
-        if df.empty: return False, -np.inf
+        if df.empty: return False, 0.0
         extents = df.apply(self._extent_func, axis=1, result_type="reduce")
         extent = extents.mean()
         return extent > 0, extent
