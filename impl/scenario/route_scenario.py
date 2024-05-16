@@ -190,9 +190,9 @@ def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot
                     y=spawn_point.location.y,
                     z=spawn_point.location.z + extra_height,
                 )
-                actor = CarlaDataProvider._world.spawn_actor(blueprint,
-                                                             carla.Transform(anchor.transform(spawn_location),
-                                                                             spawn_point.rotation))
+                spawn_point = carla.Transform(anchor.transform(spawn_location), spawn_point.rotation) \
+                    if anchor else carla.Transform(spawn_location, spawn_point.rotation)
+                actor = CarlaDataProvider._world.spawn_actor(blueprint, spawn_point)
 
             if actor in CarlaDataProvider._blueprint_library.filter('vehicle.*'):
                 actor.set_autopilot(autopilot)
@@ -270,7 +270,7 @@ class RouteScenario(BasicScenario):
             carla.Location(
                 x=self.route[0][0].location.x,
                 y=self.route[0][0].location.y,
-                z=self.route[0][0].location.z - 0.5,
+                z=self.route[0][0].location.z,
             ),
             carla.Rotation(
                 pitch=self.route[0][0].rotation.pitch,
@@ -330,12 +330,19 @@ class RouteScenario(BasicScenario):
         Set/Update the start position of the ego_vehicle
         """
         # move ego to correct position
-        elevate_transform = self.route[0][0]
-        elevate_transform.location.z += 0.5
+        # elevate_transform = self.route[0][0]
+        # elevate_transform.location.z += 0.5
 
-        ego_vehicle = CarlaDataProvider.request_new_actor('vehicle.lincoln.mkz2017',
-                                                          elevate_transform,
-                                                          rolename='hero')
+        ego_vehicle = request_new_actor(
+            model='vehicle.lincoln.mkz2017',
+            spawn_point=self.route[0][0],
+            anchor=None,
+            rolename='hero',
+            autopilot=False,
+            random_location=False,
+            color=None,
+            actor_category="car",
+        )
 
         spectator = CarlaDataProvider.get_world().get_spectator()
         ego_trans = ego_vehicle.get_transform()
