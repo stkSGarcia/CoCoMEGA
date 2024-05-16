@@ -79,11 +79,10 @@ def _fitness(source, follow_up, mr_set=mr_set):
     @param follow_up: Simulation results of the follow-up scenario.
     @return: A tuple containing a bool value indicating whether it violates the relation and the fitness value.
     """
-    field = mr_set.field()
-    if field == "velocity":
+    if mr_set.field == "velocity":
         func = lambda row: math.sqrt(row.velocity_x ** 2 + row.velocity_y ** 2)
-        source[field] = source.apply(func, axis=1, result_type="reduce")
-        follow_up[field] = follow_up.apply(func, axis=1, result_type="reduce")
+        source[mr_set.field] = source.apply(func, axis=1, result_type="reduce")
+        follow_up[mr_set.field] = follow_up.apply(func, axis=1, result_type="reduce")
     is_violated, extent = mr_set.is_violated(source, follow_up)
     return is_violated, (extent,)
 

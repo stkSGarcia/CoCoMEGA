@@ -5,6 +5,7 @@ from abc import ABC
 from enum import Enum, auto
 from typing import List
 
+import numpy as np
 import pandas as pd
 from tslearn.metrics import dtw_path
 
@@ -60,14 +61,14 @@ class Perturbations(list):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         if len(self) == 0 or len(other) == 0: return 0.0
 
-        dp = [float("inf")] * (len(other) + 1)
+        dp = [np.inf] * (len(other) + 1)
         prev = 0.0
         for p in self:
             for i in range(1, len(other) + 1):
                 temp = dp[i]
                 dp[i] = min(min(prev, temp), dp[i - 1]) + p.dist(other[i - 1])
                 prev = temp
-            prev = float("inf")
+            prev = np.inf
         return math.sqrt(dp[-1])
 
     def mate(self, other):
@@ -88,6 +89,7 @@ class Perturbations(list):
 class PerturbationFactory:
     def __init__(self, category: str, boundary, operation: Operation = None):
         self.category = category
+        self.boundary = boundary
         self.operation = operation
 
         if category in ScenarioDefinition.DYNAMIC:
@@ -117,41 +119,36 @@ class Relation(ABC):
         self.threshold = threshold
         self._extent_func = None
 
-    def is_violated(self, source, follow_up) -> (bool, float):
+    def is_violated(self, source, follow_up, regions=None) -> (bool, float):
         """Determine if this relation is violated and quantify the extent of violation.
 
         @param source: The `DataFrame` of the source result.
         @param follow_up: The `DataFrame` of the follow-up result.
+        @param regions: Used in simulation-based strategy.
         @return: The `bool` value indicates whether the relation is violated.
         The `float` value denotes the extent to which this relation is violated.
         """
-        if CONFIG["violation"]["dtw"]:
-            matches, _ = dtw_path(source[self.field], follow_up[self.field])
-            if CONFIG["violation"]["strategy"] == "simulation":
-                df = pd.DataFrame([(
-                    source.loc[source.index.values[i], self.field],
-                    follow_up.loc[follow_up.index.values[j], self.field],
-                    min(source.loc[source.index.values[i], Relation._d],
-                        follow_up.loc[follow_up.index.values[j], Relation._d]),
-                ) for i, j in matches], columns=(Relation._s, Relation._f, Relation._d))
-            else:
-                df = pd.DataFrame([(source.loc[source.index.values[i], self.field],
-                                    follow_up.loc[follow_up.index.values[j], self.field]) for i, j in matches],
-                                  columns=(Relation._s, Relation._f))
-        else:
-            df = pd.merge(source, follow_up, left_index=True, right_index=True)
-            df.rename(columns={f"{self.field}_x": Relation._s, f"{self.field}_y": Relation._f}, inplace=True)
-            if CONFIG["violation"]["strategy"] == "simulation":
-                df[Relation._d] = min(df[f"{Relation._d}_x", df[f"{Relation._d}_y"]])
+        regions = [f"{Relation._d}-{region}" for region in regions or set()] \
+            if CONFIG["violation"]["strategy"] == "simulation" else []
+        matches = [(source.index.values[i], follow_up.index.values[j])
+                   for i, j in dtw_path(source[self.field], follow_up[self.field])[0]] \
+            if CONFIG["violation"]["dtw"] else [(i, i) for i in source.index.intersection(follow_up.index)]
+
+        df = pd.DataFrame([(
+            source.loc[i, self.field],
+            follow_up.loc[j, self.field],
+            *[np.nanmin([source.loc[i].get(region, np.nan), follow_up.loc[j].get(region, np.nan)])
+              for region in [Relation._d] + regions],
+        ) for i, j in matches], columns=(Relation._s, Relation._f, *([Relation._d] + regions)))
 
         if CONFIG["violation"]["strategy"] == "simulation":
-            df = df.loc[df[Relation._d] < CONFIG["violation"]["threshold"]["max_ego_distance"]]
+            df = df.loc[df[regions].min(axis=1) < CONFIG["violation"]["threshold"]["max_ego_distance"]]
         else:
             if CONFIG["violation"]["strategy"] != "curve":
                 logger.warning("Unrecognized strategy, falling back to `curve`.")
             df = df.loc[(df[Relation._s] - df[Relation._f]).abs() > CONFIG["violation"]["threshold"][self.field]]
 
-        if df.empty: return False, 0.0
+        if df.empty: return False, -np.inf
         extents = df.apply(self._extent_func, axis=1, result_type="reduce")
         extent = extents.mean()
         return extent > 0, extent
@@ -196,16 +193,18 @@ class MRSet:
         assert all(mr.relation == mrs[0].relation for mr in mrs)
 
         self.mrs = mrs
+        self.regions = set(factory.boundary
+                           for mr in mrs
+                           for factory in mr.perturbation_factories
+                           if factory.category in ScenarioDefinition.DYNAMIC)
         self.relation = mrs[0].relation
-
-    def field(self):
-        return self.relation.field
+        self.field = self.relation.field
 
     def spawn(self) -> Perturbation:
         return random.choice(self.mrs).spawn()
 
     def is_violated(self, source, follow_up) -> (bool, float):
-        return self.relation.is_violated(source, follow_up)
+        return self.relation.is_violated(source, follow_up, self.regions)
 
     def mutate(self, perturbations: Perturbations):
         """Mutate a give sequence of perturbations.
