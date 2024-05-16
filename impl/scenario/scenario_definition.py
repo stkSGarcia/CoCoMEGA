@@ -233,29 +233,22 @@ class ScenarioDefinition:
             actor.mutate()
 
     def build_actor_trajectory(self, actor_def):
-        spawn_point = actor_def.transform
-        yaw_rad = math.radians(spawn_point.yaw)
+        spawn_point = actor_def.transform.get_config()
+        spawn_point['x'] += self.trajectory[0]['x']
+        spawn_point['y'] += self.trajectory[0]['y']
+        yaw_rad = math.radians(spawn_point['yaw'])
 
-        if hasattr(actor_def, "speed"):
-            total_distance = actor_def.speed * CONFIG['simulation']['scenario_duration']
-            source = (
-                spawn_point.x,
-                spawn_point.y
-            )
-            destination = (
-                spawn_point.x + total_distance * math.cos(yaw_rad),
-                spawn_point.y + total_distance * math.sin(yaw_rad)
-            )
-        else:
-            eps = 0.5
-            source = (
-                spawn_point.x - eps,
-                spawn_point.y - eps
-            )
-            destination = (
-                spawn_point.x + eps,
-                spawn_point.y + eps,
-            )
+        total_distance = actor_def.speed * CONFIG['simulation']['scenario_duration'] \
+            if hasattr(actor_def, "speed") else 0.5
+
+        source = (
+            spawn_point['x'],
+            spawn_point['y'],
+        )
+        destination = (
+            spawn_point['x'] + total_distance * math.cos(yaw_rad),
+            spawn_point['y'] + total_distance * math.sin(yaw_rad)
+        )
         return (source, destination)
 
     def trajectory_collision_score(self):
