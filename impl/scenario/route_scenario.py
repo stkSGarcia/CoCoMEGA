@@ -488,6 +488,7 @@ class RouteScenario(BasicScenario):
         """
 
         behavior = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL)
+        behavior.add_child(py_trees.behaviours.Running(name="Keep Running"))
         actor_definitions = self.scenario_definition.get_other_actors()
         for i, other_actor in enumerate(self.other_actors):
             if other_actor is not None and 'speed' in actor_definitions[i]:

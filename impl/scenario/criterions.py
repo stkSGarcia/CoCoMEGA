@@ -6,6 +6,7 @@ import os
 import math
 
 from impl.config import CONFIG
+from impl.scenario.exceptions import EarlyTerminationException
 
 
 def _distance(actor1, actor2):
@@ -76,8 +77,9 @@ class VehicleMeasurementTest(Criterion):
         return new_status
 
     def terminate(self, new_status):
-        if len(self.values) > 0:
-            self._write_to_file()
+        if len(self.values) == 0:
+            raise EarlyTerminationException("Scenario has terminated right after start.")
+        self._write_to_file()
         super().terminate(new_status)
 
     def _write_to_file(self):

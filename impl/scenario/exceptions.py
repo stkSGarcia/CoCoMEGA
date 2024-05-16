@@ -56,3 +56,15 @@ class StoppingScenarioFailedError(Exception):
     def __init__(self, message):
         self.message = message
         super().__init__(self.message)
+
+
+class EarlyTerminationException(Exception):
+    """Exception raised for early termination of scenario.
+
+        Attributes:
+            message -- explanation of the error
+        """
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
