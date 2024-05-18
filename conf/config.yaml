@@ -98,32 +98,27 @@ trajectory:
         yaw: 180.0
 
 boundary:
+  region:
+    left:
+      radius: [ 2.0, 12.0 ]
+      angle: [ -70.0, -20.0 ]
+    focus:
+      radius: [ 3.0, 23.0 ]
+      angle: [ -20.0, 20.0 ]
+    right:
+      radius: [ 2.0, 12.0 ]
+      angle: [ 20.0, 70.0 ]
   vehicle:
-    x: &x [ 2.0, 20.0 ]
-    y: &y [ -9.0, 9.0 ]
-    z: &z [ 0.0, 0.0 ]
-    pitch: &pitch [ 0.0, 0.0 ]
     yaw: &yaw [ -180.0, 180.0 ]
-    roll: &roll [ 0.0, 0.0 ]
-    speed: [ 0.0, 50.0 ]
+    speed: [ 0.0, 35.0 ]
     model: [ 0, 26 ]
     autopilot: [ 0, 1 ]
   walker:
-    x: *x
-    y: *y
-    z: *z
-    pitch: *pitch
     yaw: *yaw
-    roll: *roll
-    speed: [ 0.0, 10.0 ]
+    speed: [ 0.0, 4.0 ]
     model: [ 0, 14 ]
   static:
-    x: *x
-    y: *y
-    z: *z
-    pitch: *pitch
     yaw: *yaw
-    roll: *roll
     model: [ 0, 87 ]
   env:
     weather: [ 0, 14 ]

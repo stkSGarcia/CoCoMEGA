@@ -128,7 +128,7 @@ class Relation(ABC):
         @return: The `bool` value indicates whether the relation is violated.
         The `float` value denotes the extent to which this relation is violated.
         """
-        regions = [f"{Relation._d}-{region}" for region in regions or set()] \
+        regions = [f"{Relation._d}-{region.name.lower()}" for region in regions or set()] \
             if CONFIG["violation"]["strategy"] == "simulation" else []
         matches = [(source.index.values[i], follow_up.index.values[j])
                    for i, j in dtw_path(source[self.field], follow_up[self.field])[0]] \

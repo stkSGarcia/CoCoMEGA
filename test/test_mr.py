@@ -11,7 +11,7 @@ config = test.CONFIG
 class TestMR(TestCase):
     def test_add(self):
         print("==========Perturbation: Add==========")
-        for region in Boundary.REGION + [None]:
+        for region in list(Boundary.Region) + [None]:
             print(f"**********Region: {region}**********")
             scenario = ScenarioDefinition.generate_random()
             print(scenario)
@@ -20,7 +20,7 @@ class TestMR(TestCase):
             perturbation = factory.spawn()
             print(perturbation)
             if region is not None:
-                self.assertEqual(perturbation.value.position, region)
+                self.assertEqual(perturbation.value.region, region)
 
             perturbation.perturb(scenario)
             print(scenario)
@@ -28,11 +28,11 @@ class TestMR(TestCase):
 
     def test_remove(self):
         print("==========Perturbation: Remove==========")
-        for region in Boundary.REGION + [None]:
+        for region in list(Boundary.Region) + [None]:
             print(f"**********Region: {region}**********")
             scenario = ScenarioDefinition.generate_random()
             print(scenario)
-            origin_length = len([v for v in scenario.vehicles if region is None or v.position == region])
+            origin_length = len([v for v in scenario.vehicles if region is None or v.region == region])
             factory = PerturbationFactory("vehicle", region, Operation.REMOVE)
             perturbation = factory.spawn()
             print(perturbation)
@@ -40,11 +40,11 @@ class TestMR(TestCase):
             perturbation.perturb(scenario)
             print(scenario)
             self.assertEqual((origin_length - 1) if origin_length > 0 else origin_length,
-                             len([v for v in scenario.vehicles if region is None or v.position == region]))
+                             len([v for v in scenario.vehicles if region is None or v.region == region]))
 
     def test_replace(self):
         print("==========Perturbation: Replace==========")
-        for region in Boundary.REGION + [None]:
+        for region in list(Boundary.Region) + [None]:
             print(f"**********Region: {region}**********")
             scenario = ScenarioDefinition.generate_random()
             print(scenario)
@@ -54,28 +54,28 @@ class TestMR(TestCase):
             print(perturbation)
             if region is not None:
                 self.assertEqual(perturbation.value[0], region)
-                self.assertEqual(perturbation.value[1].position, region)
+                self.assertEqual(perturbation.value[1].region, region)
 
             perturbation.perturb(scenario)
             print(scenario)
-            origin_actors = [v for v in origin_scenario.vehicles if region is None or v.position == region]
+            origin_actors = [v for v in origin_scenario.vehicles if region is None or v.region == region]
             if len(origin_actors) > 0:
                 self.assertEqual(len(origin_actors),
-                                 len([v for v in scenario.vehicles if region is None or v.position == region]))
+                                 len([v for v in scenario.vehicles if region is None or v.region == region]))
                 self.assertNotEqual(scenario.dist(origin_scenario), 0.0)
 
     def test_dist(self):
         print("==========Perturbation: Dist==========")
         relation_slow = Decreasing("velocity")
         mr1 = MR([
-            PerturbationFactory("vehicle", "left", Operation.ADD),
-            PerturbationFactory("vehicle", "focus", Operation.REMOVE),
-            PerturbationFactory("vehicle", "right", Operation.REPLACE),
+            PerturbationFactory("vehicle", Boundary.Region.LEFT, Operation.ADD),
+            PerturbationFactory("vehicle", Boundary.Region.FOCUS, Operation.REMOVE),
+            PerturbationFactory("vehicle", Boundary.Region.RIGHT, Operation.REPLACE),
         ], relation_slow)
         mr2 = MR([
-            PerturbationFactory("static", "left", Operation.REPLACE),
-            PerturbationFactory("static", "focus", Operation.REMOVE),
-            PerturbationFactory("static", "right", Operation.ADD),
+            PerturbationFactory("static", Boundary.Region.LEFT, Operation.REPLACE),
+            PerturbationFactory("static", Boundary.Region.FOCUS, Operation.REMOVE),
+            PerturbationFactory("static", Boundary.Region.RIGHT, Operation.ADD),
         ], relation_slow)
         mr_set = MRSet([mr1, mr2])
 
@@ -91,21 +91,21 @@ class TestMR(TestCase):
         print("==========Perturbation: Dist zero==========")
         relation_slow = Decreasing("velocity")
         mr1 = MR([
-            PerturbationFactory("vehicle", "left", Operation.ADD),
-            PerturbationFactory("vehicle", "focus", Operation.REMOVE),
-            PerturbationFactory("vehicle", "right", Operation.REPLACE),
+            PerturbationFactory("vehicle", Boundary.Region.LEFT, Operation.ADD),
+            PerturbationFactory("vehicle", Boundary.Region.FOCUS, Operation.REMOVE),
+            PerturbationFactory("vehicle", Boundary.Region.RIGHT, Operation.REPLACE),
         ], relation_slow)
         mr2 = MR([
-            PerturbationFactory("static", "left", Operation.REPLACE),
-            PerturbationFactory("static", "focus", Operation.REMOVE),
-            PerturbationFactory("static", "right", Operation.ADD),
+            PerturbationFactory("static", Boundary.Region.LEFT, Operation.REPLACE),
+            PerturbationFactory("static", Boundary.Region.FOCUS, Operation.REMOVE),
+            PerturbationFactory("static", Boundary.Region.RIGHT, Operation.ADD),
         ], relation_slow)
         mr_set = MRSet([mr1, mr2])
 
         sequence1 = Perturbations([mr_set.spawn() for _ in range(10)])
         sequence2 = deepcopy(sequence1)
-        sequence2.perturbations.insert(5, deepcopy(sequence2.perturbations[5]))
-        sequence2.perturbations.insert(9, deepcopy(sequence2.perturbations[9]))
+        sequence2.insert(5, deepcopy(sequence2[5]))
+        sequence2.insert(9, deepcopy(sequence2[9]))
         print(sequence1)
         print(sequence2)
 

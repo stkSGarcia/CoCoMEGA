@@ -37,14 +37,11 @@ class TestActor(TestCase):
             print(a)
             print(b)
 
-            for attr in ["x", "y", "z", "pitch", "yaw", "roll"]:
-                self.assertEqual(getattr(a.transform, attr), getattr(b_origin.transform, attr))
-                self.assertEqual(getattr(b.transform, attr), getattr(a_origin.transform, attr))
-            self.assertEqual(getattr(a, "position"), getattr(b_origin, "position"))
-            self.assertEqual(getattr(b, "position"), getattr(a_origin, "position"))
-            for attr in ["speed", "model", "autopilot"]:
+            for attr in ["radius", "angle", "yaw", "model", "speed", "autopilot"]:
                 self.assertEqual(getattr(a, attr, None), getattr(b_origin, attr, None))
                 self.assertEqual(getattr(b, attr, None), getattr(a_origin, attr, None))
+            self.assertEqual(getattr(a, "region"), getattr(b_origin, "region"))
+            self.assertEqual(getattr(b, "region"), getattr(a_origin, "region"))
 
     def test_mutate(self):
         for c in self.clazz:
@@ -57,10 +54,10 @@ class TestActor(TestCase):
     def test_region(self):
         for c in self.clazz:
             print(f"=========={c.__name__}: Region==========")
-            for region in Boundary.REGION:
+            for region in Boundary.Region:
                 a = c.generate_random(region=region)
                 print(a)
-                self.assertEqual(a.position, region)
+                self.assertEqual(a.region, region)
 
 
 class TestScenarioDefinition(TestCase):

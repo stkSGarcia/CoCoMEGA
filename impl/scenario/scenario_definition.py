@@ -3,7 +3,7 @@ import random
 import uuid
 from abc import ABC
 from copy import deepcopy
-from typing import Dict, List
+from enum import Enum
 
 import numpy as np
 from scipy.spatial.distance import cdist
@@ -12,15 +12,17 @@ from impl.config import CONFIG
 from impl.utils.trajectory import TrajectorySolver
 
 
-class Boundary:
-    REGION = ["left", "focus", "right"]
-    _REGION_KEY = "y"
+class Boundary(dict):
+    class Region(Enum):
+        LEFT = CONFIG["boundary"]["region"]["left"]
+        FOCUS = CONFIG["boundary"]["region"]["focus"]
+        RIGHT = CONFIG["boundary"]["region"]["right"]
 
-    def __init__(self, boundary: Dict[str, List]):
-        self.boundary = boundary
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         # Check type consistency and validity.
-        for lower, upper in self.boundary.values():
+        for lower, upper in self.values():
             if type(lower) is not type(upper):
                 raise ValueError(f"Unmatched boundary types: [{type(lower)}, {type(upper)}].")
             if not isinstance(lower, float) and not isinstance(lower, int):
@@ -28,39 +30,36 @@ class Boundary:
             if lower > upper:
                 raise ValueError(f"The lower boundary is greater than the upper boundary: {lower} > {upper}.")
 
-        self.dividers = None
-        if Boundary._REGION_KEY in self.boundary:
-            lower, upper = self.boundary[Boundary._REGION_KEY]
-            interval = (upper - lower) / len(Boundary.REGION)
-            self.dividers = [lower + interval * i for i in range(1, len(Boundary.REGION))]
+        # Append region boundaries.
+        dists, angles = zip(*[(region.value["radius"], region.value["angle"]) for region in Boundary.Region])
+        self["radius"] = [np.min(dists), np.max(dists)]
+        self["angle"] = [np.min(angles), np.max(angles)]
 
-    def get(self, field: str):
-        return self.boundary[field]
-
-    def get_region(self, value):
-        if self.dividers is None: return None
-        for i, divider in enumerate(self.dividers):
-            if value < divider: return Boundary.REGION[i]
-        return Boundary.REGION[-1]
-
-    def random(self, field: str, region=None, none_pb=None):
-        lower, upper = self.boundary[field]
-        if field == Boundary._REGION_KEY and region is not None:
-            i = Boundary.REGION.index(region)
-            if i > 0:
-                lower = self.dividers[i - 1]
-            if i < len(self.dividers):
-                upper = self.dividers[i]
+    def random(self, field: str, region: Region = None, none_pb=None):
+        if field in ["radius", "angle"]:
+            if region is None:
+                region = random.choice(list(Boundary.Region))
+            lower, upper = region.value[field]
+        else:
+            lower, upper = self[field]
         if isinstance(lower, float):
             return None if none_pb and random.random() < none_pb else random.uniform(lower, upper)
         elif isinstance(lower, int):
             return None if none_pb and random.random() < none_pb else random.randint(lower, upper)
 
+    @staticmethod
+    def get_region(angle):
+        for region in Boundary.Region:
+            lower, upper = region.value["angle"]
+            if lower <= angle <= upper:
+                return region
+        return None
+
 
 def _dist_attrs(this, that, attrs, boundary: Boundary):
     dist = 0
     for attr in attrs:
-        lower, upper = boundary.get(attr)
+        lower, upper = boundary[attr]
         if isinstance(lower, float):
             dist += pow(abs(getattr(this, attr) - getattr(that, attr)) / (upper - lower), 2) if upper != lower else 0
         elif isinstance(lower, int):
@@ -94,7 +93,7 @@ def _mate_actors(this, that):
 def _mutate_attrs(this, attrs, boundary: Boundary):
     for attr in attrs:
         if random.random() >= CONFIG["scenario"]["mutpb"]: continue
-        lower, upper = boundary.get(attr)
+        lower, upper = boundary[attr]
         if isinstance(lower, float) and lower != upper:  # Polynomial mutation
             x = getattr(this, attr)
             delta_1 = (x - lower) / (upper - lower)
@@ -191,10 +190,10 @@ class ScenarioDefinition:
             raise ValueError(f"Unsupported category: {category}.")
 
     @staticmethod
-    def _random_pick_actor(actors, region):
+    def _random_pick_actor(actors, region: Boundary.Region):
         index, count = -1, 0
         for i, actor in enumerate(actors):
-            if region is None or actor.position == region:
+            if region is None or actor.region == region:
                 count += 1
                 if random.randint(1, count) == 1:
                     index = i
@@ -233,7 +232,7 @@ class ScenarioDefinition:
             actor.mutate()
 
     def build_actor_trajectory(self, actor_def):
-        spawn_point = actor_def.transform.get_config()
+        spawn_point = actor_def.get_config()['spawn_point']
         spawn_point['x'] += self.trajectory[0]['x']
         spawn_point['y'] += self.trajectory[0]['y']
         yaw_rad = math.radians(spawn_point['yaw'])
@@ -292,170 +291,121 @@ class ScenarioDefinition:
                 f"weather={self.weather})")
 
 
-class Transform:
-    ATTRIBUTES = ["x", "y", "z", "pitch", "yaw", "roll"]
-
-    def __init__(self, x, y, z, pitch, yaw, roll):
-        self.x = x
-        self.y = y
-        self.z = z
-        self.pitch = pitch
-        self.yaw = yaw
-        self.roll = roll
-
-    def get_config(self):
-        return {
-            "x": self.x,
-            "y": self.y,
-            "z": self.z,
-            "pitch": self.pitch,
-            "yaw": self.yaw,
-            "roll": self.roll,
-        }
-
-    def __eq__(self, other):
-        # return (isinstance(other, self.__class__) and
-        return (str(type(self)) == str(type(other)) and
-                self.x == other.x and
-                self.y == other.y and
-                self.z == other.z and
-                self.pitch == other.pitch and
-                self.yaw == other.yaw and
-                self.roll == other.roll)
-
-    def __repr__(self):
-        return f"Transform(" + ", ".join(f"{attr}={str(getattr(self, attr))}" for attr in self.ATTRIBUTES) + ")"
-
-
 class Actor(ABC):
-    _ATTRIBUTES = []
+    _ATTRIBUTES = ["radius", "angle", "yaw", "model"]
+    _BLUEPRINTS = None
     _BOUNDARY = None
 
-    def __init__(self, transform: Transform, *args, **kwargs):
-        self.transform = transform
-        self.position = None
-        self.update_position()
+    def __init__(self, radius, angle, yaw, model, *args, **kwargs):
+        self.radius = radius
+        self.angle = angle
+        self.yaw = yaw
+        self.model = model
+        self.region = None
+        self.update_region()
 
-    def update_position(self):
-        self.position = self._BOUNDARY.get_region(self.transform.y)
+    def update_region(self):
+        self.region = self._BOUNDARY.get_region(self.angle)
 
     @classmethod
-    def generate_random(cls, region=None, none_pb=None):
-        return cls(
-            transform=Transform(**{attr: cls._BOUNDARY.random(attr, region, none_pb) for attr in Transform.ATTRIBUTES}),
-            **{attr: cls._BOUNDARY.random(attr, none_pb) for attr in cls._ATTRIBUTES}
-        )
+    def generate_random(cls, region: Boundary.Region = None, none_pb=None):
+        return cls(**{attr: cls._BOUNDARY.random(attr, region, none_pb)
+                      for attr in Actor._ATTRIBUTES + cls._ATTRIBUTES})
 
     def update(self, other):
-        for attr in Transform.ATTRIBUTES:
-            setattr(self.transform, attr, getattr(other.transform, attr))
-        self.update_position()
-        for attr in self._ATTRIBUTES:
+        # if not isinstance(other, self.__class__):
+        if str(type(self)) != str(type(other)):
+            raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
+        for attr in Actor._ATTRIBUTES + self._ATTRIBUTES:
             setattr(self, attr, getattr(other, attr))
+        self.update_region()
 
     def dist(self, other):
         # if not isinstance(other, self.__class__):
         if str(type(self)) != str(type(other)):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        return (_dist_attrs(self.transform, other.transform, Transform.ATTRIBUTES, self._BOUNDARY) +
-                _dist_attrs(self, other, self._ATTRIBUTES, self._BOUNDARY))
+        return _dist_attrs(self, other, Actor._ATTRIBUTES + self._ATTRIBUTES, self._BOUNDARY)
 
     def mate(self, other):
         """Mate actors in place."""
         # if not isinstance(other, self.__class__):
         if str(type(self)) != str(type(other)):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        _mate_attrs(self.transform, other.transform, Transform.ATTRIBUTES)
-        self.update_position()
-        other.update_position()
-        _mate_attrs(self, other, self._ATTRIBUTES)
+        _mate_attrs(self, other, Actor._ATTRIBUTES + self._ATTRIBUTES)
+        self.update_region()
+        other.update_region()
 
     def mutate(self):
         """Mutate actors in place."""
-        _mutate_attrs(self.transform, Transform.ATTRIBUTES, self._BOUNDARY)
-        self.update_position()
-        _mutate_attrs(self, self._ATTRIBUTES, self._BOUNDARY)
+        _mutate_attrs(self, Actor._ATTRIBUTES + self._ATTRIBUTES, self._BOUNDARY)
+        self.update_region()
 
     def get_config(self):
         return {
-            "role_name": self.position,
-            "spawn_point": self.transform.get_config()
+            "role_name": self.region.name.lower(),
+            "spawn_point": {
+                "x": self.radius * math.cos(math.radians(self.angle)),
+                "y": self.radius * math.sin(math.radians(self.angle)),
+                "z": 0.0,
+                "yaw": self.yaw,
+            },
+            "model": self._BLUEPRINTS["model"][self.model]
         }
 
     def __eq__(self, other):
         # return (isinstance(other, self.__class__) and
         return (str(type(self)) == str(type(other)) and
-                self.transform == other.transform)
+                self.radius == other.radius and
+                self.angle == other.angle and
+                self.yaw == other.yaw and
+                self.model == other.model)
 
     def __repr__(self):
-        return (f"{self.__class__.__name__}(transform={self.transform}, position={self.position}, " +
-                ", ".join(f"{attr}={str(getattr(self, attr))}" for attr in self._ATTRIBUTES) + ")")
+        return (f"{self.__class__.__name__}(region={self.region}, " +
+                ", ".join(f"{attr}={str(getattr(self, attr))}" for attr in Actor._ATTRIBUTES + self._ATTRIBUTES) + ")")
 
 
 class Vehicle(Actor):
-    _ATTRIBUTES = ["speed", "model", "autopilot"]
+    _ATTRIBUTES = ["speed", "autopilot"]
     _BLUEPRINTS = CONFIG["blueprint"]["vehicle"]
     _BOUNDARY = Boundary(CONFIG["boundary"]["vehicle"])
 
-    def __init__(self, transform, speed, model, autopilot):
-        super().__init__(transform)
+    def __init__(self, radius, angle, yaw, model, speed, autopilot):
+        super().__init__(radius, angle, yaw, model)
         self.speed = speed
-        self.model = model
         self.autopilot = autopilot
 
     def get_config(self):
         return {
             **super().get_config(),
             "speed": self.speed,
-            "model": Vehicle._BLUEPRINTS["model"][self.model],
             "autopilot": bool(self.autopilot),
         }
 
     def __eq__(self, other):
-        return (super().__eq__(other) and
-                self.speed == other.speed and
-                self.model == other.model and
-                self.autopilot == other.autopilot)
+        return super().__eq__(other) and self.speed == other.speed and self.autopilot == other.autopilot
 
 
 class Walker(Actor):
-    _ATTRIBUTES = ["speed", "model"]
+    _ATTRIBUTES = ["speed"]
     _BLUEPRINTS = CONFIG["blueprint"]["walker"]
     _BOUNDARY = Boundary(CONFIG["boundary"]["walker"])
 
-    def __init__(self, transform, speed, model):
-        super().__init__(transform)
+    def __init__(self, radius, angle, yaw, model, speed):
+        super().__init__(radius, angle, yaw, model)
         self.speed = speed
-        self.model = model
 
     def get_config(self):
         return {
             **super().get_config(),
             "speed": self.speed,
-            "model": Walker._BLUEPRINTS["model"][self.model],
         }
 
     def __eq__(self, other):
-        return (super().__eq__(other) and
-                self.speed == other.speed and
-                self.model == other.model)
+        return super().__eq__(other) and self.speed == other.speed
 
 
 class Static(Actor):
-    _ATTRIBUTES = ["model"]
+    _ATTRIBUTES = []
     _BLUEPRINTS = CONFIG["blueprint"]["static"]
     _BOUNDARY = Boundary(CONFIG["boundary"]["static"])
-
-    def __init__(self, transform, model):
-        super().__init__(transform)
-        self.model = model
-
-    def get_config(self):
-        return {
-            **super().get_config(),
-            "model": Static._BLUEPRINTS["model"][self.model],
-        }
-
-    def __eq__(self, other):
-        return (super().__eq__(other) and
-                self.model == other.model)
