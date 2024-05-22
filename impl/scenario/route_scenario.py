@@ -171,7 +171,7 @@ def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot
     """
     This method tries to create a new actor, returning it if successful (raises InvalidScenarioConfError otherwise).
     """
-    extra_height = 0
+    extra_height = 0.0
     while True:
         try:
             blueprint = CarlaDataProvider.create_blueprint(model, rolename, color, actor_category)
@@ -179,8 +179,8 @@ def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot
             if random_location:
                 actor = None
                 while not actor:
-                    spawn_point = CarlaDataProvider._rng.choice(CarlaDataProvider._spawn_points)
-                    actor = CarlaDataProvider._world.spawn_actor(blueprint, spawn_point)
+                    _spawn_point = CarlaDataProvider._rng.choice(CarlaDataProvider._spawn_points)
+                    actor = CarlaDataProvider._world.spawn_actor(blueprint, _spawn_point)
 
             else:
                 # Incrementally lift the actor to avoid collisions with ground when spawning the actor
@@ -190,9 +190,9 @@ def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot
                     y=spawn_point.location.y,
                     z=spawn_point.location.z + extra_height,
                 )
-                spawn_point = carla.Transform(anchor.transform(spawn_location), spawn_point.rotation) \
+                _spawn_point = carla.Transform(anchor.transform(spawn_location), spawn_point.rotation) \
                     if anchor else carla.Transform(spawn_location, spawn_point.rotation)
-                actor = CarlaDataProvider._world.spawn_actor(blueprint, spawn_point)
+                actor = CarlaDataProvider._world.spawn_actor(blueprint, _spawn_point)
 
             if actor in CarlaDataProvider._blueprint_library.filter('vehicle.*'):
                 actor.set_autopilot(autopilot)
