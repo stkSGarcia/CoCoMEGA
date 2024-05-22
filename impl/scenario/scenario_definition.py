@@ -190,7 +190,7 @@ class ScenarioDefinition:
             raise ValueError(f"Unsupported category: {category}.")
 
     @staticmethod
-    def _random_pick_actor(actors, region: Boundary.Region):
+    def _random_pick_actor(actors, region: Boundary.Region = None):
         index, count = -1, 0
         for i, actor in enumerate(actors):
             if region is None or actor.region == region:
@@ -230,6 +230,13 @@ class ScenarioDefinition:
         _mutate_attrs(self, ScenarioDefinition.ATTRIBUTES, ScenarioDefinition._BOUNDARY)
         for actor in self.vehicles + self.walkers + self.statics:
             actor.mutate()
+        if random.random() < CONFIG["scenario"]["mut_del"]:
+            for actors in [self.vehicles, self.walkers, self.statics]:
+                index = ScenarioDefinition._random_pick_actor(actors)
+                if index >= 0: del actors[index]
+        else:
+            for actors, cls in zip([self.vehicles, self.walkers, self.statics], [Vehicle, Walker, Static]):
+                actors += ScenarioDefinition._generate_actors(cls, CONFIG["scenario"]["mut_add"])
 
     def build_actor_trajectory(self, actor_def):
         spawn_point = actor_def.get_config()['spawn_point']

@@ -54,6 +54,8 @@ scenario:
   cxpb: 0.8
   eta: 10.0
   mutpb: 0.2
+  mut_add: 0.6
+  mut_del: 0.2
 
 perturbation:
   pop_size: 10
