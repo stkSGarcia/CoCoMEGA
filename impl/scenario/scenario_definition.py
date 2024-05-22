@@ -158,8 +158,9 @@ class ScenarioDefinition:
     def _generate_actors(cls, probability):
         actors = []
         times = 1
-        while random.random() < probability ** times:
+        while len(actors) < CONFIG["scenario"]["max_actors"] and random.random() < probability ** times:
             actors.append(cls.generate_random())
+            times += 1
         return actors
 
     def get_trigger_position(self):
@@ -209,7 +210,7 @@ class ScenarioDefinition:
             if len(actors) == 0 and len(other_actors) == 0:
                 continue
             elif len(actors) == 0 or len(other_actors) == 0:
-                dist += min(len(actors), len(other_actors)) * pow(CONFIG["scenario"]["dist_scaling"], 2)
+                dist += max(len(actors), len(other_actors)) * pow(CONFIG["scenario"]["dist_scaling"], 2)
             else:
                 dist_matrix = cdist(np.array(actors, dtype=object).reshape((-1, 1)),
                                     np.array(other_actors, dtype=object).reshape((-1, 1)),
@@ -231,9 +232,12 @@ class ScenarioDefinition:
         for actor in self.vehicles + self.walkers + self.statics:
             actor.mutate()
         if random.random() < CONFIG["scenario"]["mut_del"]:
-            for actors in [self.vehicles, self.walkers, self.statics]:
+            times = 1
+            while random.random() < CONFIG["scenario"]["mutpb"] ** times:
+                actors = random.choice([self.vehicles, self.walkers, self.statics])
                 index = ScenarioDefinition._random_pick_actor(actors)
                 if index >= 0: del actors[index]
+                times += 1
         else:
             for actors, cls in zip([self.vehicles, self.walkers, self.statics], [Vehicle, Walker, Static]):
                 actors += ScenarioDefinition._generate_actors(cls, CONFIG["scenario"]["mut_add"])
