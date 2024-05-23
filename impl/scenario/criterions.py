@@ -1,5 +1,6 @@
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import Criterion
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+import carla
 import py_trees
 import csv
 import os
@@ -13,6 +14,15 @@ def _distance(actor1, actor2):
     loc1 = actor1.get_location()
     loc2 = actor2.get_location()
     return math.sqrt((loc1.x - loc2.x) ** 2 + (loc1.y - loc2.y) ** 2)
+
+
+def _angle_between_vectors(v1, v2):
+    dot_product = v1.x * v2.x + v1.y * v2.y
+    magnitude_v1 = math.sqrt(v1.x ** 2 + v1.y ** 2)
+    magnitude_v2 = math.sqrt(v2.x ** 2 + v2.y ** 2)
+    cos_angle = dot_product / (magnitude_v1 * magnitude_v2)
+    angle = math.acos(cos_angle)
+    return math.degrees(angle)
 
 
 class VehicleMeasurementTest(Criterion):
@@ -38,6 +48,7 @@ class VehicleMeasurementTest(Criterion):
         self.scenario_def_id = scenario_def_id
         self.values = []
         self.ticks = 0
+        self.fov = 100
         super(VehicleMeasurementTest, self).__init__(name, actor, 1, None, optional)
 
     def update(self):
@@ -65,12 +76,22 @@ class VehicleMeasurementTest(Criterion):
             if len(self.other_actors) > 0:
                 measure_dict[f"ego-nearest-distance"] = min(
                     [_distance(self.actor, other_actor) for other_actor in self.other_actors])
+
+                fov_distances = [_distance(self.actor, other_actor) \
+                                 for other_actor in self.other_actors if self._isin_fov(other_actor)]
+                measure_dict[f"fov_nearest_distance"] = min(fov_distances) if len(fov_distances) > 0 else -1
                 role_names = set([other_actor.attributes['role_name'] for other_actor in self.other_actors])
-                if len(role_names) > 0:
-                    for role_name in role_names:
-                        measure_dict[f"ego-nearest-distance-{role_name}"] = min(
-                            [_distance(self.actor, other_actor) for other_actor in self.other_actors if
-                             other_actor.attributes['role_name'] == role_name])
+                for role_name in role_names:
+                    measure_dict[f"ego-nearest-distance-{role_name}"] = min(
+                        [_distance(self.actor, other_actor) for other_actor in self.other_actors if
+                         other_actor.attributes['role_name'] == role_name])
+
+                    fov_rolename_distances = [_distance(self.actor, other_actor) \
+                                              for other_actor in self.other_actors \
+                                              if other_actor.attributes['role_name'] == role_name \
+                                              and self._isin_fov(other_actor)]
+                    measure_dict[f"fov-nearest-distance-{role_name}"] = min(fov_rolename_distances) \
+                        if len(fov_rolename_distances) > 0 else -1
 
             self.values.append(measure_dict)
 
@@ -89,3 +110,15 @@ class VehicleMeasurementTest(Criterion):
             dict_writer = csv.DictWriter(output_file, keys)
             dict_writer.writeheader()
             dict_writer.writerows(self.values)
+
+    def _isin_fov(self, other_actor):
+        ego_transform = self.actor.get_transform()
+        ego_location = ego_transform.location
+        forward_vector = ego_transform.rotation.get_forward_vector()
+        actor_location = other_actor.get_location()
+
+        vector_to_actor = carla.Vector2D(actor_location.x - ego_location.x,
+                                         actor_location.y - ego_location.y, )
+        angle = _angle_between_vectors(forward_vector, vector_to_actor)
+
+        return angle <= self.fov / 2
