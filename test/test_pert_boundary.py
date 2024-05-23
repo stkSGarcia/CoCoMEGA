@@ -44,28 +44,28 @@ class TestPertBoundary:
                     "speed": [0.0, 10.0],
                     "model": [0, 14],
                 }),
-            # "medium":
-            #     Boundary({
-            #         "x": [-190.0, -178.0],
-            #         "y": [89.0, 102.0],
-            #         "z": [0.5, 1.0],
-            #         "pitch": [0.0, 0.0],
-            #         "yaw": [-180.0, 180.0],
-            #         "roll": [0.0, 0.0],
-            #         "speed": [0.0, 10.0],
-            #         "model": [0, 14],
-            #     }),
-            # "large":
-            #     Boundary({
-            #         "x": [-198.0, -178.0],
-            #         "y": [89.0, 102.0],
-            #         "z": [0.5, 1.0],
-            #         "pitch": [0.0, 0.0],
-            #         "yaw": [-180.0, 180.0],
-            #         "roll": [0.0, 0.0],
-            #         "speed": [0.0, 10.0],
-            #         "model": [0, 14],
-            #     }),
+            "medium":
+                Boundary({
+                    "x": [-190.0, -178.0],
+                    "y": [89.0, 102.0],
+                    "z": [0.5, 1.0],
+                    "pitch": [0.0, 0.0],
+                    "yaw": [-180.0, 180.0],
+                    "roll": [0.0, 0.0],
+                    "speed": [0.0, 10.0],
+                    "model": [0, 14],
+                }),
+            "large":
+                Boundary({
+                    "x": [-198.0, -178.0],
+                    "y": [89.0, 102.0],
+                    "z": [0.5, 1.0],
+                    "pitch": [0.0, 0.0],
+                    "yaw": [-180.0, 180.0],
+                    "roll": [0.0, 0.0],
+                    "speed": [0.0, 10.0],
+                    "model": [0, 14],
+                }),
         }
         for name, pert_boundary in pert_boundaries.items():
             pert_factory = PerturbationFactory(category=self.category, boundary=pert_boundary)
