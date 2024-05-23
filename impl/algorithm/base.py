@@ -110,7 +110,8 @@ class BaseAlgorithm:
         @param scaling: Scaling factor.
         @return: The population with fitness adjusted.
         """
-        dist_matrix = squareform(pdist(np.array(population, dtype=object).reshape((-1, 1)),
+        if len(population) == 0: return
+        dist_matrix = squareform(pdist(np.array(population, dtype=object).reshape((len(population), -1)),
                                        lambda x, y: x[0].dist(y[0])))
         max_dist = np.max(dist_matrix)
         radius = max_dist / (2 * len(population))  # TODO: to be justified.
@@ -131,7 +132,8 @@ class BaseAlgorithm:
         @param capacity: The maximum number of winners in a niche.
         @return: The population with fitness adjusted.
         """
-        dist_matrix = squareform(pdist(np.array(population, dtype=object).reshape((-1, 1)),
+        if len(population) == 0: return
+        dist_matrix = squareform(pdist(np.array(population, dtype=object).reshape((len(population), -1)),
                                        lambda x, y: x[0].dist(y[0])))
         max_dist = np.max(dist_matrix)
         radius = max_dist / (2 * len(population))  # TODO: to be justified.
@@ -149,12 +151,13 @@ class BaseAlgorithm:
 
     def population_diversity(self, population):
         """Calculate the Pure Diversity (PD) of the given population."""
+        if len(population) == 0: return 0.0
         n = len(population)
         connected = np.eye(n, dtype=bool)
-        dist_matrix = squareform(pdist(np.array(population, dtype=object).reshape((-1, 1)),
+        dist_matrix = squareform(pdist(np.array(population, dtype=object).reshape((len(population), -1)),
                                        lambda x, y: x[0].dist(y[0])))
         np.fill_diagonal(dist_matrix, np.inf)
-        pd = 0
+        pd = 0.0
         for _ in range(n - 1):
             while True:
                 d, indices = np.min(dist_matrix, axis=1), np.argmin(dist_matrix, axis=1)
