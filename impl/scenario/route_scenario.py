@@ -36,6 +36,7 @@ from srunner.scenariomanager.scenarioatomics.atomic_behaviors import AccelerateT
 from leaderboard.utils.route_parser import RouteParser, TRIGGER_THRESHOLD, TRIGGER_ANGLE_THRESHOLD
 from leaderboard.utils.route_manipulation import interpolate_trajectory
 from impl.config import CONFIG
+from impl.scenario.scenario_definition import Walker
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +118,12 @@ def convert_transform_to_location(transform_vec):
         location_vec.append((transform_tuple[0].location, transform_tuple[1]))
 
     return location_vec
+
+
+def convert_polar_to_cartesian(radius, angle_degrees):
+    x = radius * math.cos(math.radians(angle_degrees))
+    y = radius * math.sin(math.radians(angle_degrees))
+    return x, y
 
 
 def compare_scenarios(scenario_choice, existent_scenario):
@@ -260,6 +267,11 @@ class RouteScenario(BasicScenario):
                 roll=self.route[0][0].rotation.roll,
             )
         )
+        if CONFIG["debug"]:
+            self._draw_boundary(Walker._BOUNDARY.Region.FOCUS, anchor)
+            # self._draw_boundary(Walker._BOUNDARY.Region.LEFT, anchor)
+            # self._draw_boundary(Walker._BOUNDARY.Region.RIGHT, anchor)
+
         if config.other_actors:
             for actor_conf in config.other_actors:
                 new_actor = request_new_actor(
@@ -283,7 +295,6 @@ class RouteScenario(BasicScenario):
         - config: Scenario configuration (RouteConfiguration)
         """
 
-
         # prepare route's trajectory (interpolate and add the GPS route)
         gps_route, route = interpolate_trajectory(world, trajectory)
 
@@ -291,10 +302,6 @@ class RouteScenario(BasicScenario):
         CarlaDataProvider.set_ego_vehicle_route(convert_transform_to_location(self.route))
 
         self.agent_instance.set_global_plan(gps_route, self.route)
-
-        # Print route in debug mode
-        if CONFIG["debug"]:
-            self._draw_boundaries(world)
 
     def _update_ego_vehicle(self):
         """
@@ -369,12 +376,22 @@ class RouteScenario(BasicScenario):
         world.debug.draw_point(waypoints[-1][0].location + carla.Location(z=vertical_shift), size=0.2,
                                color=carla.Color(255, 0, 0), life_time=persistency)
 
-    def _draw_boundaries(self, world):
-        pass
-        start_point = carla.Location(x=points[i][0], y=points[i][1], z=points[i][2])
-        end_point = carla.Location(x=points[(i + 1) % len(points)][0], y=points[(i + 1) % len(points)][1],
-                                   z=points[(i + 1) % len(points)][2])
-        debug.draw_line(start_point, end_point, thickness=0.1, color=carla.Color(*color), life_time=0)
+    def _draw_boundary(self, boundary, anchor, z=0.3):
+        rads, angs = boundary.value["radius"], boundary.value["angle"]
+        point_indices = [(0, 0), (0, 1), (1, 1), (1, 0)]
+        points = [convert_polar_to_cartesian(rads[i], angs[j]) for i, j in point_indices]
+        for i in range(len(points)):
+            start_point = anchor.transform(carla.Location(x=points[i][0], y=points[i][1], z=z))
+            end_point = anchor.transform(
+                carla.Location(
+                    x=points[(i + 1) % len(points)][0],
+                    y=points[(i + 1) % len(points)][1],
+                    z=z,
+                )
+            )
+            CarlaDataProvider._world.debug.draw_line(start_point, end_point, thickness=0.15,
+                                                     color=carla.Color(225, 10, 10),
+                                                     life_time=0)
 
     def _scenario_sampling(self, potential_scenarios_definitions, random_seed=0):
         """
