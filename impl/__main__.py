@@ -21,8 +21,7 @@ def ccea(algorithm: str, resume: bool):
         raise ValueError(f"Unsupported algorithm: {algorithm}.")
     solver.solve(resume=resume)
 
-    visualizer = Visualizer()
-    visualizer.visualize_gen_stats(
+    Visualizer.visualize_gen_stats(
         stats=solver.logbook,
         show=False,
         out_dir=config.CONFIG["workspace"]["visualization"],

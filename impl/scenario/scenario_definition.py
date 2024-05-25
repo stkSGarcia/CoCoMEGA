@@ -35,11 +35,13 @@ class Boundary(dict):
         self["radius"] = [np.min(dists), np.max(dists)]
         self["angle"] = [np.min(angles), np.max(angles)]
 
+
+
     def random(self, field: str, region: Region = None, none_pb=None):
         if field in ["radius", "angle"]:
             if region is None:
                 region = random.choice(list(Boundary.Region))
-            lower, upper = region.value[field]
+            lower, upper = region.value[field] if hasattr(region, "value") else region[field]
         else:
             lower, upper = self[field]
         if isinstance(lower, float):

@@ -97,12 +97,13 @@ class CCEA(BaseAlgorithm):
         logger.info(f"Terminate due to reaching the threshold.")
         # Store the complete solutions.
         suffix = int(round(time.time() * 1000))
+        statistics_path = f"statistics-{suffix}.pickle"
         with open(os.path.join(CONFIG["workspace"]["solution"], f"solutions-{suffix}.pickle"), "wb") as f:
             pickle.dump(archive_solution, f)
-        with open(os.path.join(CONFIG["workspace"]["solution"], f"statistics-{suffix}.pickle"), "wb") as f:
+        with open(os.path.join(CONFIG["workspace"]["solution"], statistics_path), "wb") as f:
             pickle.dump(self.logbook, f)
 
-        return archive_solution
+        return archive_solution, statistics_path
 
     def _evaluate(self, pop_scenario, archive_scenario, pop_perturbation, archive_perturbation, evaluated_solutions):
         """Form complete solutions and evaluate their joint fitness as well as the individual fitness values.

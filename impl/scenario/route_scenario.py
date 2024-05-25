@@ -33,17 +33,10 @@ from srunner.scenarios.basic_scenario import BasicScenario
 
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import AccelerateToVelocity
 
-from srunner.scenariomanager.scenarioatomics.atomic_criteria import (CollisionTest,
-                                                                     InRouteTest,
-                                                                     RouteCompletionTest,
-                                                                     OutsideRouteLanesTest,
-                                                                     RunningRedLightTest,
-                                                                     RunningStopTest,
-                                                                     ActorSpeedAboveThresholdTest)
-
 from leaderboard.utils.route_parser import RouteParser, TRIGGER_THRESHOLD, TRIGGER_ANGLE_THRESHOLD
 from leaderboard.utils.route_manipulation import interpolate_trajectory
 from impl.config import CONFIG
+from impl.scenario.scenario_definition import Walker
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +118,12 @@ def convert_transform_to_location(transform_vec):
         location_vec.append((transform_tuple[0].location, transform_tuple[1]))
 
     return location_vec
+
+
+def convert_polar_to_cartesian(radius, angle_degrees):
+    x = radius * math.cos(math.radians(angle_degrees))
+    y = radius * math.sin(math.radians(angle_degrees))
+    return x, y
 
 
 def compare_scenarios(scenario_choice, existent_scenario):
@@ -244,16 +243,6 @@ class RouteScenario(BasicScenario):
         ego_vehicle = self._update_ego_vehicle()
         scenario_config = self._build_scenario_configuration(scenario_definition, ego_vehicle, agent_instance)
 
-        # TODO Set ego_vehicle in config and other actors in scenario definition
-        # self.scenario = self._build_scenario_instance(world, ego_vehicle, self.scenario_definition,
-        #                                               timeout=self.timeout,
-        #                                               debug_mode=debug_mode > 1)
-
-        # route_var_name = "ScenarioRouteNumber{}".format(scenario_number)
-        # scenario_configuration.route_var_name = route_var_name
-        # scenario_instance = scenario_class(world, [ego_vehicle], scenario_configuration,
-        #                                    criteria_enable=False, timeout=timeout)
-
         super(RouteScenario, self).__init__(name=scenario_config.name,
                                             ego_vehicles=[ego_vehicle],
                                             config=scenario_config,
@@ -278,6 +267,11 @@ class RouteScenario(BasicScenario):
                 roll=self.route[0][0].rotation.roll,
             )
         )
+        if CONFIG["debug"]:
+            self._draw_boundary(Walker._BOUNDARY.Region.FOCUS, anchor)
+            # self._draw_boundary(Walker._BOUNDARY.Region.LEFT, anchor)
+            # self._draw_boundary(Walker._BOUNDARY.Region.RIGHT, anchor)
+
         if config.other_actors:
             for actor_conf in config.other_actors:
                 new_actor = request_new_actor(
@@ -301,29 +295,13 @@ class RouteScenario(BasicScenario):
         - config: Scenario configuration (RouteConfiguration)
         """
 
-        # Transform the scenario file into a dictionary
-        # world_annotations = RouteParser.parse_annotations_file(config.scenario_file)
-
         # prepare route's trajectory (interpolate and add the GPS route)
         gps_route, route = interpolate_trajectory(world, trajectory)
-
-        # potential_scenarios_definitions, _ = RouteParser.scan_route_for_scenarios(
-        #     config.town, route, world_annotations)
 
         self.route = route
         CarlaDataProvider.set_ego_vehicle_route(convert_transform_to_location(self.route))
 
         self.agent_instance.set_global_plan(gps_route, self.route)
-
-        # Sample the scenarios to be used for this route instance.
-        # self.sampled_scenarios_definitions = self._scenario_sampling(potential_scenarios_definitions)
-
-        # Timeout of scenario in seconds
-        # self.timeout = self._estimate_route_timeout()
-
-        # Print route in debug mode
-        if debug_mode:
-            self._draw_waypoints(world, self.route, vertical_shift=1.0, persistency=50000.0)
 
     def _update_ego_vehicle(self):
         """
@@ -397,6 +375,23 @@ class RouteScenario(BasicScenario):
                                color=carla.Color(0, 0, 255), life_time=persistency)
         world.debug.draw_point(waypoints[-1][0].location + carla.Location(z=vertical_shift), size=0.2,
                                color=carla.Color(255, 0, 0), life_time=persistency)
+
+    def _draw_boundary(self, boundary, anchor, z=0.3):
+        rads, angs = boundary.value["radius"], boundary.value["angle"]
+        point_indices = [(0, 0), (0, 1), (1, 1), (1, 0)]
+        points = [convert_polar_to_cartesian(rads[i], angs[j]) for i, j in point_indices]
+        for i in range(len(points)):
+            start_point = anchor.transform(carla.Location(x=points[i][0], y=points[i][1], z=z))
+            end_point = anchor.transform(
+                carla.Location(
+                    x=points[(i + 1) % len(points)][0],
+                    y=points[(i + 1) % len(points)][1],
+                    z=z,
+                )
+            )
+            CarlaDataProvider._world.debug.draw_line(start_point, end_point, thickness=0.15,
+                                                     color=carla.Color(225, 10, 10),
+                                                     life_time=0)
 
     def _scenario_sampling(self, potential_scenarios_definitions, random_seed=0):
         """

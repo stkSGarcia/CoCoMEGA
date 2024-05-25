@@ -231,15 +231,13 @@ class ScenarioEvaluator(object):
 
         self.world.reset_all_traffic_lights()
 
-        # self.world.set_weather(self.weather_preset)
-
         CarlaDataProvider.set_client(self.client)
         CarlaDataProvider.set_world(self.world)
         CarlaDataProvider.set_traffic_manager_port(int(args.trafficManagerPort))
         CarlaDataProvider.set_random_seed(int(args.carlaProviderSeed))
 
-        # self.traffic_manager.set_synchronous_mode(True)
-        # self.traffic_manager.set_random_device_seed(int(args.trafficManagerSeed))
+        # if CONFIG["debug"]:
+        # self._draw_boundary()
 
         # Wait for the world to be ready
         if CarlaDataProvider.is_sync_mode():
@@ -250,22 +248,6 @@ class ScenarioEvaluator(object):
         if CarlaDataProvider.get_map().name != self.scenario_definition.town:
             raise Exception("The CARLA server uses the wrong map!"
                             "This scenario requires to use map {}".format(self.scenario_definition.town))
-
-    def _register_statistics(self, config, checkpoint, entry_status, crash_message=""):
-        """
-        Computes and saved the simulation statistics
-        """
-        # register statistics
-        # current_stats_record = self.statistics_manager.compute_route_statistics(
-        #     config,
-        #     self.manager.scenario_duration_system,
-        #     self.manager.scenario_duration_game,
-        #     crash_message
-        # )
-
-        print("\033[1m> Registering the route statistics\033[0m")
-        # self.statistics_manager.save_record(current_stats_record, config.index, checkpoint)
-        # self.statistics_manager.save_entry_status(entry_status, False, checkpoint)
 
     def _load_and_run_scenario(self, args, repetition_index):
         """
@@ -281,9 +263,6 @@ class ScenarioEvaluator(object):
         logger.info(
             f"\n\033[1m========= Preparing {self.scenario_definition.id_} (repetition {repetition_index}) =========")
         logger.info("> Setting up the agent\033[0m")
-
-        # Prepare the statistics of the route
-        # self.statistics_manager.set_route(config.name, config.index)
 
         # Set up the user's agent, and the timer to avoid freezing the simulation
         try:
@@ -309,39 +288,21 @@ class ScenarioEvaluator(object):
             # traceback.print_exc()
             raise e
 
-            # crash_message = "Agent's sensors were invalid"
-            # entry_status = "Rejected"
-
-            # self._register_statistics(config, args.checkpoint, entry_status, crash_message)
-            # self._cleanup()
-            # sys.exit(-1)
-
         except Exception as e:
             # The agent setup has failed -> start the next route
             logger.error(f"\n\033[91mCould not set up the required agent: {e}")
             # traceback.print_exc()
             raise AgentSetupFailedError(f"\n\033[91mCould not set up the required agent: {e}")
 
-            # crash_message = "Agent couldn't be set up"
-
-            # self._register_statistics(config, args.checkpoint, entry_status, crash_message)
-            # self._cleanup()
-            # return
-
         logger.info("\033[1m> Loading the world\033[0m")
 
         # Load the world and the scenario
         try:
             self._load_and_wait_for_world(args)
-            # self._prepare_ego_vehicles(config.ego_vehicles, False)
 
             scenario = RouteScenario(world=self.world, scenario_definition=self.scenario_definition,
                                      agent_instance=self.agent_instance,
                                      debug_mode=args.debug)
-            # self.statistics_manager.set_scenario(scenario.scenario)
-
-            # self.agent_instance._init()
-            # self.agent_instance.sensor_interface = SensorInterface()
 
             # Load scenario and run it
             if args.record:
@@ -357,17 +318,6 @@ class ScenarioEvaluator(object):
                 traceback.print_exc()
             raise LoadingScenarioFailedError(f"\n\033[91mThe scenario could not be loaded: {e}")
 
-            # crash_message = "Simulation crashed"
-            # entry_status = "Crashed"
-
-            # self._register_statistics(config, args.checkpoint, entry_status, crash_message)
-
-            # if args.record:
-            #     self.client.stop_recorder()
-
-            # self._cleanup()
-            # sys.exit(-1)
-
         logger.info("\033[1m> Running the scenario\033[0m")
 
         # Run the scenario
@@ -379,16 +329,12 @@ class ScenarioEvaluator(object):
             # traceback.print_exc()
             raise e
 
-            # crash_message = "Agent crashed"
 
         except Exception as e:
             logger.error(f"\n\033[91mError during the simulation: {e}")
             if CONFIG['debug']:
                 traceback.print_exc()
             raise SimulationError(f"\n\033[91mError during the simulation: {e}")
-
-            # crash_message = "Simulation crashed"
-            # entry_status = "Crashed"
 
         # Stop the scenario
         try:
@@ -409,57 +355,14 @@ class ScenarioEvaluator(object):
             # traceback.print_exc()
             raise StoppingScenarioFailedError(f"\n\033[91mFailed to stop the scenario: {e}")
 
-            # crash_message = "Simulation crashed"
-
-        # if crash_message == "Simulation crashed":
-        #     if CONFIG['simulation']['docker']['enabled']:
-        #         logger.info("Failed running scenario. Restarting Carla...")
-        #         restart_carla(container_name=f"{CONFIG['simulation']['docker']['image']}-{config.port}")
-        #     else:
-        #         sys.exit(-1)
-
     def run(self, args):
         """
         Run the challenge mode
         """
-        # agent_class_name = getattr(self.module_agent, 'get_entry_point')()
-        # self.agent_instance = getattr(self.module_agent, agent_class_name)(args.agent_config)
-        # route_indexer = RouteIndexer(args.routes, args.scenarios, args.repetitions)
-        #
-        # if args.resume:
-        #     route_indexer.resume(args.checkpoint)
-        # self.statistics_manager.resume(args.checkpoint)
-        # else:
-        # self.statistics_manager.clear_record(args.checkpoint)
-        # os.makedirs(os.path.dirname(args.checkpoint), exist_ok=True)
-        # route_indexer.save_state(args.checkpoint)
-
-        # config = route_indexer.next()
-
-        # config = RouteScenarioConfiguration()
-        # config.town = route.attrib['town']
-        # new_config.name = "RouteScenario_{}".format(route_id)
-        # new_config.weather = RouteParser.parse_weather(route)
 
         for i in range(args.repetitions):
             # run
             self._load_and_run_scenario(args, repetition_index=i)
-
-            # for obj in gc.get_objects():
-            #     try:
-            #         if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
-            #             print(type(obj), obj.size())
-            #     except:
-            #         pass
-
-            # route_indexer.save_state(args.checkpoint)
-
-
-# save global statistics
-# print("\033[1m> Registering the global statistics\033[0m")
-# global_stats_record = self.statistics_manager.compute_global_statistics(route_indexer.total)
-# StatisticsManager.save_global_record(global_stats_record, self.sensor_icons, route_indexer.total,
-#                                      args.checkpoint)
 
 
 def main():
