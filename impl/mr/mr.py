@@ -29,7 +29,19 @@ class Perturbation:
         self.value = value
 
     def perturb(self, scenario: ScenarioDefinition):
-        scenario.update(self.category, self.operation, self.value)
+        if self.category in ScenarioDefinition.DYNAMIC:
+            if self.operation == Operation.ADD:
+                scenario.add_actor(self.category, self.value)
+            elif self.operation == Operation.REMOVE:
+                scenario.remove_actor(self.category, self.value)
+            elif self.operation == Operation.REPLACE:
+                scenario.replace_actor(self.category, self.value[0], self.value[1])
+            else:
+                raise ValueError(f"Unsupported operation: {self.operation}.")
+        elif self.category in ScenarioDefinition.ATTRIBUTES:
+            scenario.update_attribute(self.category, self.value)
+        else:
+            raise ValueError(f"Unsupported category: {self.category}.")
 
     def dist(self, other):
         if self.category == other.category and self.operation == other.operation:

@@ -10,9 +10,7 @@ from scipy.spatial.distance import cdist
 
 from impl.config import CONFIG
 from impl.scenario.LeaderboardFactory import LeaderBoardFactory
-
 from impl.utils.trajectory import TrajectorySolver
-
 
 
 class Boundary(dict):
@@ -189,26 +187,24 @@ class ScenarioDefinition:
     def get_other_actors(self):
         return [actor.get_config() for actor in self.vehicles + self.walkers + self.statics]
 
-    def update(self, category: str, operation, value):
-        from impl.mr.mr import Operation
-        if category in ScenarioDefinition.DYNAMIC:
-            actors = getattr(self, f"{category}s")
-            if operation == Operation.ADD:
-                actors.append(deepcopy(value))
-            elif operation == Operation.REMOVE:
-                index = ScenarioDefinition._random_pick_actor(actors, value)
-                if index >= 0:
-                    del actors[index]
-            elif operation == Operation.REPLACE:
-                index = ScenarioDefinition._random_pick_actor(actors, value[0])
-                if index >= 0:
-                    actors[index].update(value[1])
-            else:
-                raise ValueError(f"Unsupported operation: {operation}.")
-        elif category in ScenarioDefinition.ATTRIBUTES:
-            setattr(self, category, value)
-        else:
-            raise ValueError(f"Unsupported category: {category}.")
+    def add_actor(self, category: str, new_actor):
+        actors = getattr(self, f"{category}s")
+        actors.append(deepcopy(new_actor))
+
+    def remove_actor(self, category: str, region):
+        actors = getattr(self, f"{category}s")
+        index = ScenarioDefinition._random_pick_actor(actors, region)
+        if index >= 0:
+            del actors[index]
+
+    def replace_actor(self, category: str, region, new_actor):
+        actors = getattr(self, f"{category}s")
+        index = ScenarioDefinition._random_pick_actor(actors, region)
+        if index >= 0:
+            actors[index].update(new_actor)
+
+    def update_attribute(self, category: str, value):
+        setattr(self, category, value)
 
     @staticmethod
     def _random_pick_actor(actors, region: Boundary.Region = None):
@@ -373,7 +369,7 @@ class Actor(ABC):
 
     def get_config(self):
         return {
-            "role_name": self.region.name.lower(),
+            "role_name": self.region.name.lower() if self.region else "others",
             "spawn_point": {
                 "x": self.radius * math.cos(math.radians(self.angle)),
                 "y": self.radius * math.sin(math.radians(self.angle)),

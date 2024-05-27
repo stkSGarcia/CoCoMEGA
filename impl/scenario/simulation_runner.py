@@ -11,7 +11,6 @@ import pandas as pd
 from deap import tools
 
 from impl.config import CONFIG
-from impl.scenario.docker_utils import restart_carla
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
 from impl.scenario.scenario_definition import ScenarioDefinition
 
