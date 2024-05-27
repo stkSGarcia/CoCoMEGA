@@ -170,7 +170,11 @@ def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot
     """
     This method tries to create a new actor, returning it if successful (raises InvalidScenarioConfError otherwise).
     """
-    extra_height = 0.0
+    if model.startswith('static'):
+        wp = CarlaDataProvider.get_world().get_map().get_waypoint(spawn_point.location)
+        extra_height = wp.transform.location.z
+    else:
+        extra_height = 0.0
     while True:
         try:
             blueprint = CarlaDataProvider.create_blueprint(model, rolename, color, actor_category)
