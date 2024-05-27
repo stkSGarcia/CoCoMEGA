@@ -241,6 +241,7 @@ class Visualizer:
                 axs[pos].set_ylabel("Num", fontsize=15)
                 axs[pos].tick_params(labelsize=13)
                 axs[pos].xaxis.set_major_locator(MaxNLocator(integer=True))
+                axs[pos].yaxis.set_major_locator(MaxNLocator(integer=True))
                 axs[pos].legend(fontsize=15)
 
         handles, labels = axs[pos].get_legend_handles_labels()

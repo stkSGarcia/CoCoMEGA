@@ -112,7 +112,7 @@ class PerturbationFactory:
 
 
 class Relation(ABC):
-    _s, _f, _d = "source", "follow-up", "ego-nearest-distance"
+    _s, _f, _d = "source", "follow-up", "fov-nearest-distance"
 
     def __init__(self, field, threshold):
         self.field = field
