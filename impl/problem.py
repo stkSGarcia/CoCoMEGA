@@ -26,7 +26,7 @@ creator.create("Scenario", ScenarioDefinition, fitness=creator.Fitness)
 creator.create("Perturbation", Perturbations, fitness=creator.Fitness)
 
 toolbox = base.Toolbox()
-toolbox.register("scenario", tools.initIterate, creator.Scenario, creator.Scenario.generate_random)
+toolbox.register("scenario", tools.initIterate, creator.Scenario, creator.Scenario.generate_random_or_leaderboard)
 toolbox.register("perturbation", tools.initIterate, creator.Perturbation, lambda: [mr_set.spawn()])
 
 
