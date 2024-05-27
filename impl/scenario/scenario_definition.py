@@ -9,7 +9,10 @@ import numpy as np
 from scipy.spatial.distance import cdist
 
 from impl.config import CONFIG
+from impl.scenario.LeaderboardFactory import LeaderBoardFactory
+
 from impl.utils.trajectory import TrajectorySolver
+
 
 
 class Boundary(dict):
@@ -34,8 +37,6 @@ class Boundary(dict):
         dists, angles = zip(*[(region.value["radius"], region.value["angle"]) for region in Boundary.Region])
         self["radius"] = [np.min(dists), np.max(dists)]
         self["angle"] = [np.min(angles), np.max(angles)]
-
-
 
     def random(self, field: str, region: Region = None, none_pb=None):
         if field in ["radius", "angle"]:
@@ -144,14 +145,31 @@ class ScenarioDefinition:
 
     @classmethod
     def generate_random(cls):
+        scenario = cls._generate_empty_scenario()
+        scenario.vehicles = ScenarioDefinition._generate_actors(Vehicle, CONFIG["scenario"]["init_pb"]["vehicle"])
+        scenario.walkers = ScenarioDefinition._generate_actors(Walker, CONFIG["scenario"]["init_pb"]["walker"])
+        scenario.statics = ScenarioDefinition._generate_actors(Static, CONFIG["scenario"]["init_pb"]["static"])
+        return scenario
+
+    @classmethod
+    def generate_leaderboard_scenario(cls, scenario_type, **kwargs):
+        scenario = cls._generate_empty_scenario()
+        return LeaderBoardFactory.generate(scenario, scenario_type, **kwargs)
+
+    @classmethod
+    def generate_random_or_leaderboard(cls):
+        if random.random() < CONFIG["scenario"]["leaderboard_pb"]:
+            return cls.generate_leaderboard_scenario(scenario_type="random")
+        else:
+            return cls.generate_random()
+
+    @classmethod
+    def _generate_empty_scenario(cls):
         scenario = cls()
         scenario.ego_vehicle = Vehicle.generate_random()
         trajectory = random.choice(ScenarioDefinition._TRAJECTORY)
         scenario.town = trajectory["town"]
         scenario.trajectory = trajectory["trajectory"]
-        scenario.vehicles = ScenarioDefinition._generate_actors(Vehicle, CONFIG["scenario"]["init_pb"]["vehicle"])
-        scenario.walkers = ScenarioDefinition._generate_actors(Walker, CONFIG["scenario"]["init_pb"]["walker"])
-        scenario.statics = ScenarioDefinition._generate_actors(Static, CONFIG["scenario"]["init_pb"]["static"])
         for attr in ScenarioDefinition.ATTRIBUTES:
             setattr(scenario, attr, ScenarioDefinition._BOUNDARY.random(attr))
         return scenario

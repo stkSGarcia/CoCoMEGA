@@ -34,7 +34,7 @@ def simulate(num: int, file: str):
         run_solutions(file, num)
     else:
         logger.info(f"Running random scenarios.")
-        run_scenarios([ScenarioDefinition.generate_random() for _ in range(num)])
+        run_scenarios([ScenarioDefinition.generate_random_or_leaderboard() for _ in range(num)])
 
 
 def visualize(file: str):
