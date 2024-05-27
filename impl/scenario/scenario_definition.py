@@ -217,8 +217,7 @@ class ScenarioDefinition:
         return index
 
     def dist(self, other):
-        # if not isinstance(other, self.__class__):
-        if str(type(self)) != str(type(other)):
+        if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         dist = _dist_attrs(self, other, ScenarioDefinition.ATTRIBUTES, ScenarioDefinition._BOUNDARY)
         for actors, other_actors in zip([self.vehicles, self.walkers, self.statics],
@@ -235,8 +234,7 @@ class ScenarioDefinition:
         return math.sqrt(dist)
 
     def mate(self, other):
-        # if not isinstance(other, self.__class__):
-        if str(type(self)) != str(type(other)):
+        if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         _mate_attrs(self, other, ScenarioDefinition.ATTRIBUTES)
         _mate_actors(self.vehicles, other.vehicles)
@@ -340,23 +338,20 @@ class Actor(ABC):
                       for attr in Actor._ATTRIBUTES + cls._ATTRIBUTES})
 
     def update(self, other):
-        # if not isinstance(other, self.__class__):
-        if str(type(self)) != str(type(other)):
+        if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         for attr in Actor._ATTRIBUTES + self._ATTRIBUTES:
             setattr(self, attr, getattr(other, attr))
         self.update_region()
 
     def dist(self, other):
-        # if not isinstance(other, self.__class__):
-        if str(type(self)) != str(type(other)):
+        if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         return _dist_attrs(self, other, Actor._ATTRIBUTES + self._ATTRIBUTES, self._BOUNDARY)
 
     def mate(self, other):
         """Mate actors in place."""
-        # if not isinstance(other, self.__class__):
-        if str(type(self)) != str(type(other)):
+        if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         _mate_attrs(self, other, Actor._ATTRIBUTES + self._ATTRIBUTES)
         self.update_region()
@@ -380,8 +375,7 @@ class Actor(ABC):
         }
 
     def __eq__(self, other):
-        # return (isinstance(other, self.__class__) and
-        return (str(type(self)) == str(type(other)) and
+        return (isinstance(other, self.__class__) and
                 self.radius == other.radius and
                 self.angle == other.angle and
                 self.yaw == other.yaw and
