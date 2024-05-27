@@ -25,9 +25,17 @@ class TestPertBoundary:
             os.mkdir(self.out_dir)
 
     def run(self):
-        meta = pd.DataFrame()
+        try:
+            meta = pd.read_pickle(os.path.join(self.out_dir, "meta.pkl"))
+        except:
+            meta = pd.DataFrame()
+        covered_angles = list(meta["name"])
         angles = [20, 30, 40, 50]
         for angle in angles:
+            if str(angle) in covered_angles:
+                logger.info(f"Angle {angle} is already covered!")
+                continue
+
             with open('config.yaml', 'r') as file:
                 data = yaml.safe_load(file)
 
@@ -69,6 +77,8 @@ class TestPertBoundary:
                 'name': str(angle),
                 'statistics_path': files[0],
             }])])
+
+            meta.to_pickle(os.path.join(self.out_dir, 'meta.pkl'))
 
         Visualizer.plot_pert_boundary_results(meta, out_dir=self.out_dir)
 

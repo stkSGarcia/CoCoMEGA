@@ -101,7 +101,7 @@ def run_scenario(scenario: ScenarioDefinition, rerun=False):
             del evaluator
             if CONFIG['simulation']['docker']['enabled']:
                 container_name = f"{CONFIG['simulation']['docker']['image']}-{carla_port}"
-                restart_carla(container_name, carla_port)
+                # restart_carla(container_name, carla_port)
             is_successful = False
     if not is_successful:
         return None, False
