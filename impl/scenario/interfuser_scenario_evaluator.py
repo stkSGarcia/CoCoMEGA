@@ -236,9 +236,6 @@ class ScenarioEvaluator(object):
         CarlaDataProvider.set_traffic_manager_port(int(args.trafficManagerPort))
         CarlaDataProvider.set_random_seed(int(args.carlaProviderSeed))
 
-        # if CONFIG["debug"]:
-        # self._draw_boundary()
-
         # Wait for the world to be ready
         if CarlaDataProvider.is_sync_mode():
             self.world.tick()
@@ -278,7 +275,6 @@ class ScenarioEvaluator(object):
                 AgentWrapper.validate_sensor_configuration(self.sensors, track, args.track)
 
                 self.sensor_icons = [sensors_to_icons[sensor['type']] for sensor in self.sensors]
-                # self.statistics_manager.save_sensors(self.sensor_icons, args.checkpoint)
 
             self._agent_watchdog.stop()
 
