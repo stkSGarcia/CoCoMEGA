@@ -87,19 +87,25 @@ opt:
 
 trajectory:
   - town: Town05
-    trajectory:
-      - x: -188.04
-        y: 111.89
-        z: 0.0
-        yaw: -90.0
-      - x: -208.309
-        y: 87.82
-        z: 0.0
-        yaw: 180.0
-      - x: -241.01
-        y: 87.77
-        z: 0.0
-        yaw: 180.0
+    start:
+      x: -188.04
+      y: 111.89
+      z: 0.0
+      yaw: -90.0
+    direction:
+      - left
+      - forward
+
+  - town: Town05
+    start:
+      x: -184.54
+      y: 111.96
+      z: 0.0
+      yaw: -90.0
+    direction:
+      - right
+      - forward
+
 
 boundary:
   region:

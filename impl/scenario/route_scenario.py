@@ -21,6 +21,8 @@ import carla
 from carla.libcarla import Location
 
 from agents.navigation.local_planner import RoadOption
+
+from impl.scenario.carla_utils import dict_to_location
 from impl.scenario.criterions import VehicleMeasurementTest
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
 
@@ -239,8 +241,7 @@ class RouteScenario(BasicScenario):
         self.scenario_definition = scenario_definition
         self.agent_instance = agent_instance
         self.timeout = CONFIG['simulation']['scenario_duration']
-        trajectory = [Location(loc['x'], loc['y'], loc['z']) for loc in scenario_definition.trajectory]
-        self._update_route(world, trajectory, debug_mode > 0)
+        self._update_route(world, debug_mode > 0)
         self._vehicle_lights = carla.VehicleLightState.Position | carla.VehicleLightState.LowBeam
         self.weather_preset, self.weather_preset_name = \
             CarlaDataProvider.find_weather_presets()[self.scenario_definition.weather]
@@ -275,6 +276,7 @@ class RouteScenario(BasicScenario):
             self._draw_boundary(Walker._BOUNDARY.Region.FOCUS, anchor)
             # self._draw_boundary(Walker._BOUNDARY.Region.LEFT, anchor)
             # self._draw_boundary(Walker._BOUNDARY.Region.RIGHT, anchor)
+            self._draw_route(self.route)
 
         if config.other_actors:
             for actor_conf in config.other_actors:
@@ -290,7 +292,7 @@ class RouteScenario(BasicScenario):
                 )
                 self.other_actors.append(new_actor)
 
-    def _update_route(self, world, trajectory, debug_mode):
+    def _update_route(self, world, debug_mode):
         """
         Update the input route, i.e. refine waypoint list, and extract possible scenario locations
 
@@ -299,7 +301,8 @@ class RouteScenario(BasicScenario):
         - config: Scenario configuration (RouteConfiguration)
         """
 
-        # prepare route's trajectory (interpolate and add the GPS route)
+        # prepare route's trajectory (build, interpolate and add the GPS route)
+        trajectory = [dict_to_location(t) for t in self.scenario_definition.trajectory["trajectory"]]
         gps_route, route = interpolate_trajectory(world, trajectory)
 
         self.route = route
@@ -380,7 +383,7 @@ class RouteScenario(BasicScenario):
         world.debug.draw_point(waypoints[-1][0].location + carla.Location(z=vertical_shift), size=0.2,
                                color=carla.Color(255, 0, 0), life_time=persistency)
 
-    def _draw_boundary(self, boundary, anchor, z=0.3):
+    def _draw_boundary(self, boundary, anchor, z=0.1):
         rads, angs = boundary.value["radius"], boundary.value["angle"]
         point_indices = [(0, 0), (0, 1), (1, 1), (1, 0)]
         points = [convert_polar_to_cartesian(rads[i], angs[j]) for i, j in point_indices]
@@ -397,6 +400,22 @@ class RouteScenario(BasicScenario):
                                                      color=carla.Color(225, 10, 10),
                                                      life_time=0)
 
+    def _draw_route(self, trajectory, z=0.1):
+        for i in range(len(trajectory) - 1):
+            # for i in range(40):
+            start_point = carla.Location(
+                x=trajectory[i][0].location.x,
+                y=trajectory[i][0].location.y,
+                z=z
+            )
+            end_point = carla.Location(
+                x=trajectory[i + 1][0].location.x,
+                y=trajectory[i + 1][0].location.y,
+                z=z
+            )
+            CarlaDataProvider._world.debug.draw_line(start_point, end_point, thickness=0.15,
+                                                     color=carla.Color(10, 10, 225),
+                                                     life_time=0)
     def _scenario_sampling(self, potential_scenarios_definitions, random_seed=0):
         """
         The function used to sample the scenarios that are going to happen for this route.

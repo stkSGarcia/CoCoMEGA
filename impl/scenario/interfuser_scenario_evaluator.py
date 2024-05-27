@@ -36,8 +36,7 @@ from leaderboard.scenarios.scenario_manager import ScenarioManager
 from impl.scenario.route_scenario import RouteScenario
 from leaderboard.envs.sensor_interface import SensorInterface, SensorConfigurationInvalid
 from leaderboard.autoagents.agent_wrapper import AgentWrapper, AgentError
-from leaderboard.utils.statistics_manager import StatisticsManager
-from leaderboard.utils.route_indexer import RouteIndexer
+
 
 logger = logging.getLogger(__name__)
 sensors_to_icons = {

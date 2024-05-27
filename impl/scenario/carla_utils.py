@@ -1,9 +1,38 @@
+import logging
+import math
+
 import carla
+from impl.config import CONFIG
+from impl.scenario.docker_utils import setup_carla
+from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+
+logger = logging.getLogger(__name__)
+
+
+def initialize_carla(seed=2000):
+    try:
+        # Initialize the Carla client and the world
+        conf = CONFIG["simulation"]["docker"]["instances"][0]
+        if CONFIG["simulation"]["docker"]["enabled"]:
+            setup_carla(container_name=f"{CONFIG['simulation']['docker']['image']}-{conf['port']}",
+                        port=conf['port'])
+        client = carla.Client(conf["host"], conf["port"])
+        client.set_timeout(CONFIG["simulation"]["client_timeout"])
+
+        if CarlaDataProvider.get_client() is None:
+            CarlaDataProvider.set_client(client)
+            CarlaDataProvider.set_random_seed(seed)
+    except Exception as e:
+        logger.error(f"Error initializing Carla: {e}")
+        raise e
+
+
 def get_junction_topology(junction):
     """
     Given a junction, returns a two list of waypoints corresponding to the entry
     and exit lanes of the junction
     """
+
     def get_lane_key(waypoint):
         return str(waypoint.road_id) + '*' + str(waypoint.lane_id)
 
@@ -71,3 +100,27 @@ def filter_junction_wp_direction(reference_wp, wp_list, direction='opposite'):
             filtered_wps.append(wp)
 
     return filtered_wps
+
+
+def wp_dist(wp1, wp2):
+    return math.sqrt(
+        math.pow(wp1.transform.location.x - wp2.transform.location.x, 2) \
+        + math.pow(wp1.transform.location.y - wp2.transform.location.y, 2)
+    )
+
+
+def get_closest_wp(wp_list, reference_wp):
+    return min(wp_list, key=lambda wp: wp_dist(wp, reference_wp))
+
+
+def transform_to_dict(transform):
+    return {
+        'x': transform.location.x,
+        'y': transform.location.y,
+        'z': transform.location.z,
+        'yaw': transform.rotation.yaw,
+    }
+
+
+def dict_to_location(_dict):
+    return carla.Location(x=_dict["x"], y=_dict["y"], z=_dict["z"])

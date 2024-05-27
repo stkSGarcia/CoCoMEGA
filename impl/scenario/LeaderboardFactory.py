@@ -6,8 +6,6 @@ import inspect
 import random
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from impl.scenario.carla_utils import get_junction_topology, filter_junction_wp_direction
-from impl.scenario.docker_utils import setup_carla
-from impl.config import CONFIG
 
 logger = logging.getLogger(__name__)
 
@@ -20,29 +18,7 @@ def cartesian_to_polar(x, y):
 
 class LeaderBoardFactory:
     @classmethod
-    def initialize_carla(cls, town):
-        try:
-            # Initialize the Carla client and the world
-            if CarlaDataProvider.get_client() is None:
-                conf = CONFIG["simulation"]["docker"]["instances"][0]
-                if CONFIG["simulation"]["docker"]["enabled"]:
-                    setup_carla(container_name=f"{CONFIG['simulation']['docker']['image']}-{conf['port']}",
-                                port=conf['port'])
-                cls.client = carla.Client(conf["host"], conf["port"])
-                cls.client.set_timeout(CONFIG["simulation"]["client_timeout"])
-                CarlaDataProvider.set_client(cls.client)
-                CarlaDataProvider.set_random_seed(2000)
-
-            if CarlaDataProvider.get_world() is None or CarlaDataProvider.get_world().get_map().name != town:
-                world = cls.client.load_world(town)
-                CarlaDataProvider.set_world(world)
-        except Exception as e:
-            logger.error(f"Error initializing Carla: {e}")
-            raise e
-
-    @classmethod
     def generate(cls, scenario, scenario_type, **kwargs):
-        cls.initialize_carla(scenario.town)
         scenario_types = [name[9:] for name, _ in
                           inspect.getmembers(LeaderBoardFactory, predicate=inspect.isfunction) if
                           name.startswith("generate_")]
@@ -61,8 +37,7 @@ class LeaderBoardFactory:
     @staticmethod
     def generate_opposite_lane_vehicles(scenario, num_vehicles=4, distance_between=15):
         from impl.scenario.scenario_definition import Vehicle
-        ego_location = scenario.trajectory[0]
-        ego_location = carla.Location(x=ego_location['x'], y=ego_location['y'], z=0)
+        ego_location = carla.Location(x=scenario.trajectory["start"]["x"], y=scenario.trajectory["start"]["y"], z=0)
 
         ego_waypoint = CarlaDataProvider.get_map().get_waypoint(ego_location)
 
@@ -81,16 +56,16 @@ class LeaderBoardFactory:
 
         source_wp = random.choice(source_entry_wps)
 
-
         # Calculate the positions of the opposite lane vehicles
         scenario.vehicles = []
         for _ in range(num_vehicles):
             vehicle = Vehicle.generate_random()
+            vehicle.model = 0
             source_transform = source_wp.transform
             radius, angle = cartesian_to_polar(source_transform.location.x - ego_location.x,
                                                source_transform.location.y - ego_location.y)
             vehicle.radius = radius
-            vehicle.angle = angle - scenario.trajectory[0]['yaw']
+            vehicle.angle = angle - scenario.trajectory["start"]['yaw']
             vehicle.yaw = source_transform.rotation.yaw
             vehicle.speed = 10
             scenario.vehicles.append(vehicle)
