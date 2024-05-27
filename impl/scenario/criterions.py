@@ -1,3 +1,4 @@
+import numpy as np
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import Criterion
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 import carla
@@ -79,7 +80,7 @@ class VehicleMeasurementTest(Criterion):
 
                 fov_distances = [_distance(self.actor, other_actor) \
                                  for other_actor in self.other_actors if self._isin_fov(other_actor)]
-                measure_dict[f"fov_nearest_distance"] = min(fov_distances) if len(fov_distances) > 0 else -1
+                measure_dict[f"fov_nearest_distance"] = min(fov_distances) if len(fov_distances) > 0 else np.inf
                 role_names = set([other_actor.attributes['role_name'] for other_actor in self.other_actors])
                 for role_name in role_names:
                     measure_dict[f"ego-nearest-distance-{role_name}"] = min(
@@ -91,7 +92,7 @@ class VehicleMeasurementTest(Criterion):
                                               if other_actor.attributes['role_name'] == role_name \
                                               and self._isin_fov(other_actor)]
                     measure_dict[f"fov-nearest-distance-{role_name}"] = min(fov_rolename_distances) \
-                        if len(fov_rolename_distances) > 0 else -1
+                        if len(fov_rolename_distances) > 0 else np.inf
 
             self.values.append(measure_dict)
 

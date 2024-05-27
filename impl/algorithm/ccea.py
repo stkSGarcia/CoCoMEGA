@@ -142,6 +142,9 @@ class CCEA(BaseAlgorithm):
         # Evaluate joint fitness.
         # TODO: avoid evaluating similar scenarios.
         candidates = [ind for ind in unique_solutions if ind not in evaluated_solutions]
+        logger.debug(f"#complete solutions: {len(complete_solutions)}, "
+                     f"#unique solutions: {len(unique_solutions)}, "
+                     f"#candidates: {len(candidates)}.")
         if len(candidates) > 0:
             candidates, sim_num = self.toolbox.evaluate_solutions(candidates)
             evaluated_solutions.extend(candidates)
@@ -183,6 +186,7 @@ class CCEA(BaseAlgorithm):
         population = self.toolbox.clone(population)
         archive = tools.selBest(population, 1)
         population.remove(archive[0])
+        population = [ind for ind in population if ind.fitness.valid]
         if len(population) == 0: return archive
 
         if CONFIG["opt"]["diversity"]:
