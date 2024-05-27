@@ -24,8 +24,8 @@ class LeaderBoardFactory:
         try:
             # Initialize the Carla client and the world
             if CarlaDataProvider.get_client() is None:
+                conf = CONFIG["simulation"]["docker"]["instances"][0]
                 if CONFIG["simulation"]["docker"]["enabled"]:
-                    conf = CONFIG["simulation"]["docker"]["instances"][0]
                     setup_carla(container_name=f"{CONFIG['simulation']['docker']['image']}-{conf['port']}",
                                 port=conf['port'])
                 cls.client = carla.Client(conf["host"], conf["port"])
