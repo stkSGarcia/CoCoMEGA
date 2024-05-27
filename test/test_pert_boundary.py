@@ -1,5 +1,7 @@
 import logging
 import os
+import sys
+
 import yaml
 import time
 
@@ -15,21 +17,29 @@ logger = logging.getLogger("impl")
 
 
 class TestPertBoundary:
-    def __init__(self):
+    def __init__(self, resume):
+        self.resume = resume
         self.base_dir = config["workspace"]["test_result"]
         if not os.path.exists(self.base_dir):
             os.mkdir(self.base_dir)
-        self.out_dir = os.path.join(self.base_dir,
-                                    f'pert_boundary_{int(round(time.time() * 1000))}')
-        if not os.path.exists(self.out_dir):
-            os.mkdir(self.out_dir)
+        if self.resume:
+            test_dir = sorted([l for l in os.listdir(config["workspace"]["test_result"]) if l.startswith('pert_boundary')], reverse=True)[0]
+            self.out_dir = os.path.join(self.base_dir, test_dir)
+            logger.info(f"Resuming test {test_dir}")
+        else:
+            self.out_dir = os.path.join(self.base_dir,
+                                        f'pert_boundary_{int(round(time.time() * 1000))}')
+            if not os.path.exists(self.out_dir):
+                os.mkdir(self.out_dir)
 
     def run(self):
         try:
             meta = pd.read_pickle(os.path.join(self.out_dir, "meta.pkl"))
+            covered_angles = list(meta["name"])
         except:
             meta = pd.DataFrame()
-        covered_angles = list(meta["name"])
+            covered_angles = []
+
         angles = [20, 30, 40, 50]
         for angle in angles:
             if str(angle) in covered_angles:
@@ -86,4 +96,5 @@ class TestPertBoundary:
 
 
 if __name__ == '__main__':
-    meta = TestPertBoundary().run()
+    resume = '-r' in sys.argv
+    meta = TestPertBoundary(resume).run()
