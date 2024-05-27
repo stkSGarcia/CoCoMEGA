@@ -45,7 +45,7 @@ class LeaderBoardFactory:
         cls.initialize_carla(scenario.town)
         scenario_types = [name[9:] for name, _ in
                           inspect.getmembers(LeaderBoardFactory, predicate=inspect.isfunction) if
-                          name.startswith("generate")]
+                          name.startswith("generate_")]
 
         if scenario_type == "random":
             scenario_type = random.choice(scenario_types)
