@@ -4,16 +4,15 @@ import pickle
 import time
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-
-import pickle
-import matplotlib.pyplot as plt
-import pandas as pd
 from matplotlib.ticker import MaxNLocator
+from tslearn.metrics import dtw_path
 
 from impl.config import CONFIG
+from mr.mr import Relation
 
 logger = logging.getLogger(__name__)
 
@@ -219,35 +218,96 @@ class Visualizer:
         for metric in ["std", "min", "avg", "max"]:
             stats[metric] = stats[metric].apply(lambda x: x[0])
 
-        fig, axs = plt.subplots(2, 3, figsize=[20, 8])
-        for (pop_name, pop), pos in zip(stats.groupby("pop", sort=False), [(0, 1), (0, 2), (0, 0), (1, 1), (1, 2)]):
+        fig = plt.figure(figsize=(20, 8))
+        axs = [fig.add_subplot(2, 3, 5), fig.add_subplot(2, 3, 6)]
+        for i in [3, 4, 1, 2]:
+            axs.append(fig.add_subplot(2, 3, i, sharex=axs[1], sharey=axs[1]))
+
+        for (pop_name, pop), ax in zip(stats.groupby("pop", sort=True), axs[1:]):
             pop = pop.sort_values("gen", ascending=True)
-            axs[pos].plot(pop["gen"], pop["std"], "--C0", label="std")
-            axs[pos].plot(pop["gen"], pop["min"], ":C1", label="min")
-            axs[pos].plot(pop["gen"], pop["avg"], "o-C2", label="avg")
-            axs[pos].plot(pop["gen"], pop["max"], ":C3", label="max")
-            axs[pos].set_title(verbose_map[pop_name], fontsize=20)
-            axs[pos].set_xlabel("Generations", fontsize=15)
-            axs[pos].set_ylabel("Fitness", fontsize=15)
-            axs[pos].tick_params(labelsize=13)
-            axs[pos].xaxis.set_major_locator(MaxNLocator(integer=True))
+            ax.plot(pop["gen"], pop["std"], ":C0", label="std", alpha=0.5)
+            ax.plot(pop["gen"], pop["min"], "--C1", label="min")
+            ax.plot(pop["gen"], pop["avg"], "o-C2", label="avg")
+            ax.plot(pop["gen"], pop["max"], "--C3", label="max")
+            ax.set_title(verbose_map[pop_name], fontsize=20)
+            ax.tick_params(labelsize=13)
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
             if pop_name == "solution":
-                pos = (1, 0)
-                axs[pos].plot(pop["gen"], pop["len"], "o-C4", label="#violations")
-                axs[pos].plot(pop["gen"], pop["sim"], "o-C5", label="#simulations")
-                axs[pos].set_title("#Violations & #Simulations", fontsize=20)
-                axs[pos].set_xlabel("Generations", fontsize=15)
-                axs[pos].set_ylabel("Num", fontsize=15)
-                axs[pos].tick_params(labelsize=13)
-                axs[pos].xaxis.set_major_locator(MaxNLocator(integer=True))
-                axs[pos].yaxis.set_major_locator(MaxNLocator(integer=True))
-                axs[pos].legend(fontsize=15)
+                axs[0].plot(pop["gen"], pop["len"], "o-C4", label="#violations")
+                axs[0].plot(pop["gen"], pop["sim"], "x-C5", label="#simulations")
+                axs[0].set_title("#Violations & #Simulations", fontsize=20)
+                axs[0].set_ylabel("Num", fontsize=15)
+                axs[0].tick_params(labelsize=13)
+                axs[0].xaxis.set_major_locator(MaxNLocator(integer=True))
+                axs[0].yaxis.set_major_locator(MaxNLocator(integer=True))
+                axs[0].legend(fontsize=15)
 
-        handles, labels = axs[pos].get_legend_handles_labels()
-        fig.legend(handles, labels, loc="lower center", bbox_to_anchor=(0.52, -0.01), ncol=4, fontsize=15)
+        fig.supxlabel("Generations", fontsize=15)
+        fig.supylabel("Fitness", fontsize=15)
+        handles, labels = axs[-1].get_legend_handles_labels()
+        fig.legend(handles, labels, loc="lower right", ncol=4, fontsize=15)
         fig.tight_layout()
-        plt.subplots_adjust(bottom=0.13)
 
         fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"{Path(file).stem}.png"))
+        if show: plt.show()
+
+    @staticmethod
+    def visualize_violation(source, follow_up, mr_set, offset=3, show=False):
+        """Plot the extent of violation between the source results
+        and follow-up results based on the given metamorphic relations.
+
+        @param source: The source results.
+        @param follow_up: The follow-up results.
+        @param mr_set: The given metamorphic relations.
+        @param offset: The offset between the source and follow-up curves.
+        @param show: A boolean to determine whether to show the plots or not.
+        """
+        origin_index = source.index.union(follow_up.index)
+        origin_df = pd.DataFrame([(
+            source[mr_set.field].get(i, np.nan),
+            follow_up[mr_set.field].get(i, np.nan)
+        ) for i in origin_index], columns=(Relation._s, Relation._f))
+        origin_df.set_index(origin_index, inplace=True)
+
+        matches = [(source.index.values[i], follow_up.index.values[j])
+                   for i, j in dtw_path(source[mr_set.field], follow_up[mr_set.field])[0]]
+        regions = [f"{Relation._d}-{region.name.lower()}" for region in mr_set.regions or set()] \
+            if CONFIG["violation"]["strategy"] == "simulation" else []
+        dtw_df = pd.DataFrame([(
+            source.loc[i, mr_set.field],
+            follow_up.loc[j, mr_set.field],
+            *[np.nanmin([source.loc[i].get(region, np.nan), follow_up.loc[j].get(region, np.nan)])
+              for region in [Relation._d] + regions],
+        ) for i, j in matches], columns=(Relation._s, Relation._f, *([Relation._d] + regions)))
+
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8), sharey="all")
+        for ax, df in zip((ax1, ax2), (origin_df, dtw_df)):
+            ax.plot(df.index.values, df[Relation._s], "-C0", label="source")
+            ax.plot(df.index.values, df[Relation._f] + (offset if ax is ax1 else 0), "-C1", label="follow up")
+            ax.plot(df.index.values, df.apply(mr_set.relation._extent_func, axis=1, result_type="reduce"), "o:C2",
+                    label="diff")
+            ax.tick_params(labelsize=13)
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+
+        for x, y in matches:
+            ax1.plot((x, y), (source.loc[x, mr_set.field], follow_up.loc[y, mr_set.field] + offset), "--", color="gray")
+
+        critical_points = dtw_df.index[
+            dtw_df[regions].min(axis=1) < CONFIG["violation"]["threshold"]["max_ego_distance"]
+            if CONFIG["violation"]["strategy"] == "simulation" else
+            (dtw_df[Relation._s] - dtw_df[Relation._f]).abs() > CONFIG["violation"]["threshold"][mr_set.field]
+        ]
+
+        for points in np.split(critical_points, np.where(np.diff(critical_points) != 1)[0] + 1):
+            ax2.axvspan(points[0] - 0.5, points[-1] + 0.5, color="red", alpha=0.1)
+
+        ax1.set_title("Original difference", fontsize=20)
+        ax2.set_title("DTW difference", fontsize=20)
+        ax2.legend(fontsize=15)
+        fig.supxlabel("Ticks", fontsize=15)
+        fig.supylabel(mr_set.field.capitalize(), fontsize=15)
+        fig.tight_layout()
+
+        fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"violation.png"))
         if show: plt.show()
