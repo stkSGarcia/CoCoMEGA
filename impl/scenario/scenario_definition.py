@@ -1,24 +1,25 @@
+import logging
 import math
 import random
 import uuid
 from abc import ABC
 from copy import deepcopy
 from enum import Enum
-import logging
 
-import numpy as np
 import carla
+import numpy as np
 from scipy.spatial.distance import cdist
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+
 from impl.config import CONFIG
 from impl.scenario.LeaderboardFactory import LeaderBoardFactory
 from impl.scenario.carla_utils import get_junction_topology, filter_junction_wp_direction, transform_to_dict, \
     get_closest_wp
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
-
 from impl.utils.trajectory import TrajectorySolver
 
 logger = logging.getLogger(__name__)
+
 
 class Boundary(dict):
     class Region(Enum):
@@ -47,7 +48,7 @@ class Boundary(dict):
         if field in ["radius", "angle"]:
             if region is None:
                 region = random.choice(list(Boundary.Region))
-            lower, upper = region.value[field] if hasattr(region, "value") else region[field]
+            lower, upper = region.value[field]
         else:
             lower, upper = self[field]
         if isinstance(lower, float):
@@ -157,9 +158,9 @@ class ScenarioDefinition:
     @classmethod
     def generate_random(cls):
         scenario = cls._generate_empty_scenario()
-        scenario.vehicles = ScenarioDefinition._generate_actors(Vehicle, CONFIG["scenario"]["init_pb"]["vehicle"])
-        scenario.walkers = ScenarioDefinition._generate_actors(Walker, CONFIG["scenario"]["init_pb"]["walker"])
-        scenario.statics = ScenarioDefinition._generate_actors(Static, CONFIG["scenario"]["init_pb"]["static"])
+        scenario.vehicles = Vehicle.generate_random_actors(CONFIG["scenario"]["init_pb"]["vehicle"])
+        scenario.walkers = Walker.generate_random_actors(CONFIG["scenario"]["init_pb"]["walker"])
+        scenario.statics = Static.generate_random_actors(CONFIG["scenario"]["init_pb"]["static"])
         return scenario
 
     @classmethod
@@ -188,15 +189,6 @@ class ScenarioDefinition:
         for attr in ScenarioDefinition.ATTRIBUTES:
             setattr(scenario, attr, ScenarioDefinition._BOUNDARY.random(attr))
         return scenario
-
-    @classmethod
-    def _generate_actors(cls, probability):
-        actors = []
-        times = 1
-        while len(actors) < CONFIG["scenario"]["max_actors"] and random.random() < probability ** times:
-            actors.append(cls.generate_random())
-            times += 1
-        return actors
 
     @classmethod
     def _build_trajectory(cls, trajectory_def):
@@ -389,6 +381,15 @@ class Actor(ABC):
     def generate_random(cls, region: Boundary.Region = None, none_pb=None):
         return cls(**{attr: cls._BOUNDARY.random(attr, region, none_pb)
                       for attr in Actor._ATTRIBUTES + cls._ATTRIBUTES})
+
+    @classmethod
+    def generate_random_actors(cls, probability):
+        actors = []
+        times = 1
+        while len(actors) < CONFIG["scenario"]["max_actors"] and random.random() < probability ** times:
+            actors.append(cls.generate_random())
+            times += 1
+        return actors
 
     def update(self, other):
         if not isinstance(other, self.__class__):
