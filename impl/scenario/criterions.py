@@ -80,7 +80,7 @@ class VehicleMeasurementTest(Criterion):
 
                 fov_distances = [_distance(self.actor, other_actor) \
                                  for other_actor in self.other_actors if self._isin_fov(other_actor)]
-                measure_dict[f"fov_nearest_distance"] = min(fov_distances) if len(fov_distances) > 0 else np.inf
+                measure_dict[f"fov-nearest-distance"] = min(fov_distances) if len(fov_distances) > 0 else np.inf
                 role_names = set([other_actor.attributes['role_name'] for other_actor in self.other_actors])
                 for role_name in role_names:
                     measure_dict[f"ego-nearest-distance-{role_name}"] = min(
