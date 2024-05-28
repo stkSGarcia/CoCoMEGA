@@ -12,7 +12,7 @@ from matplotlib.ticker import MaxNLocator
 from tslearn.metrics import dtw_path
 
 from impl.config import CONFIG
-from mr.mr import Relation
+from impl.mr.mr import Relation
 
 logger = logging.getLogger(__name__)
 
