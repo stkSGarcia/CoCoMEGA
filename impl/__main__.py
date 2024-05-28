@@ -10,7 +10,7 @@ from impl.algorithm.ccea import CCEA
 from impl.scenario.scenario_definition import ScenarioDefinition
 from impl.scenario.simulation_runner import run_scenarios, run_solutions
 from impl.utils.visualization import Visualizer
-from scenario.carla_utils import initialize_carla
+from impl.scenario.carla_utils import initialize_carla
 
 logger = logging.getLogger("impl")
 
