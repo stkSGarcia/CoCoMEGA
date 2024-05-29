@@ -298,7 +298,7 @@ class ScenarioDefinition:
                 times += 1
         else:
             for actors, cls in zip([self.vehicles, self.walkers, self.statics], [Vehicle, Walker, Static]):
-                actors += ScenarioDefinition._generate_actors(cls, CONFIG["scenario"]["mut_add"])
+                actors += cls.generate_actors(CONFIG["scenario"]["mut_add"])
 
     def build_actor_trajectory(self, actor_def):
         spawn_point = actor_def.get_config()['spawn_point']
