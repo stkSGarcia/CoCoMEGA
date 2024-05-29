@@ -215,10 +215,10 @@ class CCEA(BaseAlgorithm):
         assert len(population) > 0
         select_operator, mate_operator, mutate_operator, correction_operator = self.toolbox.operators(population[0])
 
-        population = self.toolbox.clone(population)
         offsprings = []
         for _ in range(size):
             parents = select_operator(population, k=2)
+            parents = self.toolbox.clone(parents)
             mate_operator(parents[0], parents[1])
             if CONFIG["opt"]["diversity"]:
                 mutate_operator(parents[0])
