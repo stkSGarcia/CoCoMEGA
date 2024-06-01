@@ -140,12 +140,9 @@ class Relation(ABC):
         @return: The `bool` value indicates whether the relation is violated.
         The `float` value denotes the extent to which this relation is violated.
         """
-        regions = [f"{Relation._d}-{region.name.lower()}" for region in regions or set()] \
-            if CONFIG["violation"]["strategy"] == "simulation" else []
+        regions = [f"{Relation._d}-{region.name.lower()}" for region in regions or set()]
         matches = [(source.index.values[i], follow_up.index.values[j])
-                   for i, j in dtw_path(source[self.field], follow_up[self.field])[0]] \
-            if CONFIG["violation"]["dtw"] else [(i, i) for i in source.index.intersection(follow_up.index)]
-
+                   for i, j in dtw_path(source[self.field], follow_up[self.field])[0]]
         df = pd.DataFrame([(
             source.loc[i, self.field],
             follow_up.loc[j, self.field],
@@ -153,16 +150,14 @@ class Relation(ABC):
               for region in [Relation._d] + regions],
         ) for i, j in matches], columns=(Relation._s, Relation._f, *([Relation._d] + regions)))
 
-        if CONFIG["violation"]["strategy"] == "simulation":
-            df = df.loc[df[regions].min(axis=1) < CONFIG["violation"]["threshold"]["max_ego_distance"]]
-        else:
-            if CONFIG["violation"]["strategy"] != "curve":
-                logger.warning("Unrecognized strategy, falling back to `curve`.")
-            df = df.loc[(df[Relation._s] - df[Relation._f]).abs() > CONFIG["violation"]["threshold"][self.field]]
+        df = df.loc[df[regions].min(axis=1) < CONFIG["violation"]["threshold"]["max_ego_distance"]]
+        if df.empty: return False, None
 
-        if df.empty: return False, 0.0
-        extents = df.apply(self._extent_func, axis=1, result_type="reduce")
-        extent = extents.mean()
+        df["extent"] = df.apply(self._extent_func, axis=1, result_type="reduce")
+        df = df.loc[df["extent"].abs() > CONFIG["violation"]["threshold"][self.field]]
+        if df.empty: return False, None
+
+        extent = df["extent"].mean()
         return extent > 0, extent
 
     def __eq__(self, other):

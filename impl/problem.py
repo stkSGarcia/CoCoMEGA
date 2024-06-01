@@ -84,7 +84,7 @@ def _fitness(source, follow_up, mr_set=mr_set):
         source[mr_set.field] = source.apply(func, axis=1, result_type="reduce")
         follow_up[mr_set.field] = follow_up.apply(func, axis=1, result_type="reduce")
     is_violated, extent = mr_set.is_violated(source, follow_up)
-    return is_violated, (extent,)
+    return is_violated, (extent,) if extent else None
 
 
 def _evaluate_solutions(solutions):
@@ -103,7 +103,11 @@ def _evaluate_solutions(solutions):
     results, sim_num = run_scenarios(scenarios)
     for solution, source, follow_up in zip(solutions, results[::2], results[1::2]):
         if source is not None and follow_up is not None:
-            solution.is_violated, solution.fitness.values = _fitness(source, follow_up)
+            solution.is_violated, extent = _fitness(source, follow_up)
+            if extent:
+                solution.fitness.values = extent
+            else:
+                del solution.fitness.values
         else:
             solution.is_violated = False
             del solution.fitness.values
