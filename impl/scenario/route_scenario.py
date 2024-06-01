@@ -216,7 +216,7 @@ def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot
             CarlaDataProvider.register_actor(actor)
             return actor
         except Exception as e:
-            if extra_height > 1.5:
+            if extra_height > 0.4:
                 logger.error(f"Error has occurred while trying to spawn actor {model} on location {spawn_point}: {e}")
                 raise InvalidScenarioDefinitionError(
                     f"An error has occurred while trying to spawn actor {model} on location {spawn_point}: {e}"
