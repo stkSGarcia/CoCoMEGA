@@ -20,6 +20,7 @@ from impl.utils.trajectory import TrajectorySolver
 
 logger = logging.getLogger(__name__)
 
+
 class Boundary(dict):
     class Region(Enum):
         LEFT = CONFIG["boundary"]["region"]["left"]
@@ -30,13 +31,7 @@ class Boundary(dict):
         super().__init__(*args, **kwargs)
 
         # Check type consistency and validity.
-        for lower, upper in self.values():
-            if type(lower) is not type(upper):
-                raise ValueError(f"Unmatched boundary types: [{type(lower)}, {type(upper)}].")
-            if not isinstance(lower, float) and not isinstance(lower, int):
-                raise ValueError(f"Unsupported boundary type: {type(lower)}.")
-            if lower > upper:
-                raise ValueError(f"The lower boundary is greater than the upper boundary: {lower} > {upper}.")
+        self._check_type_consistency(self.values())
 
         # Append region boundaries.
         dists, angles = zip(*[(region.value["radius"], region.value["angle"]) for region in Boundary.Region])
@@ -62,6 +57,23 @@ class Boundary(dict):
             if lower <= angle <= upper:
                 return region
         return None
+
+    def _check_type_consistency(self, values):
+        for element in values:
+            if isinstance(element, list):
+                assert (len(element) == 2)
+                lower, upper = element[0], element[1]
+                if type(lower) is not type(upper):
+                    raise ValueError(f"Unmatched boundary types: [{type(lower)}, {type(upper)}].")
+                if not isinstance(lower, float) and not isinstance(lower, int):
+                    raise ValueError(f"Unsupported boundary type: {type(lower)}.")
+                if lower > upper:
+                    raise ValueError(
+                        f"The lower boundary is greater than the upper boundary: {lower} > {upper}.")
+            elif isinstance(element, dict):
+                self._check_type_consistency(element.values())
+            else:
+                raise ValueError(f"Unsupported type for boundary: '{type(element)}'.")
 
 
 def _dist_attrs(this, that, attrs, boundary: Boundary):
@@ -210,7 +222,6 @@ class ScenarioDefinition:
             waypoint = waypoint.next(1.0)[0]
 
         trajectory.append(transform_to_dict(waypoint.transform))
-        # trajectory.append(transform_to_dict(waypoint.next(2)[0].transform))
         junction = waypoint.get_junction()
         _, exit_wps = get_junction_topology(junction)
 
@@ -220,13 +231,13 @@ class ScenarioDefinition:
             'right': 'left',
             'forward': 'ref',
         }
-        target_exit_wps = filter_junction_wp_direction(waypoint, exit_wps, direction_mapping[trajectory_def["direction"]])
+        target_exit_wps = filter_junction_wp_direction(waypoint, exit_wps,
+                                                       direction_mapping[trajectory_def["direction"]])
 
         if not target_exit_wps:
             raise InvalidScenarioDefinitionError(f"No lane found in the '{trajectory_def['direction']}' direction!")
 
         target_wp = get_closest_wp(wp_list=target_exit_wps, reference_wp=waypoint)
-        # trajectory.append(transform_to_dict(target_wp.previous(6)[0].transform))
         for i in range(5):
             trajectory.append(transform_to_dict(target_wp.transform))
             target_wp = target_wp.next(10)[0]
@@ -455,6 +466,20 @@ class Vehicle(Actor):
             "speed": self.speed,
             "autopilot": bool(self.autopilot),
         }
+
+    @classmethod
+    def generate_random(cls, region: Boundary.Region = None, none_pb=None, **filters):
+        vehicle = super().generate_random(region, none_pb)
+        if "base_model" in filters:
+            if isinstance(filters["base_model"], list):
+                weights = [cls._BOUNDARY["base_model"][bm][1] - cls._BOUNDARY["base_model"][bm][0] + 1 for bm in
+                           filters["base_model"]]
+                base_model = random.choices(filters["base_model"], weights=weights, k=1)[0]
+            else:
+                base_model = filters["base_model"]
+            lower, upper = cls._BOUNDARY["base_model"][base_model]
+            vehicle.model = random.randint(lower, upper)
+        return vehicle
 
     def __eq__(self, other):
         return super().__eq__(other) and self.speed == other.speed and self.autopilot == other.autopilot

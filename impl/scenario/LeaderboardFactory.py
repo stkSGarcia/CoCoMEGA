@@ -59,8 +59,8 @@ class LeaderBoardFactory:
         # Calculate the positions of the opposite lane vehicles
         scenario.vehicles = []
         for _ in range(num_vehicles):
-            vehicle = Vehicle.generate_random()
-            vehicle.model = 0
+            vehicle = Vehicle.generate_random(base_model=['car', 'truck', 'van'])
+            vehicle.autopilot = False
             source_transform = source_wp.transform
             radius, angle = cartesian_to_polar(source_transform.location.x - ego_location.x,
                                                source_transform.location.y - ego_location.y)
