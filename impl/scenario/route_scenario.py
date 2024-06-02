@@ -32,6 +32,7 @@ from srunner.scenarioconfigs.scenario_configuration import ScenarioConfiguration
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenarios.basic_scenario import BasicScenario
+from srunner.scenariomanager.scenarioatomics.atomic_criteria import CollisionTest
 
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import AccelerateToVelocity
 
@@ -215,7 +216,7 @@ def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot
             CarlaDataProvider.register_actor(actor)
             return actor
         except Exception as e:
-            if extra_height > 1.5:
+            if extra_height > 0.4:
                 logger.error(f"Error has occurred while trying to spawn actor {model} on location {spawn_point}: {e}")
                 raise InvalidScenarioDefinitionError(
                     f"An error has occurred while trying to spawn actor {model} on location {spawn_point}: {e}"
@@ -536,7 +537,7 @@ class RouteScenario(BasicScenario):
             scenario_def_id=self.scenario_definition.id_,
         )
 
-        # collision_criterion = CollisionTest(self.ego_vehicles[0], terminate_on_failure=False)
+        collision_criterion = CollisionTest(self.ego_vehicles[0], terminate_on_failure=True)
 
         # route_criterion = InRouteTest(self.ego_vehicles[0],
         #                               route=route,
@@ -559,7 +560,7 @@ class RouteScenario(BasicScenario):
         criteria.append(vehicle_measurement)
         # criteria.append(completion_criterion)
         # criteria.append(outsidelane_criterion)
-        # criteria.append(collision_criterion)
+        criteria.append(collision_criterion)
         # criteria.append(red_light_criterion)
         # criteria.append(stop_criterion)
         # criteria.append(route_criterion)

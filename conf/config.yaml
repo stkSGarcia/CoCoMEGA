@@ -122,6 +122,12 @@ boundary:
     yaw: &yaw [ -180.0, 180.0 ]
     speed: [ 0.0, 35.0 ]
     model: [ 0, 26 ]
+    base_model:
+      car: [ 0, 17 ]
+      truck: [ 18, 19 ]
+      van: [20, 20]
+      motorcycle: [ 21, 23 ]
+      bicycle: [24, 26]
     autopilot: [ 0, 1 ]
   walker:
     yaw: *yaw
@@ -139,18 +145,12 @@ blueprint:
       - "vehicle.audi.a2"
       - "vehicle.audi.etron"
       - "vehicle.audi.tt"
-      - "vehicle.bh.crossbike"
       - "vehicle.bmw.grandtourer"
-      - "vehicle.bmw.isetta"
-      - "vehicle.carlamotors.carlacola"
       - "vehicle.chevrolet.impala"
       - "vehicle.citroen.c3"
-      - "vehicle.diamondback.century"
       - "vehicle.dodge_charger.police"
-      - "vehicle.gazelle.omafiets"
-      - "vehicle.harley-davidson.low_rider"
+      - "vehicle.bmw.isetta"
       - "vehicle.jeep.wrangler_rubicon"
-      - "vehicle.kawasaki.ninja"
       - "vehicle.lincoln.mkz2017"
       - "vehicle.mercedes-benz.coupe"
       - "vehicle.mini.cooperst"
@@ -158,11 +158,17 @@ blueprint:
       - "vehicle.nissan.micra"
       - "vehicle.nissan.patrol"
       - "vehicle.seat.leon"
-      - "vehicle.tesla.cybertruck"
       - "vehicle.tesla.model3"
       - "vehicle.toyota.prius"
-      - "vehicle.volkswagen.t2"
-      - "vehicle.yamaha.yzf"
+      - "vehicle.carlamotors.carlacola" # truck
+      - "vehicle.tesla.cybertruck" # truck
+      - "vehicle.volkswagen.t2" # van
+      - "vehicle.harley-davidson.low_rider" # motorcycle
+      - "vehicle.kawasaki.ninja" # motorcycle
+      - "vehicle.yamaha.yzf" # motorcycle
+      - "vehicle.bh.crossbike" # bicycle
+      - "vehicle.diamondback.century" #bicycle
+      - "vehicle.gazelle.omafiets" #bicycle
   walker:
     model:
       - "walker.pedestrian.0001"
