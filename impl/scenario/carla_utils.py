@@ -102,6 +102,17 @@ def filter_junction_wp_direction(reference_wp, wp_list, direction='opposite'):
     return filtered_wps
 
 
+def get_junction(location):
+    waypoint = CarlaDataProvider.get_map().get_waypoint(location)
+
+    # Find the nearest junction
+    while not waypoint.is_junction:
+        waypoint = waypoint.next(1.0)[0]
+
+    junction = waypoint.get_junction()
+    return waypoint, junction
+
+
 def wp_dist(wp1, wp2):
     return math.sqrt(
         math.pow(wp1.transform.location.x - wp2.transform.location.x, 2) \
