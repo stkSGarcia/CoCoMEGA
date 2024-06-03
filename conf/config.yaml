@@ -121,13 +121,13 @@ boundary:
   vehicle:
     yaw: &yaw [ -180.0, 180.0 ]
     speed: [ 0.0, 35.0 ]
-    model: [ 0, 26 ]
+    model: [ 0, 22 ]
     base_model:
       car: [ 0, 17 ]
       truck: [ 18, 19 ]
       van: [20, 20]
-      motorcycle: [ 21, 23 ]
-      bicycle: [24, 26]
+      motorcycle: [ 21, 21 ]
+      bicycle: [22, 22]
     autopilot: [ 0, 1 ]
   walker:
     yaw: *yaw
@@ -163,11 +163,7 @@ blueprint:
       - "vehicle.carlamotors.carlacola" # truck
       - "vehicle.tesla.cybertruck" # truck
       - "vehicle.volkswagen.t2" # van
-      - "vehicle.harley-davidson.low_rider" # motorcycle
       - "vehicle.kawasaki.ninja" # motorcycle
-      - "vehicle.yamaha.yzf" # motorcycle
-      - "vehicle.bh.crossbike" # bicycle
-      - "vehicle.diamondback.century" #bicycle
       - "vehicle.gazelle.omafiets" #bicycle
   walker:
     model:
