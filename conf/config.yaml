@@ -120,7 +120,7 @@ boundary:
       angle: [ 30.0, 70.0 ]
   vehicle:
     yaw: &yaw [ -180.0, 180.0 ]
-    speed: [ 0.0, 35.0 ]
+    speed: [ -100.0, 80.0 ]
     model: [ 0, 22 ]
     base_model:
       car: [ 0, 17 ]
@@ -128,7 +128,7 @@ boundary:
       van: [20, 20]
       motorcycle: [ 21, 21 ]
       bicycle: [22, 22]
-    autopilot: [ 0, 1 ]
+    autopilot: [ 1, 1 ]
   walker:
     yaw: *yaw
     speed: [ 0.0, 4.0 ]
