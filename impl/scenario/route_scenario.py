@@ -200,8 +200,8 @@ def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot
                     if anchor else carla.Transform(spawn_location, spawn_point.rotation)
                 actor = CarlaDataProvider._world.spawn_actor(blueprint, _spawn_point)
 
-            if autopilot and isinstance(actor, carla.Vehicle):
-                actor.set_autopilot(autopilot, CarlaDataProvider._traffic_manager_port)
+            if actor in CarlaDataProvider._blueprint_library.filter('vehicle.*'):
+                actor.set_autopilot(autopilot)
 
             # wait for the actor to be spawned properly before we do anything
             if CarlaDataProvider.is_sync_mode():
