@@ -236,7 +236,7 @@ class ScenarioEvaluator(object):
         CarlaDataProvider.set_random_seed(int(args.carlaProviderSeed))
 
         self.traffic_manager.set_synchronous_mode(True)
-        # self.traffic_manager.set_random_device_seed(int(args.trafficManagerSeed))
+        self.traffic_manager.set_random_device_seed(int(args.trafficManagerSeed))
 
         # Wait for the world to be ready
         if CarlaDataProvider.is_sync_mode():
@@ -344,7 +344,7 @@ class ScenarioEvaluator(object):
                 self.client.stop_recorder()
 
             # Remove all actors
-            scenario.remove_all_actors()
+            # scenario.remove_all_actors()
 
             self._cleanup()
 

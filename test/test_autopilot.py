@@ -7,7 +7,7 @@ config = test.CONFIG
 initialize_carla()
 scenario = ScenarioDefinition._generate_empty_scenario()
 scenario.vehicles = [
-    Vehicle(radius=40.0, angle=-5.2, yaw=90.0, model=1, speed=-100, autopilot=True),
-    Vehicle(radius=3.5, angle=-60.0, yaw=-90.0, model=2, speed=70, autopilot=True)
+    Vehicle(radius=40.0, angle=-5.2, yaw=90.0, model=1, speed=-100, autopilot=1),
+    Vehicle(radius=3.5, angle=-60.0, yaw=-90.0, model=2, speed=70, autopilot=1)
 ]
 run_scenarios([scenario], rerun=True)
