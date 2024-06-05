@@ -20,6 +20,7 @@ import os
 import sys
 import signal
 import logging
+import carla
 
 from impl.config import CONFIG
 from impl.scenario.exceptions import StoppingScenarioFailedError, SimulationError, InvalidScenarioDefinitionError, \
@@ -158,6 +159,8 @@ class ScenarioEvaluator(object):
             settings.fixed_delta_seconds = None
             self.world.apply_settings(settings)
             self.traffic_manager.set_synchronous_mode(False)
+
+
 
         if self.manager:
             self.manager.cleanup()
@@ -344,7 +347,10 @@ class ScenarioEvaluator(object):
                 self.client.stop_recorder()
 
             # Remove all actors
-            # scenario.remove_all_actors()
+            for actor in scenario.other_actors:
+                if isinstance(actor, carla.Vehicle):
+                    actor.set_autopilot(False, self.traffic_manager.get_port())
+            scenario.remove_all_actors()
 
             self._cleanup()
 
