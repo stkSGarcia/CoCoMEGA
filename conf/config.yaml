@@ -106,6 +106,12 @@ trajectory:
       - right
       - forward
 
+  - town: Town05
+    start:
+      x: 151.5
+      y: 50.0
+      z: 0.0
+      yaw: 90.0
 
 boundary:
   region:
@@ -125,9 +131,9 @@ boundary:
     base_model:
       car: [ 0, 17 ]
       truck: [ 18, 19 ]
-      van: [20, 20]
+      van: [ 20, 20 ]
       motorcycle: [ 21, 21 ]
-      bicycle: [22, 22]
+      bicycle: [ 22, 22 ]
     autopilot: [ 0, 1 ]
   walker:
     yaw: *yaw

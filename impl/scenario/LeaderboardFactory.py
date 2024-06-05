@@ -1,14 +1,22 @@
+import inspect
 import logging
 import math
-import carla
-import inspect
 import random
+
+import carla
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+
 from impl.scenario.carla_utils import get_junction_topology, filter_junction_wp_direction, get_junction, \
     dict_to_location
 
 # Set up logging
 logger = logging.getLogger(__name__)
+
+crossings = {
+    "left": ["left", "opposite", "right"],
+    "forward": ["left", "right"],
+    "right": ["left"]
+}
 
 
 def cartesian_to_polar(x, y):
@@ -82,6 +90,28 @@ class LeaderBoardFactory:
         return scenario
 
     @staticmethod
+    def generate_random_crossing(scenario, num_vehicles=4, distance_between=15, speed=10, vehicle_types=None):
+        """
+        Generate a random lane crossing scenario.
+
+        Args:
+            scenario (object): The scenario object to be modified.
+            num_vehicles (int): Number of vehicles to generate. Default is 4.
+            distance_between (int): Distance between vehicles. Default is 15.
+            speed (int): Speed of the vehicles. Default is 10.
+            vehicle_types (list): List of vehicle types. Default is ['car', 'truck', 'van'].
+
+        Returns:
+            object: The modified scenario object.
+        """
+        if vehicle_types is None:
+            vehicle_types = ['car', 'truck', 'van']
+        lane_dir = random.choice(crossings[scenario.trajectory["direction"]])
+        scenario = LeaderBoardFactory._generate_lane_vehicles(
+            scenario, lane_dir, num_vehicles, distance_between, speed, vehicle_types)
+        return scenario
+
+    @staticmethod
     def generate_crossing_negotiation(scenario, min_vehicles=1, max_vehicles=2, distance_between=15, speed=10,
                                       vehicle_types=None):
         """
@@ -120,7 +150,7 @@ class LeaderBoardFactory:
         Returns:
             object: The modified scenario object.
         """
-        return LeaderBoardFactory.generate_random_lane_vehicles(
+        return LeaderBoardFactory.generate_random_crossing(
             scenario, num_vehicles, distance_between, speed, vehicle_types=["motorcycle"])
 
     @staticmethod
@@ -137,7 +167,7 @@ class LeaderBoardFactory:
         Returns:
             object: The modified scenario object.
         """
-        return LeaderBoardFactory.generate_random_lane_vehicles(
+        return LeaderBoardFactory.generate_random_crossing(
             scenario, num_vehicles, distance_between, speed, vehicle_types=["bicycle"])
 
     @staticmethod
@@ -152,14 +182,28 @@ class LeaderBoardFactory:
         Returns:
             object: The modified scenario object.
         """
-        waypoints = [CarlaDataProvider.get_map().get_waypoint(dict_to_location(loc)) for loc in
-                     scenario.trajectory["trajectory"]]
-        target_wp = [wp for wp in waypoints if wp.previous(1)[0].is_junction][0]
-        if distance_from_junction > 0:
-            target_wp = target_wp.next(distance_from_junction)[0]
+        return LeaderBoardFactory._generate_obstacle_vehicle(scenario,
+                                                             ["car", "truck", "van", "bicycle", "motorcycle"],
+                                                             distance_from_junction=distance_from_junction)
 
+    @staticmethod
+    def generate_slow_moving_hazard(scenario, distance=15, speed=0.5):
+        return LeaderBoardFactory._generate_obstacle_vehicle(scenario, ["bicycle", "motorcycle"],
+                                                             distance=distance, speed=speed)
+
+    @staticmethod
+    def _generate_obstacle_vehicle(scenario, vehicle_types, distance=15, distance_from_junction=0, speed=0):
+        waypoints = [CarlaDataProvider.get_map().get_waypoint(dict_to_location(loc))
+                     for loc in scenario.trajectory["trajectory"]]
+        candidate_wps = [wp for wp in waypoints if wp.previous(1)[0].is_junction]
+        if candidate_wps:
+            target_wp = candidate_wps[0]
+            if distance_from_junction > 0:
+                target_wp = target_wp.next(distance_from_junction)[0]
+        else:
+            target_wp = waypoints[0].next(distance)[0]
         vehicle = LeaderBoardFactory._generate_vehicle(scenario, target_wp.transform,
-                                                       vehicle_types=["car", "truck", "van"], speed=0)
+                                                       vehicle_types=vehicle_types, speed=speed)
         scenario.vehicles.append(vehicle)
         return scenario
 

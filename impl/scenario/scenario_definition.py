@@ -192,7 +192,7 @@ class ScenarioDefinition:
         scenario.ego_vehicle = Vehicle.generate_random()
         trajectory_def = random.choice(ScenarioDefinition._TRAJECTORY).copy()
         scenario.town = trajectory_def["town"]
-        trajectory_def["direction"] = random.choice(trajectory_def["direction"])
+        trajectory_def["direction"] = random.choice(trajectory_def.get("direction", [None]))
         cls._load_world(scenario.town)
         trajectory_def["trajectory"] = cls._build_trajectory(trajectory_def)
         scenario.trajectory = trajectory_def
@@ -211,6 +211,10 @@ class ScenarioDefinition:
         # Find the nearest junction
         while not waypoint.is_junction:
             waypoint = waypoint.next(1.0)[0]
+
+        if trajectory_def["direction"] is None:
+            trajectory.append(transform_to_dict(waypoint.transform))
+            return trajectory
 
         trajectory.append(transform_to_dict(waypoint.transform))
         junction = waypoint.get_junction()
