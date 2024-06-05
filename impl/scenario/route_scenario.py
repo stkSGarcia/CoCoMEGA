@@ -169,7 +169,7 @@ def compare_scenarios(scenario_choice, existent_scenario):
 
 
 def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot=False,
-                      random_location=False, color=None, actor_category="car"):
+                      random_location=False, color=None, actor_category="car", speed_limit=30):
     """
     This method tries to create a new actor, returning it if successful (raises InvalidScenarioConfError otherwise).
     """
@@ -200,8 +200,10 @@ def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot
                     if anchor else carla.Transform(spawn_location, spawn_point.rotation)
                 actor = CarlaDataProvider._world.spawn_actor(blueprint, _spawn_point)
 
-            if actor in CarlaDataProvider._blueprint_library.filter('vehicle.*'):
-                actor.set_autopilot(autopilot)
+            if autopilot and isinstance(actor, carla.Vehicle):
+                actor.set_autopilot(autopilot, CarlaDataProvider._traffic_manager_port)
+                (CarlaDataProvider._client.get_trafficmanager(CarlaDataProvider._traffic_manager_port)
+                 .vehicle_percentage_speed_difference(actor, speed_limit))
 
             # wait for the actor to be spawned properly before we do anything
             if CarlaDataProvider.is_sync_mode():
@@ -290,6 +292,7 @@ class RouteScenario(BasicScenario):
                     random_location=actor_conf.random_location,
                     color=actor_conf.color,
                     actor_category=actor_conf.category,
+                    speed_limit = actor_conf.speed,
                 )
                 self.other_actors.append(new_actor)
 

@@ -20,6 +20,7 @@ import os
 import sys
 import signal
 import logging
+import carla
 
 from impl.config import CONFIG
 from impl.scenario.exceptions import StoppingScenarioFailedError, SimulationError, InvalidScenarioDefinitionError, \
@@ -89,7 +90,7 @@ class ScenarioEvaluator(object):
             self.client_timeout = float(args.timeout)
         self.client.set_timeout(self.client_timeout)
 
-        # self.traffic_manager = self.client.get_trafficmanager(int(args.trafficManagerPort))
+        self.traffic_manager = self.client.get_trafficmanager(int(args.trafficManagerPort))
 
         # dist = pkg_resources.get_distribution("carla")
         # if dist.version != 'leaderboard':
@@ -157,7 +158,9 @@ class ScenarioEvaluator(object):
             settings.synchronous_mode = False
             settings.fixed_delta_seconds = None
             self.world.apply_settings(settings)
-            # self.traffic_manager.set_synchronous_mode(False)
+            self.traffic_manager.set_synchronous_mode(False)
+
+
 
         if self.manager:
             self.manager.cleanup()
@@ -234,6 +237,9 @@ class ScenarioEvaluator(object):
         CarlaDataProvider.set_world(self.world)
         CarlaDataProvider.set_traffic_manager_port(int(args.trafficManagerPort))
         CarlaDataProvider.set_random_seed(int(args.carlaProviderSeed))
+
+        self.traffic_manager.set_synchronous_mode(True)
+        self.traffic_manager.set_random_device_seed(int(args.trafficManagerSeed))
 
         # Wait for the world to be ready
         if CarlaDataProvider.is_sync_mode():
@@ -341,6 +347,9 @@ class ScenarioEvaluator(object):
                 self.client.stop_recorder()
 
             # Remove all actors
+            for actor in scenario.other_actors:
+                if isinstance(actor, carla.Vehicle):
+                    actor.set_autopilot(False, self.traffic_manager.get_port())
             scenario.remove_all_actors()
 
             self._cleanup()
