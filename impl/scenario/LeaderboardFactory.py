@@ -187,6 +187,30 @@ class LeaderBoardFactory:
                                                              distance=distance, speed=speed)
 
     @staticmethod
+    def generate_pedestrian_emerging(scenario, distance=10, speed=0.8):
+        """
+        Generate a pedestrian emerging scenario.
+
+        Args:
+            scenario (object): The scenario object to be modified.
+            distance (int): Distance between the ego vehicle and the pedestrian to be spawned. Default is 10.
+            speed (float): Speed of the pedestrian. Default is 0.8.
+
+        Returns:
+            object: The modified scenario object.
+        """
+        from impl.scenario.scenario_definition import Walker
+        ego_start = scenario.trajectory["start"]
+        walker = Walker.generate_random()
+        walker.radius = distance
+        walker.angle = 30.0
+        walker.yaw = ego_start["yaw"] - 90.0
+        walker.speed = speed
+        walker.update_region()
+        scenario.walkers.append(walker)
+        return scenario
+
+    @staticmethod
     def _generate_obstacle_vehicle(scenario, vehicle_types, distance=15, distance_from_junction=0, speed=0.0):
         """
         Generate an obstacle vehicle.
