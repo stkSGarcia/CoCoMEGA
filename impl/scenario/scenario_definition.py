@@ -455,20 +455,20 @@ class Actor(ABC):
 
 
 class Vehicle(Actor):
-    _ATTRIBUTES = ["speed", "autopilot"]
+    _ATTRIBUTES = ["speed"]
     _BLUEPRINTS = CONFIG["blueprint"]["vehicle"]
     _BOUNDARY = Boundary(CONFIG["boundary"]["vehicle"])
 
-    def __init__(self, radius, angle, yaw, model, speed, autopilot):
+    def __init__(self, radius, angle, yaw, model, speed):
         super().__init__(radius, angle, yaw, model)
         self.speed = speed
-        self.autopilot = autopilot
+        self.autopilot = True
 
     def get_config(self):
         return {
             **super().get_config(),
             "speed": self.speed,
-            "autopilot": bool(self.autopilot),
+            "autopilot": self.autopilot,
         }
 
     @classmethod
@@ -486,7 +486,7 @@ class Vehicle(Actor):
         return vehicle
 
     def __eq__(self, other):
-        return super().__eq__(other) and self.speed == other.speed and self.autopilot == other.autopilot
+        return super().__eq__(other) and self.speed == other.speed
 
 
 class Walker(Actor):

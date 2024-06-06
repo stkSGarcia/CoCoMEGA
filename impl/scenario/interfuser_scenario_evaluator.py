@@ -238,6 +238,7 @@ class ScenarioEvaluator(object):
         CarlaDataProvider.set_traffic_manager_port(int(args.trafficManagerPort))
         CarlaDataProvider.set_random_seed(int(args.carlaProviderSeed))
 
+        self.traffic_manager.set_hybrid_physics_mode(False)
         self.traffic_manager.set_synchronous_mode(True)
         self.traffic_manager.set_random_device_seed(int(args.trafficManagerSeed))
 

@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 crossings = {
     "left": ["left", "opposite", "right"],
     "forward": ["left", "right"],
-    "right": ["left"]
+    "right": ["left"],
+    None: ["ref"]
 }
 
 
@@ -68,7 +69,8 @@ class LeaderBoardFactory:
         return factory_method(scenario, **kwargs)
 
     @staticmethod
-    def generate_random_lane_vehicles(scenario, num_vehicles=4, distance_between=15, speed=10, vehicle_types=None):
+    def generate_random_lane_vehicles(scenario, num_vehicles=4, distance_between=15, speed=10.0, vehicle_types=None,
+                                      force_crossing=False):
         """
         Generate a random lane vehicle scenario.
 
@@ -76,43 +78,25 @@ class LeaderBoardFactory:
             scenario (object): The scenario object to be modified.
             num_vehicles (int): Number of vehicles to generate. Default is 4.
             distance_between (int): Distance between vehicles. Default is 15.
-            speed (int): Speed of the vehicles. Default is 10.
+            speed (float): Speed of the vehicles. Default is 10.0.
             vehicle_types (list): List of vehicle types. Default is ['car', 'truck', 'van'].
+            force_crossing (bool): Whether to force crossing vehicles. Default is False.
 
         Returns:
             object: The modified scenario object.
         """
         if vehicle_types is None:
             vehicle_types = ['car', 'truck', 'van']
-        lane_dir = random.choice(['ref', 'left', 'right', 'opposite'])
+        lane_dir = random.choice(
+            crossings[scenario.trajectory["direction"]] if force_crossing
+            else ["ref", "left", "right", "opposite"]
+        )
         scenario = LeaderBoardFactory._generate_lane_vehicles(
-            scenario, lane_dir, num_vehicles, distance_between, speed, vehicle_types)
+            scenario, lane_dir, num_vehicles, distance_between, speed, vehicle_types, autopilot=False)
         return scenario
 
     @staticmethod
-    def generate_random_crossing(scenario, num_vehicles=4, distance_between=15, speed=10, vehicle_types=None):
-        """
-        Generate a random lane crossing scenario.
-
-        Args:
-            scenario (object): The scenario object to be modified.
-            num_vehicles (int): Number of vehicles to generate. Default is 4.
-            distance_between (int): Distance between vehicles. Default is 15.
-            speed (int): Speed of the vehicles. Default is 10.
-            vehicle_types (list): List of vehicle types. Default is ['car', 'truck', 'van'].
-
-        Returns:
-            object: The modified scenario object.
-        """
-        if vehicle_types is None:
-            vehicle_types = ['car', 'truck', 'van']
-        lane_dir = random.choice(crossings[scenario.trajectory["direction"]])
-        scenario = LeaderBoardFactory._generate_lane_vehicles(
-            scenario, lane_dir, num_vehicles, distance_between, speed, vehicle_types)
-        return scenario
-
-    @staticmethod
-    def generate_crossing_negotiation(scenario, min_vehicles=1, max_vehicles=2, distance_between=15, speed=10,
+    def generate_crossing_negotiation(scenario, min_vehicles=1, max_vehicles=2, distance_between=15, speed=10.0,
                                       vehicle_types=None):
         """
         Generate a crossing negotiation scenario.
@@ -122,7 +106,7 @@ class LeaderBoardFactory:
             min_vehicles (int): Minimum number of vehicles on each lane. Default is 1.
             max_vehicles (int): Maximum number of vehicles on each lane. Default is 2.
             distance_between (int): Distance between vehicles on each lane. Default is 15.
-            speed (int): Speed of the vehicles. Default is 10.
+            speed (float): Speed of the vehicles. Default is 10.0.
             vehicle_types (list): List of vehicle types. Default is ['car', 'truck', 'van'].
 
         Returns:
@@ -133,42 +117,42 @@ class LeaderBoardFactory:
         for lane_dir in ['left', 'right', 'opposite']:
             num_vehicles = random.randint(min_vehicles, max_vehicles)
             scenario = LeaderBoardFactory._generate_lane_vehicles(
-                scenario, lane_dir, num_vehicles, distance_between, speed, vehicle_types)
+                scenario, lane_dir, num_vehicles, distance_between, speed, vehicle_types, autopilot=True)
         return scenario
 
     @staticmethod
-    def generate_motorcycles_crossing(scenario, num_vehicles=4, distance_between=10, speed=12):
+    def generate_motorcycles_crossing(scenario, num_vehicles=4, distance_between=10, speed=12.0):
         """
         Generate a random lane motorcycle crossing scenario.
 
         Args:
             scenario (object): The scenario object to be modified.
             num_vehicles (int): Number of vehicles to generate. Default is 4.
-            distance_between (int): Distance between vehicles. Default is 15.
-            speed (int): Speed of the vehicles. Default is 10.
+            distance_between (int): Distance between vehicles. Default is 10.
+            speed (float): Speed of the vehicles. Default is 12.0.
 
         Returns:
             object: The modified scenario object.
         """
-        return LeaderBoardFactory.generate_random_crossing(
-            scenario, num_vehicles, distance_between, speed, vehicle_types=["motorcycle"])
+        return LeaderBoardFactory.generate_random_lane_vehicles(
+            scenario, num_vehicles, distance_between, speed, vehicle_types=["motorcycle"], force_crossing=True)
 
     @staticmethod
-    def generate_bicycles_crossing(scenario, num_vehicles=4, distance_between=8, speed=5):
+    def generate_bicycles_crossing(scenario, num_vehicles=4, distance_between=8, speed=5.0):
         """
         Generate a random lane bicycle crossing scenario.
 
         Args:
             scenario (object): The scenario object to be modified.
             num_vehicles (int): Number of vehicles to generate. Default is 4.
-            distance_between (int): Distance between vehicles. Default is 15.
-            speed (int): Speed of the vehicles. Default is 10.
+            distance_between (int): Distance between vehicles. Default is 8.
+            speed (float): Speed of the vehicles. Default is 5.0.
 
         Returns:
             object: The modified scenario object.
         """
-        return LeaderBoardFactory.generate_random_crossing(
-            scenario, num_vehicles, distance_between, speed, vehicle_types=["bicycle"])
+        return LeaderBoardFactory.generate_random_lane_vehicles(
+            scenario, num_vehicles, distance_between, speed, vehicle_types=["bicycle"], force_crossing=True)
 
     @staticmethod
     def generate_obstacle_avoidance(scenario, distance_from_junction=0):
@@ -187,12 +171,36 @@ class LeaderBoardFactory:
                                                              distance_from_junction=distance_from_junction)
 
     @staticmethod
-    def generate_slow_moving_hazard(scenario, distance=15, speed=0.5):
+    def generate_slow_moving_hazard(scenario, distance=15, speed=1.0):
+        """
+        Generate a slow moving hazard scenario.
+
+        Args:
+            scenario (object): The scenario object to be modified.
+            distance (int): Distance from the ego vehicle to generate the hazard. Default is 15.
+            speed (float): Speed of the vehicles. Default is 1.0.
+
+        Returns:
+            object: The modified scenario object.
+        """
         return LeaderBoardFactory._generate_obstacle_vehicle(scenario, ["bicycle", "motorcycle"],
                                                              distance=distance, speed=speed)
 
     @staticmethod
-    def _generate_obstacle_vehicle(scenario, vehicle_types, distance=15, distance_from_junction=0, speed=0):
+    def _generate_obstacle_vehicle(scenario, vehicle_types, distance=15, distance_from_junction=0, speed=0.0):
+        """
+        Generate an obstacle vehicle.
+
+        Args:
+            scenario (object): The scenario object to be modified.
+            vehicle_types (list): List of vehicle types.
+            distance (int): Distance from the ego vehicle to generate the hazard. Default is 15.
+            distance_from_junction (int): Distance from the junction to place the obstacle. Default is 0.
+            speed (float): Speed of the vehicles. Default is 0.0.
+
+        Returns:
+            object: The modified scenario object.
+        """
         waypoints = [CarlaDataProvider.get_map().get_waypoint(dict_to_location(loc))
                      for loc in scenario.trajectory["trajectory"]]
         candidate_wps = [wp for wp in waypoints if wp.previous(1)[0].is_junction]
@@ -208,7 +216,7 @@ class LeaderBoardFactory:
         return scenario
 
     @staticmethod
-    def _generate_lane_vehicles(scenario, lane_dir, num_vehicles, distance_between, speed, vehicle_types):
+    def _generate_lane_vehicles(scenario, lane_dir, num_vehicles, distance_between, speed, vehicle_types, autopilot):
         """
         Helper method to generate vehicles in a lane.
 
@@ -217,7 +225,7 @@ class LeaderBoardFactory:
             lane_dir (str): The direction of the lane.
             num_vehicles (int): Number of vehicles to generate.
             distance_between (int): Distance between vehicles.
-            speed (int): Speed of the vehicles.
+            speed (float): Speed of the vehicles.
             vehicle_types (list): List of vehicle types.
 
         Returns:
@@ -241,14 +249,15 @@ class LeaderBoardFactory:
 
         # Generate vehicles in the specified lane
         for _ in range(num_vehicles):
-            vehicle = LeaderBoardFactory._generate_vehicle(scenario, source_wp.transform, vehicle_types, speed)
+            vehicle = LeaderBoardFactory._generate_vehicle(scenario, source_wp.transform, vehicle_types, speed,
+                                                           autopilot)
             scenario.vehicles.append(vehicle)
             source_wp = source_wp.previous(distance_between)[0]
 
         return scenario
 
     @staticmethod
-    def _generate_vehicle(scenario, spawn_transform, vehicle_types, speed):
+    def _generate_vehicle(scenario, spawn_transform, vehicle_types, speed, autopilot=True):
         """
         Helper method to generate a vehicle.
 
@@ -256,7 +265,7 @@ class LeaderBoardFactory:
             scenario (object): The scenario object to be modified.
             spawn_transform (carla.Transform): The transform of the vehicle to be spawned.
             vehicle_types (list): List of vehicle types.
-            speed (int): Speed of the vehicle.
+            speed (float): Speed of the vehicle.
 
         Returns:
             object: The generated vehicle object.
@@ -264,11 +273,12 @@ class LeaderBoardFactory:
         from impl.scenario.scenario_definition import Vehicle
         ego_start = scenario.trajectory["start"]
         vehicle = Vehicle.generate_random(base_model=vehicle_types)
-        vehicle.autopilot = False
+        vehicle.autopilot = autopilot
         radius, angle = cartesian_to_polar(spawn_transform.location.x - ego_start["x"],
                                            spawn_transform.location.y - ego_start["y"])
         vehicle.radius = radius
         vehicle.angle = angle - ego_start["yaw"]
         vehicle.yaw = spawn_transform.rotation.yaw
         vehicle.speed = speed
+        vehicle.update_region()
         return vehicle
