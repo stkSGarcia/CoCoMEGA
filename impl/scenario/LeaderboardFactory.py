@@ -230,9 +230,6 @@ class LeaderBoardFactory:
 
         Returns:
             object: The modified scenario object.
-
-        Raises:
-            ValueError: If no waypoints are found for the specified lane direction.
         """
         ego_location = carla.Location(x=scenario.trajectory["start"]["x"], y=scenario.trajectory["start"]["y"], z=0)
 
@@ -243,7 +240,8 @@ class LeaderBoardFactory:
         source_entry_wps = filter_junction_wp_direction(ego_waypoint, entry_wps, lane_dir)
 
         if not source_entry_wps:
-            raise ValueError(f"No '{lane_dir}' lane found in the junction")
+            logger.warning(f"No '{lane_dir}' lane found in the junction")
+            return scenario
 
         source_wp = random.choice(source_entry_wps)
 
