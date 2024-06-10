@@ -186,23 +186,30 @@ class CCEA(BaseAlgorithm):
         population = self.toolbox.clone(population)
         archive = tools.selBest(population, 1)
         population.remove(archive[0])
-        population = [ind for ind in population if ind.fitness.valid]
-        if len(population) == 0: return archive
 
         if CONFIG["opt"]["diversity"]:
             # Select individuals able to maximize the diversity.
-            for _ in range(archive_size - 1):
-                best = population[0]
-                if len(population) <= 1: break
-                for ind in population[1:]:
-                    if self.population_diversity(archive + [ind]) > self.population_diversity(archive + [best]):
-                        best = ind
-                archive.append(best)
-                population.remove(best)
+            valid, invalid = [], []
+            for ind in population:
+                (invalid, valid)[ind.fitness.valid].append(ind)
+            size = archive_size - 1
+            for pop in [valid, invalid]:
+                if len(pop) == 0: continue
+                while size > 0:
+                    if len(pop) == 1:
+                        archive.append(pop[0])
+                        size -= 1
+                        break
+                    best = pop[0]
+                    for ind in pop[1:]:
+                        if self.population_diversity(archive + [ind]) > self.population_diversity(archive + [best]):
+                            best = ind
+                    archive.append(best)
+                    pop.remove(best)
+                    size -= 1
         else:
             # Randomly select individuals.
             archive += tools.selRandom(population, archive_size - 1)
-
         return archive
 
     def _breed(self, population, size):
