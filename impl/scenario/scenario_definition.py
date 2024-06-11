@@ -114,26 +114,31 @@ def _mutate_attrs(this, attrs, boundary: Boundary):
     for attr in attrs:
         if random.random() >= CONFIG["scenario"]["mutpb"]: continue
         lower, upper = boundary[attr]
-        if isinstance(lower, float) and lower != upper:  # Polynomial mutation
-            x = getattr(this, attr)
-            delta_1 = (x - lower) / (upper - lower)
-            delta_2 = (upper - x) / (upper - lower)
-            rand = random.random()
-            mut_pow = 1.0 / (CONFIG["scenario"]["eta"] + 1.)
+        x = getattr(this, attr)
+        if isinstance(lower, float):
+            if lower == upper: continue
+            if lower <= x <= upper:  # Polynomial mutation
+                delta_1 = (x - lower) / (upper - lower)
+                delta_2 = (upper - x) / (upper - lower)
+                rand = random.random()
+                mut_pow = 1.0 / (CONFIG["scenario"]["mut_eta"] + 1.)
 
-            if rand < 0.5:
-                xy = 1.0 - delta_1
-                val = 2.0 * rand + (1.0 - 2.0 * rand) * xy ** (CONFIG["scenario"]["eta"] + 1)
-                delta_q = val ** mut_pow - 1.0
-            else:
-                xy = 1.0 - delta_2
-                val = 2.0 * (1.0 - rand) + 2.0 * (rand - 0.5) * xy ** (CONFIG["scenario"]["eta"] + 1)
-                delta_q = 1.0 - val ** mut_pow
+                if rand < 0.5:
+                    xy = 1.0 - delta_1
+                    val = 2.0 * rand + (1.0 - 2.0 * rand) * xy ** (CONFIG["scenario"]["mut_eta"] + 1)
+                    delta_q = val ** mut_pow - 1.0
+                else:
+                    xy = 1.0 - delta_2
+                    val = 2.0 * (1.0 - rand) + 2.0 * (rand - 0.5) * xy ** (CONFIG["scenario"]["mut_eta"] + 1)
+                    delta_q = 1.0 - val ** mut_pow
 
-            x = x + delta_q * (upper - lower)
-            x = min(max(x, lower), upper)
+                x = x + delta_q * (upper - lower)
+                x = min(max(x, lower), upper)
+            else:  # Gaussian mutation
+                x = random.gauss(x, CONFIG["scenario"]["mut_std"])
             setattr(this, attr, x)
         elif isinstance(lower, int):
+            assert lower <= x <= upper
             setattr(this, attr, random.randint(lower, upper))
 
 

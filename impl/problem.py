@@ -84,7 +84,7 @@ def _fitness(source, follow_up, mr_set=mr_set):
         source[mr_set.field] = source.apply(func, axis=1, result_type="reduce")
         follow_up[mr_set.field] = follow_up.apply(func, axis=1, result_type="reduce")
     is_violated, extent = mr_set.is_violated(source, follow_up)
-    return is_violated, (extent,) if extent else None
+    return is_violated, (extent,) if extent is not None else None
 
 
 def _evaluate_solutions(solutions):

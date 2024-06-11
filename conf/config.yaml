@@ -55,8 +55,9 @@ scenario:
   dist_scaling: 0.4
   tournament: 3
   cxpb: 0.8
-  eta: 10.0
   mutpb: 0.2
+  mut_eta: 10.0
+  mut_std: 5.0
   mut_add: 0.6
   mut_del: 0.2
 
@@ -83,7 +84,7 @@ opt:
     strategy: clearing  # Options: none, sharing, clearing
     punishment: 1.0
     scaling: 1.0
-    capacity: 2
+    capacity: 1
   diversity: true
 
 trajectory:

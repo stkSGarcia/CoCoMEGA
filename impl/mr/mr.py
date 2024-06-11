@@ -154,8 +154,8 @@ class Relation(ABC):
         if df.empty: return False, None
 
         df["extent"] = df.apply(self._extent_func, axis=1, result_type="reduce")
-        df = df.loc[df["extent"].abs() > CONFIG["violation"]["threshold"][self.field]]
-        if df.empty: return False, None
+        # df = df.loc[df["extent"].abs() > CONFIG["violation"]["threshold"][self.field]]
+        # if df.empty: return False, None
 
         extent = df["extent"].mean()
         return extent > 0, extent
