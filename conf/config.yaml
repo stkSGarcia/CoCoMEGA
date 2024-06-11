@@ -20,6 +20,7 @@ simulation:
   wait_for_world: 20
   frame_rate: 10
   high_graphics: true
+  autopilot: false
   docker:
     enabled: true
     image: carla-0.9.10

@@ -206,7 +206,7 @@ def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot
             else:
                 CarlaDataProvider._world.wait_for_tick()
 
-            if autopilot and isinstance(actor, carla.Vehicle):
+            if CONFIG["simulation"]["autopilot"] and autopilot and isinstance(actor, carla.Vehicle):
                 actor.set_autopilot(autopilot, CarlaDataProvider._traffic_manager_port)
                 speed_limit = actor.get_speed_limit() / 3.6
                 pct = (speed_limit - speed) / speed_limit * 100
@@ -294,7 +294,7 @@ class RouteScenario(BasicScenario):
                     random_location=actor_conf.random_location,
                     color=actor_conf.color,
                     actor_category=actor_conf.category,
-                    speed = actor_conf.speed,
+                    speed=actor_conf.speed,
                 )
                 self.other_actors.append(new_actor)
 
