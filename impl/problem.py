@@ -1,5 +1,4 @@
 import math
-from functools import partial
 
 from deap import creator, base, tools
 
@@ -27,7 +26,7 @@ creator.create("Perturbation", Perturbations, fitness=creator.Fitness)
 
 toolbox = base.Toolbox()
 toolbox.register("scenario", tools.initIterate, creator.Scenario, creator.Scenario.generate_random_or_leaderboard)
-toolbox.register("perturbation", tools.initIterate, creator.Perturbation, lambda: [mr_set.spawn()])
+toolbox.register("perturbation", tools.initIterate, creator.Perturbation, mr_set.initialize)
 
 
 def _pop_scenario():
@@ -47,31 +46,6 @@ toolbox.register("collaborate", lambda scenario, perturbation: creator.Solution(
 
 
 # Define genetic operators.
-def _determine_individual_type(individual):
-    if str(type(individual)) == str(creator.Scenario):
-        # if isinstance(individual, creator.Scenario):
-        return 0
-    elif str(type(individual)) == str(creator.Perturbation):
-        # elif isinstance(individual, creator.Perturbation):
-        return 1
-    else:
-        raise ValueError(f"Unrecognized individual type: {type(individual)}.")
-
-
-toolbox.register("operators",
-                 lambda individual: (  # Operators for scenarios.
-                     partial(tools.selTournament, tournsize=CONFIG["scenario"]["tournament"]),  # selection
-                     lambda ind1, ind2: ind1.mate(ind2),  # crossover
-                     ScenarioDefinition.mutate,  # mutation
-                     lambda ind: ind.assign_new_id()  # correction
-                 ) if _determine_individual_type(individual) == 0 else (  # Operators for perturbations.
-                     partial(tools.selTournament, tournsize=CONFIG["perturbation"]["tournament"]),  # selection
-                     lambda ind1, ind2: ind1.mate(ind2),  # crossover
-                     mr_set.mutate,  # mutation
-                     lambda ind: ind,  # correction
-                 ))
-
-
 def _fitness(source, follow_up, mr_set=mr_set):
     """Calculate the fitness value and check if it violates the relation.
 
@@ -121,7 +95,7 @@ def _evaluate_individual(individual, complete_solutions):
     @param complete_solutions: The list of complete solutions with fitness evaluated.
     @return: The individual with fitness evaluated.
     """
-    index = _determine_individual_type(individual)
+    index = 0 if str(type(individual)) == str(creator.Scenario) else 1
     involved = []
     for solution in complete_solutions:
         if solution[index] == individual:

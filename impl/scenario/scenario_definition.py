@@ -8,6 +8,7 @@ from enum import Enum
 
 import carla
 import numpy as np
+from deap import tools
 from scipy.spatial.distance import cdist
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
@@ -76,7 +77,7 @@ class Boundary(dict):
                 raise ValueError(f"Unsupported type for boundary: '{type(element)}'.")
 
 
-def _dist_attrs(this, that, attrs, boundary: Boundary):
+def _dist_attrs(this, that, attrs, boundary: Boundary, scaling):
     dist = 0
     for attr in attrs:
         lower, upper = boundary[attr]
@@ -84,35 +85,34 @@ def _dist_attrs(this, that, attrs, boundary: Boundary):
             dist += pow(abs(getattr(this, attr) - getattr(that, attr)) / (upper - lower), 2) if upper != lower else 0
         elif isinstance(lower, int):
             # TODO: within the same category.
-            dist += pow(CONFIG["scenario"]["dist_scaling"] *
-                        (0.0 if getattr(this, attr) == getattr(that, attr) else 1.0), 2)
+            dist += pow(scaling * (0.0 if getattr(this, attr) == getattr(that, attr) else 1.0), 2)
     return dist
 
 
-def _mate_attrs(this, that, attrs):
+def _mate_attrs(this, that, attrs, cxpb):
     for attr in attrs:
-        if random.random() < CONFIG["scenario"]["cxpb"]:
+        if random.random() < cxpb:
             value = getattr(this, attr)
             setattr(this, attr, getattr(that, attr))
             setattr(that, attr, value)
 
 
-def _mate_actors(this, that):
+def _mate_actors(this, that, cxpb):
     common = min(len(this), len(that))
     for i in range(common):
-        if random.random() < CONFIG["scenario"]["cxpb"]:
+        if random.random() < cxpb:
             this[i], that[i] = that[i], this[i]
     less, more = (this, that) if len(this) < len(that) else (that, this)
     while len(more) > common:
-        if random.random() < CONFIG["scenario"]["cxpb"]:
+        if random.random() < cxpb:
             less.append(more.pop(common))
         else:
             common += 1
 
 
-def _mutate_attrs(this, attrs, boundary: Boundary):
+def _mutate_attrs(this, attrs, boundary: Boundary, mutpb, eta, std):
     for attr in attrs:
-        if random.random() >= CONFIG["scenario"]["mutpb"]: continue
+        if random.random() >= mutpb: continue
         lower, upper = boundary[attr]
         x = getattr(this, attr)
         if isinstance(lower, float):
@@ -121,21 +121,21 @@ def _mutate_attrs(this, attrs, boundary: Boundary):
                 delta_1 = (x - lower) / (upper - lower)
                 delta_2 = (upper - x) / (upper - lower)
                 rand = random.random()
-                mut_pow = 1.0 / (CONFIG["scenario"]["mut_eta"] + 1.)
+                mut_pow = 1.0 / (eta + 1.)
 
                 if rand < 0.5:
                     xy = 1.0 - delta_1
-                    val = 2.0 * rand + (1.0 - 2.0 * rand) * xy ** (CONFIG["scenario"]["mut_eta"] + 1)
+                    val = 2.0 * rand + (1.0 - 2.0 * rand) * xy ** (eta + 1)
                     delta_q = val ** mut_pow - 1.0
                 else:
                     xy = 1.0 - delta_2
-                    val = 2.0 * (1.0 - rand) + 2.0 * (rand - 0.5) * xy ** (CONFIG["scenario"]["mut_eta"] + 1)
+                    val = 2.0 * (1.0 - rand) + 2.0 * (rand - 0.5) * xy ** (eta + 1)
                     delta_q = 1.0 - val ** mut_pow
 
                 x = x + delta_q * (upper - lower)
                 x = min(max(x, lower), upper)
             else:  # Gaussian mutation
-                x = random.gauss(x, CONFIG["scenario"]["mut_std"])
+                x = random.gauss(x, std)
             setattr(this, attr, x)
         elif isinstance(lower, int):
             assert lower <= x <= upper
@@ -256,13 +256,13 @@ class ScenarioDefinition:
 
     def remove_actor(self, category: str, region):
         actors = getattr(self, f"{category}s")
-        index = ScenarioDefinition._random_pick_actor(actors, region)
+        index = ScenarioDefinition._pick_nearest_actor(actors, region)
         if index >= 0:
             del actors[index]
 
     def replace_actor(self, category: str, region, new_actor):
         actors = getattr(self, f"{category}s")
-        index = ScenarioDefinition._random_pick_actor(actors, region)
+        index = ScenarioDefinition._pick_nearest_actor(actors, region)
         if index >= 0:
             actors[index].update(new_actor)
 
@@ -279,10 +279,15 @@ class ScenarioDefinition:
                     index = i
         return index
 
-    def dist(self, other):
+    @staticmethod
+    def _pick_nearest_actor(actors, region: Boundary.Region = None):
+        candidates = [(i, actor) for i, actor in enumerate(actors) if region is None or actor.region == region]
+        return sorted(candidates, key=lambda x: x[1].radius)[0][0] if candidates else -1
+
+    def dist(self, other, scaling=CONFIG["scenario"]["dist_scaling"]):
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        dist = _dist_attrs(self, other, ScenarioDefinition.ATTRIBUTES, ScenarioDefinition._BOUNDARY)
+        dist = _dist_attrs(self, other, ScenarioDefinition.ATTRIBUTES, ScenarioDefinition._BOUNDARY, scaling=scaling)
         for actors, other_actors in zip([self.vehicles, self.walkers, self.statics],
                                         [other.vehicles, other.walkers, other.statics]):
             if len(actors) == 0 and len(other_actors) == 0:
@@ -296,18 +301,24 @@ class ScenarioDefinition:
                 dist += dist_matrix.min(axis=1 if len(actors) > len(other_actors) else 0).sum()
         return math.sqrt(dist)
 
-    def mate(self, other):
+    @staticmethod
+    def select(population, k=2):
+        return tools.selTournament(population, k=k, tournsize=CONFIG["scenario"]["tournament"])
+
+    def mate(self, other, cxpb=CONFIG["scenario"]["cxpb"]):
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        _mate_attrs(self, other, ScenarioDefinition.ATTRIBUTES)
-        _mate_actors(self.vehicles, other.vehicles)
-        _mate_actors(self.walkers, other.walkers)
-        _mate_actors(self.statics, other.statics)
+        _mate_attrs(self, other, ScenarioDefinition.ATTRIBUTES, cxpb=cxpb)
+        _mate_actors(self.vehicles, other.vehicles, cxpb=cxpb)
+        _mate_actors(self.walkers, other.walkers, cxpb=cxpb)
+        _mate_actors(self.statics, other.statics, cxpb=cxpb)
 
-    def mutate(self):
-        _mutate_attrs(self, ScenarioDefinition.ATTRIBUTES, ScenarioDefinition._BOUNDARY)
+    def mutate(self, mutpb=CONFIG["scenario"]["mutpb"],
+               eta=CONFIG["scenario"]["mut_eta"],
+               std=CONFIG["scenario"]["mut_std"]):
+        _mutate_attrs(self, ScenarioDefinition.ATTRIBUTES, ScenarioDefinition._BOUNDARY, mutpb=mutpb, eta=eta, std=std)
         for actor in self.vehicles + self.walkers + self.statics:
-            actor.mutate()
+            actor.mutate(mutpb=mutpb, eta=eta, std=std)
         if random.random() < CONFIG["scenario"]["mut_del"]:
             times = 1
             while random.random() < CONFIG["scenario"]["mutpb"] ** times:
@@ -318,6 +329,9 @@ class ScenarioDefinition:
         else:
             for actors, cls in zip([self.vehicles, self.walkers, self.statics], [Vehicle, Walker, Static]):
                 actors += cls.generate_random_actors(CONFIG["scenario"]["mut_add"])
+
+    def correct(self):
+        self.assign_new_id()
 
     def build_actor_trajectory(self, actor_def):
         spawn_point = actor_def.get_config()['spawn_point']
@@ -417,22 +431,24 @@ class Actor(ABC):
             setattr(self, attr, getattr(other, attr))
         self.update_region()
 
-    def dist(self, other):
+    def dist(self, other, scaling=CONFIG["scenario"]["dist_scaling"]):
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        return _dist_attrs(self, other, Actor._ATTRIBUTES + self._ATTRIBUTES, self._BOUNDARY)
+        return _dist_attrs(self, other, Actor._ATTRIBUTES + self._ATTRIBUTES, self._BOUNDARY, scaling=scaling)
 
-    def mate(self, other):
+    def mate(self, other, cxpb=CONFIG["scenario"]["cxpb"]):
         """Mate actors in place."""
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        _mate_attrs(self, other, Actor._ATTRIBUTES + self._ATTRIBUTES)
+        _mate_attrs(self, other, Actor._ATTRIBUTES + self._ATTRIBUTES, cxpb=cxpb)
         self.update_region()
         other.update_region()
 
-    def mutate(self):
+    def mutate(self, mutpb=CONFIG["scenario"]["mutpb"],
+               eta=CONFIG["scenario"]["mut_eta"],
+               std=CONFIG["scenario"]["mut_std"]):
         """Mutate actors in place."""
-        _mutate_attrs(self, Actor._ATTRIBUTES + self._ATTRIBUTES, self._BOUNDARY)
+        _mutate_attrs(self, Actor._ATTRIBUTES + self._ATTRIBUTES, self._BOUNDARY, mutpb=mutpb, eta=eta, std=std)
         self.update_region()
 
     def get_config(self):

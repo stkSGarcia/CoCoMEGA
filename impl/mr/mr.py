@@ -7,6 +7,7 @@ from typing import List
 
 import numpy as np
 import pandas as pd
+from deap import tools
 from tslearn.metrics import dtw_path
 
 from impl.config import CONFIG
@@ -23,12 +24,14 @@ class Operation(Enum):
 
 
 class Perturbation:
-    def __init__(self, category: str, operation: Operation, value):
+    def __init__(self, category: str, operation: Operation, value, enabled=True):
         self.category = category
         self.operation = operation
         self.value = value
+        self.enabled = enabled
 
     def perturb(self, scenario: ScenarioDefinition):
+        if self.enabled is False: return
         if self.category in ScenarioDefinition.DYNAMIC:
             if self.operation == Operation.ADD:
                 scenario.add_actor(self.category, self.value)
@@ -43,24 +46,51 @@ class Perturbation:
         else:
             raise ValueError(f"Unsupported category: {self.category}.")
 
-    def dist(self, other):
-        if self.category == other.category and self.operation == other.operation:
+    def dist(self, other, scaling=CONFIG["perturbation"]["dist_scaling"]):
+        if not isinstance(other, self.__class__):
+            raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
+        if self.enabled == other.enabled and self.category == other.category and self.operation == other.operation:
             if self.operation == Operation.ADD:
                 return self.value.dist(other.value)
             if self.operation == Operation.REMOVE:
-                return 0 if self.value == other.value else pow(CONFIG["perturbation"]["dist_scaling"], 2)
+                return 0 if self.value == other.value else pow(scaling, 2)
             elif self.operation == Operation.REPLACE:
                 return self.value[1].dist(other.value[1])
-        return pow(CONFIG["perturbation"]["dist_scaling"], 2)
+        return pow(scaling, 2)
+
+    def mate(self, other, cxpb=CONFIG["perturbation"]["cxpb"]):
+        if not isinstance(other, self.__class__):
+            raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
+        if self.category != other.category or self.operation != other.operation: return
+        if random.random() < cxpb:
+            self.enabled, other.enabled = other.enabled, self.enabled
+        if self.operation == Operation.ADD:
+            self.value.mate(other.value, cxpb=cxpb)
+        elif self.operation == Operation.REPLACE:
+            self.value[1].mate(other.value[1], cxpb=cxpb)
+
+    def mutate(self, mutpb=CONFIG["perturbation"]["mutpb"],
+               eta=CONFIG["perturbation"]["mut_eta"],
+               std=CONFIG["perturbation"]["mut_std"]):
+        if random.random() < mutpb:
+            self.enabled = not self.enabled
+        if self.operation == Operation.ADD:
+            self.value.mutate(mutpb=mutpb, eta=eta, std=std)
+        elif self.operation == Operation.REPLACE:
+            self.value[1].mutate(mutpb=mutpb, eta=eta, std=std)
 
     def __eq__(self, other):
         return (isinstance(other, self.__class__) and
+                self.enabled == other.enabled and
                 self.category == other.category and
                 self.operation == other.operation and
                 self.value == other.value)
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(category={self.category}, operation={self.operation}, value={self.value})"
+        return (f"{self.__class__.__name__}(enabled={self.enabled}, "
+                f"category={self.category}, "
+                f"operation={self.operation.name}, "
+                f"value={self.value})")
 
 
 class Perturbations(list):
@@ -68,34 +98,43 @@ class Perturbations(list):
         for perturbation in self:
             perturbation.perturb(scenario)
 
-    def dist(self, other):
+    def dist(self, other, scaling=CONFIG["perturbation"]["dist_scaling"]):
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        if len(self) == 0 or len(other) == 0: return 0.0
+        dist = 0.0
+        for this, that in zip(self, other):
+            dist += this.dist(that, scaling=scaling)
+        return math.sqrt(dist)
 
-        dp = [np.inf] * (len(other) + 1)
-        prev = 0.0
-        for p in self:
-            for i in range(1, len(other) + 1):
-                temp = dp[i]
-                dp[i] = min(min(prev, temp), dp[i - 1]) + p.dist(other[i - 1])
-                prev = temp
-            prev = np.inf
-        return math.sqrt(dp[-1])
+        # if len(self) == 0 or len(other) == 0: return 0.0
+        # dp = [np.inf] * (len(other) + 1)
+        # prev = 0.0
+        # for p in self:
+        #     for i in range(1, len(other) + 1):
+        #         temp = dp[i]
+        #         dp[i] = min(min(prev, temp), dp[i - 1]) + p.dist(other[i - 1])
+        #         prev = temp
+        #     prev = np.inf
+        # return math.sqrt(dp[-1])
 
-    def mate(self, other):
+    @staticmethod
+    def select(population, k=2):
+        return tools.selTournament(population, k=k, tournsize=CONFIG["perturbation"]["tournament"])
+
+    def mate(self, other, cxpb=CONFIG["perturbation"]["cxpb"]):
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        common = min(len(self), len(other))
-        for i in range(common):
-            if random.random() < CONFIG["perturbation"]["cxpb"]:
-                self[i], other[i] = other[i], self[i]
-        less, more = (self, other) if len(self) < len(other) else (other, self)
-        while len(more) > common:
-            if random.random() < CONFIG["perturbation"]["cxpb"]:
-                less.append(more.pop(common))
-            else:
-                common += 1
+        for this, that in zip(self, other):
+            this.mate(that, cxpb=cxpb)
+
+    def mutate(self, mutpb=CONFIG["perturbation"]["mutpb"],
+               eta=CONFIG["perturbation"]["mut_eta"],
+               std=CONFIG["perturbation"]["mut_std"]):
+        for perturbation in self:
+            perturbation.mutate(mutpb=mutpb, eta=eta, std=std)
+
+    def correct(self):
+        pass
 
 
 class PerturbationFactory:
@@ -189,14 +228,19 @@ class MR:
         self.perturbation_factories = perturbation_factories
         self.relation = relation
 
-    def spawn(self) -> Perturbation:
-        return random.choice(self.perturbation_factories).spawn()
+    def initialize(self) -> List[Perturbation]:
+        perturbations = []
+        for factory in self.perturbation_factories:
+            perturbations.append(factory.spawn())
+        if len([p for p in perturbations if p.enabled]) == 0:
+            perturbations[0].enabled = True
+        return perturbations
 
 
 class MRSet:
     def __init__(self, mrs: List[MR]):
         # Check relations
-        assert len(mrs) > 0
+        assert mrs
         assert all(mr.relation == mrs[0].relation for mr in mrs)
 
         self.mrs = mrs
@@ -207,26 +251,11 @@ class MRSet:
         self.relation = mrs[0].relation
         self.field = self.relation.field
 
-    def spawn(self) -> Perturbation:
-        return random.choice(self.mrs).spawn()
+    def initialize(self) -> Perturbations:
+        perturbations = []
+        for mr in self.mrs:
+            perturbations += mr.initialize()
+        return Perturbations(perturbations)
 
     def is_violated(self, source, follow_up) -> (bool, float):
         return self.relation.is_violated(source, follow_up, self.regions)
-
-    def mutate(self, perturbations: Perturbations):
-        """Mutate a give sequence of perturbations.
-
-        @param perturbations: The sequence of perturbations to be mutated.
-        @return: The mutated sequence of perturbations.
-        """
-        if random.random() > CONFIG["perturbation"]["mutpb"]: return perturbations
-        if random.random() < CONFIG["perturbation"]["mut_del"]:
-            # Remove one previous perturbation.
-            if len(perturbations) > 1: perturbations.pop()
-        else:
-            # Add perturbations.
-            times = 1
-            while random.random() < CONFIG["perturbation"]["mut_add"] ** times:
-                perturbations.append(self.spawn())
-                times += 1
-        return perturbations

@@ -4,67 +4,73 @@ from copy import deepcopy
 from unittest import TestCase
 
 import test
+from impl.scenario.carla_utils import initialize_carla
 from impl.scenario.scenario_definition import ScenarioDefinition, Boundary
 from impl.scenario.scenario_definition import Vehicle, Walker, Static
+
+config = test.CONFIG
 
 
 class TestActor(TestCase):
     def setUp(self):
         self.clazz = [Vehicle, Walker, Static]
-        test.CONFIG["scenario"]["cxpb"] = 1.0
-        test.CONFIG["scenario"]["mutpb"] = 1.0
-        test.CONFIG["scenario"]["eta"] = 0.1
+        self.cxpb = 1.0
+        self.mutpb = 1.0
+        self.eta = 0.1
 
     def test_dist(self):
         for c in self.clazz:
             print(f"=========={c.__name__}: Dist==========")
-            a = c.generate_random()
-            b = c.generate_random()
-            print(a)
-            print(b)
-            print(math.sqrt(a.dist(b)))
+            actor1 = c.generate_random()
+            actor2 = c.generate_random()
+            print(actor1)
+            print(actor2)
+            print(math.sqrt(actor1.dist(actor2)))
 
     def test_mate(self):
         for c in self.clazz:
             print(f"=========={c.__name__}: Mate==========")
-            a = c.generate_random()
-            b = c.generate_random()
-            a_origin = deepcopy(a)
-            b_origin = deepcopy(b)
-            print(a)
-            print(b)
-            a.mate(b)
-            print(a)
-            print(b)
+            actor1 = c.generate_random()
+            actor2 = c.generate_random()
+            original_actor1 = deepcopy(actor1)
+            original_actor2 = deepcopy(actor2)
+            print(actor1)
+            print(actor2)
+            actor1.mate(actor2, cxpb=self.cxpb)
+            print(actor1)
+            print(actor2)
 
             for attr in ["radius", "angle", "yaw", "model", "speed", "autopilot"]:
-                self.assertEqual(getattr(a, attr, None), getattr(b_origin, attr, None))
-                self.assertEqual(getattr(b, attr, None), getattr(a_origin, attr, None))
-            self.assertEqual(getattr(a, "region"), getattr(b_origin, "region"))
-            self.assertEqual(getattr(b, "region"), getattr(a_origin, "region"))
+                self.assertEqual(getattr(actor1, attr, None), getattr(original_actor2, attr, None))
+                self.assertEqual(getattr(actor2, attr, None), getattr(original_actor1, attr, None))
+            self.assertEqual(getattr(actor1, "region"), getattr(original_actor2, "region"))
+            self.assertEqual(getattr(actor2, "region"), getattr(original_actor1, "region"))
 
     def test_mutate(self):
         for c in self.clazz:
             print(f"=========={c.__name__}: Mutate==========")
-            a = c.generate_random()
-            print(a)
-            a.mutate()
-            print(a)
+            actor = c.generate_random()
+            original_actor = deepcopy(actor)
+            print(actor)
+            actor.mutate(mutpb=self.mutpb, eta=self.eta)
+            print(actor)
+            self.assertNotEqual(actor, original_actor)
 
     def test_region(self):
         for c in self.clazz:
             print(f"=========={c.__name__}: Region==========")
             for region in Boundary.Region:
-                a = c.generate_random(region=region)
-                print(a)
-                self.assertEqual(a.region, region)
+                actor = c.generate_random(region=region)
+                print(actor)
+                self.assertEqual(actor.region, region)
 
 
-class TestScenarioDefinition(TestCase):
+class TestScenario(TestCase):
     def setUp(self):
-        test.CONFIG["scenario"]["cxpb"] = 1.0
-        test.CONFIG["scenario"]["mutpb"] = 1.0
-        test.CONFIG["scenario"]["eta"] = 0.1
+        self.cxpb = 1.0
+        self.mutpb = 0.95
+        self.eta = 0.1
+        initialize_carla()
 
     def test_dist(self):
         print("==========Dist==========")
@@ -103,50 +109,50 @@ class TestScenarioDefinition(TestCase):
         print("==========Mate==========")
         scenario1 = ScenarioDefinition.generate_random()
         scenario2 = ScenarioDefinition.generate_random()
-        scenario1_origin = deepcopy(scenario1)
-        scenario2_origin = deepcopy(scenario2)
+        original_scenario1 = deepcopy(scenario1)
+        original_scenario2 = deepcopy(scenario2)
         print(scenario1)
         print(scenario2)
-        scenario1.mate(scenario2)
+        scenario1.mate(scenario2, cxpb=self.cxpb)
         print(scenario1)
         print(scenario2)
 
         invariants = ["id_", "ego_vehicle", "trajectory"]
         for invariant in invariants:
-            self.assertEqual(getattr(scenario1, invariant), getattr(scenario1_origin, invariant))
-            self.assertEqual(getattr(scenario2, invariant), getattr(scenario2_origin, invariant))
+            self.assertEqual(getattr(scenario1, invariant), getattr(original_scenario1, invariant))
+            self.assertEqual(getattr(scenario2, invariant), getattr(original_scenario2, invariant))
 
         variants = ["vehicles", "walkers", "statics", "weather"]
         for variant in variants:
             if isinstance(getattr(scenario1, variant), list):
                 actors1 = getattr(scenario1, variant)
                 actors2 = getattr(scenario2, variant)
-                actors1_origin = getattr(scenario1_origin, variant)
-                actors2_origin = getattr(scenario2_origin, variant)
-                self.assertEqual(len(actors1), len(actors2_origin))
-                self.assertEqual(len(actors1_origin), len(actors2))
+                original_actors1 = getattr(original_scenario1, variant)
+                original_actors2 = getattr(original_scenario2, variant)
+                self.assertEqual(len(actors1), len(original_actors2))
+                self.assertEqual(len(original_actors1), len(actors2))
                 for i in range(len(actors1)):
-                    self.assertEqual(actors1[i], actors2_origin[i])
+                    self.assertEqual(actors1[i], original_actors2[i])
                 for i in range(len(actors2)):
-                    self.assertEqual(actors2[i], actors1_origin[i])
+                    self.assertEqual(actors2[i], original_actors1[i])
             else:
-                self.assertEqual(getattr(scenario1, variant), getattr(scenario2_origin, variant))
-                self.assertEqual(getattr(scenario1_origin, variant), getattr(scenario2, variant))
+                self.assertEqual(getattr(scenario1, variant), getattr(original_scenario2, variant))
+                self.assertEqual(getattr(original_scenario1, variant), getattr(scenario2, variant))
 
     def test_mutate(self):
         print("==========Mutate==========")
         scenario = ScenarioDefinition.generate_random()
-        scenario_origin = deepcopy(scenario)
+        original_scenario = deepcopy(scenario)
         print(scenario)
-        scenario.mutate()
+        scenario.mutate(mutpb=self.mutpb, eta=self.eta)
         print(scenario)
 
         invariants = ["id_", "ego_vehicle", "trajectory"]
         for invariant in invariants:
-            self.assertEqual(getattr(scenario, invariant), getattr(scenario_origin, invariant))
+            self.assertEqual(getattr(scenario, invariant), getattr(original_scenario, invariant))
 
         variants = ["vehicles", "walkers", "statics", "weather"]
         for variant in variants:
             if ((isinstance(getattr(scenario, variant), list) and len(getattr(scenario, variant)) != 0) or
                     not isinstance(getattr(scenario, variant), list)):
-                self.assertNotEqual(getattr(scenario, variant), getattr(scenario_origin, variant))
+                self.assertNotEqual(getattr(scenario, variant), getattr(original_scenario, variant))
