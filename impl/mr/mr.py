@@ -190,7 +190,8 @@ class Relation(ABC):
               for region in [Relation._d] + regions],
         ) for i, j in matches], columns=(Relation._s, Relation._f, *([Relation._d] + regions)))
 
-        df = df.loc[df[regions].min(axis=1) < CONFIG["violation"]["threshold"]["max_ego_distance"]]
+        df = df.loc[(df[regions].min(axis=1) if len(regions) > 0 else df[Relation._d])
+                    < CONFIG["violation"]["threshold"]["max_ego_distance"]]
         if df.empty: return False, None
 
         df["extent"] = df.apply(self._extent_func, axis=1, result_type="reduce")
@@ -259,4 +260,4 @@ class MRSet:
         return Perturbations(perturbations)
 
     def is_violated(self, source, follow_up) -> (bool, float):
-        return self.relation.is_violated(source, follow_up, self.regions)
+        return self.relation.is_violated(source, follow_up, None)
