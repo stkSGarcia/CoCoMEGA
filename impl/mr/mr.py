@@ -95,6 +95,7 @@ class Perturbation:
 
 class Perturbations(list):
     def perturb(self, scenario: ScenarioDefinition):
+        scenario.update_size()
         for perturbation in self:
             perturbation.perturb(scenario)
 

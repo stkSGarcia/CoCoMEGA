@@ -66,3 +66,21 @@ class TestMR(TestCase):
                 self.assertEqual(len(original_actors),
                                  len([v for v in scenario.vehicles if region is None or v.region == region]))
                 self.assertNotEqual(scenario.dist(original_scenario), 0.0)
+
+    def test_actor_changes(self):
+        print("==========Changes==========")
+        factories = [PerturbationFactory("vehicle", Boundary.Region.FOCUS, Operation.REPLACE),
+                     PerturbationFactory("vehicle", Boundary.Region.FOCUS, Operation.REMOVE),
+                     PerturbationFactory("vehicle", Boundary.Region.FOCUS, Operation.ADD)]
+        scenario = ScenarioDefinition._generate_empty_scenario()
+        original_actors = [Vehicle.generate_random(Boundary.Region.FOCUS) for _ in range(3)]
+        farthest_actor = sorted(original_actors, key=lambda v: v.radius, reverse=True)[0]
+        scenario.vehicles += deepcopy(original_actors)
+        print(scenario)
+        scenario.update_size()
+        for factory in factories:
+            factory.spawn().perturb(scenario)
+        print(scenario)
+        self.assertEqual(len(scenario.vehicles), 3)
+        self.assertEqual(scenario._actor_size["vehicle"], 1)
+        self.assertEqual(scenario.vehicles[0], farthest_actor)
