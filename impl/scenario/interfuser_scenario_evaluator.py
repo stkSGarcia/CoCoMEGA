@@ -339,28 +339,29 @@ class ScenarioEvaluator(object):
                 traceback.print_exc()
             raise SimulationError(f"\n\033[91mError during the simulation: {e}")
 
-        # Stop the scenario
-        try:
-            logger.info("\033[1m> Stopping the route\033[0m")
-            self.manager.stop_scenario()
-            # self._register_statistics(config, args.checkpoint, entry_status, crash_message)
+        finally:
+            # Stop the scenario
+            try:
+                logger.info("\033[1m> Stopping the route\033[0m")
+                self.manager.stop_scenario()
+                # self._register_statistics(config, args.checkpoint, entry_status, crash_message)
 
-            if args.record:
-                self.client.stop_recorder()
+                if args.record:
+                    self.client.stop_recorder()
 
-            # Remove all actors
-            if CONFIG["simulation"]["autopilot"]:
-                for actor in scenario.other_actors:
-                    if isinstance(actor, carla.Vehicle):
-                        actor.set_autopilot(False, self.traffic_manager.get_port())
-            scenario.remove_all_actors()
+                # Remove all actors
+                if CONFIG["simulation"]["autopilot"]:
+                    for actor in scenario.other_actors:
+                        if isinstance(actor, carla.Vehicle):
+                            actor.set_autopilot(False, self.traffic_manager.get_port())
+                scenario.remove_all_actors()
 
-            self._cleanup()
+                self._cleanup()
 
-        except Exception as e:
-            logger.error(f"\n\033[91mFailed to stop the scenario: {e}")
-            # traceback.print_exc()
-            raise StoppingScenarioFailedError(f"\n\033[91mFailed to stop the scenario: {e}")
+            except Exception as e:
+                logger.error(f"\n\033[91mFailed to stop the scenario: {e}")
+                # traceback.print_exc()
+                raise StoppingScenarioFailedError(f"\n\033[91mFailed to stop the scenario: {e}")
 
     def run(self, args):
         """

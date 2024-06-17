@@ -99,9 +99,9 @@ class VehicleMeasurementTest(Criterion):
         return new_status
 
     def terminate(self, new_status):
-        if len(self.values) == 0:
-            raise EarlyTerminationException("Scenario has terminated right after start.")
-        self._write_to_file()
+        if len(self.values) > 0:
+            self._write_to_file()
+        # raise EarlyTerminationException("Scenario has terminated right after start.")
         super().terminate(new_status)
 
     def _write_to_file(self):

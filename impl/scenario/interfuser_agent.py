@@ -161,6 +161,7 @@ def create_carla_rgb_transform(
 
 class InterfuserAgent(autonomous_agent.AutonomousAgent):
     def setup(self, path_to_conf_file):
+        self.sensor_interface._queue_timeout = 100
         if display_agent:
             self._hic = DisplayInterface()
         self.lidar_processed = list()
