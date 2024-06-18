@@ -70,6 +70,7 @@ perturbation:
   mutpb: 0.2
   mut_eta: 10.0
   mut_std: 5.0
+  overproduction: 10
 
 violation:
   strategy: simulation  # Options: curve, simulation

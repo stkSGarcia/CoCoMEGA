@@ -1,3 +1,8 @@
+import math
+
+from impl.config import CONFIG
+
+
 class TrajectorySolver:
     @staticmethod
     def solve(traj1, traj2):
@@ -66,3 +71,45 @@ class TrajectorySolver:
         if min(p[0], r[0]) <= q[0] <= max(p[0], r[0]) and min(p[1], r[1]) <= q[1] <= max(p[1], r[1]):
             return True
         return False
+
+
+def single_trajectory_score(scen_route, pert_route):
+    score = 0
+    for i in range(len(scen_route)):
+        if i < len(scen_route) - 1:
+            forward_vector = distance_vector(scen_route[i + 1], scen_route[i])
+        else:
+            forward_vector = distance_vector(scen_route[i], scen_route[i - 1])
+        if vector_size(forward_vector) == 0: continue
+        for pp in pert_route:
+            vector_to_actor = distance_vector(pp, scen_route[i])
+            angle = angle_between_vectors(forward_vector, vector_to_actor)
+            if ((-30 <= angle <= 30) or (330 <= angle <= 390)) and vector_size(vector_to_actor) <= \
+                    CONFIG["violation"]["threshold"]["max_ego_distance"]:
+                score += 1
+    return score
+
+
+def distance_vector(v1, v2):
+    return {'x': v1['x'] - v2['x'], 'y': v1['y'] - v2['y']}
+
+
+def angle_between_vectors(v1, v2):
+    dot_product = v1['x'] * v2['x'] + v1['y'] * v2['y']
+    magnitude_v1 = math.sqrt(v1['x'] ** 2 + v1['y'] ** 2)
+    magnitude_v2 = math.sqrt(v2['x'] ** 2 + v2['y'] ** 2)
+    if magnitude_v1 * magnitude_v2 == 0:
+        return 0
+    cos_angle = dot_product / (magnitude_v1 * magnitude_v2)
+    angle = math.acos(cos_angle)
+    return math.degrees(angle)
+
+
+def vector_size(v):
+    return math.sqrt(v['x'] ** 2 + v['y'] ** 2)
+
+
+def rotate_vector(v, degree):
+    theta = math.radians(degree)
+    return {'x': v['x'] * math.cos(theta) - v['y'] * math.sin(theta),
+            'y': v['x'] * math.sin(theta) + v['y'] * math.cos(theta)}

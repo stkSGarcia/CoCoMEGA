@@ -17,7 +17,7 @@ from impl.scenario.LeaderboardFactory import LeaderBoardFactory
 from impl.scenario.carla_utils import get_junction_topology, filter_junction_wp_direction, transform_to_dict, \
     get_closest_wp
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
-from impl.utils.trajectory import TrajectorySolver
+from impl.utils.trajectory import TrajectorySolver, rotate_vector
 
 logger = logging.getLogger(__name__)
 
@@ -347,23 +347,25 @@ class ScenarioDefinition:
         self.assign_new_id()
 
     def build_actor_trajectory(self, actor_def):
+        num_trajectory_points = 30
         spawn_point = actor_def.get_config()['spawn_point']
-        spawn_point['x'] += self.trajectory["start"]["x"]
-        spawn_point['y'] += self.trajectory["start"]["y"]
+
+        loc = rotate_vector(spawn_point, self.trajectory["start"]["yaw"])
+
+        loc["x"] += self.trajectory["start"]["x"]
+        loc["y"] += self.trajectory["start"]["y"]
         yaw_rad = math.radians(spawn_point['yaw'])
 
         total_distance = actor_def.speed * CONFIG['simulation']['scenario_duration'] \
             if hasattr(actor_def, "speed") else 0.5
+        trajectory = []
 
-        source = (
-            spawn_point['x'],
-            spawn_point['y'],
-        )
-        destination = (
-            spawn_point['x'] + total_distance * math.cos(yaw_rad),
-            spawn_point['y'] + total_distance * math.sin(yaw_rad)
-        )
-        return (source, destination)
+        for i in range(num_trajectory_points):
+            trajectory.append(
+                (loc["x"] + total_distance * math.cos(yaw_rad) * i / num_trajectory_points,
+                 loc["y"] + total_distance * math.sin(yaw_rad) * i / num_trajectory_points))
+
+        return trajectory
 
     def trajectory_collision_score(self):
         score = 0

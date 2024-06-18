@@ -22,7 +22,7 @@ from carla.libcarla import Location
 
 from agents.navigation.local_planner import RoadOption
 
-from impl.scenario.carla_utils import dict_to_location
+from impl.scenario.carla_utils import dict_to_location, transform_to_dict
 from impl.scenario.criterions import VehicleMeasurementTest
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
 
@@ -422,6 +422,7 @@ class RouteScenario(BasicScenario):
             CarlaDataProvider._world.debug.draw_line(start_point, end_point, thickness=0.15,
                                                      color=carla.Color(10, 10, 225),
                                                      life_time=0)
+
     def _scenario_sampling(self, potential_scenarios_definitions, random_seed=0):
         """
         The function used to sample the scenarios that are going to happen for this route.

@@ -10,6 +10,12 @@ from deap import tools
 from impl.algorithm.base import BaseAlgorithm
 from impl.config import CONFIG
 from impl.scenario import simulation_runner
+from impl.scenario.carla_utils import dict_to_location, initialize_carla, transform_to_dict
+from leaderboard.utils.route_manipulation import interpolate_trajectory
+from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+
+from impl.scenario.scenario_definition import ScenarioDefinition
+from impl.utils.trajectory import single_trajectory_score
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +79,11 @@ class CCEA(BaseAlgorithm):
 
             # Generate offsprings.
             pop_scenario = self._breed(pop_scenario, len(pop_scenario) - len(archive_scenario))
-            pop_perturbation = self._breed(pop_perturbation, len(pop_perturbation) - len(archive_perturbation))
+
+            pop_perturbation = self._breed(pop_perturbation, len(pop_perturbation) - len(archive_perturbation),
+                                           overproduction_factor=CONFIG["perturbation"]["overproduction"])
+            pop_perturbation = self._shrink(pop_perturbation, len(pop_perturbation) - len(archive_perturbation),
+                                            pop_scenario)
 
             pop_scenario += archive_scenario
             pop_perturbation += archive_perturbation
@@ -212,16 +222,17 @@ class CCEA(BaseAlgorithm):
             archive += tools.selRandom(population, archive_size - 1)
         return archive
 
-    def _breed(self, population, size):
+    def _breed(self, population, size, overproduction_factor=1):
         """Perform selection, crossover and mutation on individuals.
 
         @param population: The individuals to be bred.
         @param size: The size of the offsprings.
+        @param overproduction_factor: Overproduction factor
         @return: A list of offsprings.
         """
         assert len(population) > 0
         offsprings = []
-        for _ in range(size):
+        for _ in range(size * overproduction_factor):
             parents = population[0].select(population)
             parents = self.toolbox.clone(parents)
             parents[0].mate(parents[1])
@@ -238,4 +249,29 @@ class CCEA(BaseAlgorithm):
                 del offspring.fitness.values
             offspring.correct()
             offsprings.append(offspring)
+
         return offsprings
+
+    def _shrink(self, population, size, co_population):
+        """Select from over-producted population based on a heuristic function.
+                @param population: The over-producted population.
+                @param size: The size of the target population.
+                @param co_population: The coop population
+                @return: A list of selected individuals.
+                """
+        return sorted(population, key=lambda p: self.trajectory_score(p, co_population), reverse=True)[:size]
+
+    def trajectory_score(self, pert, pop_scen):
+        initialize_carla(2000)
+        total_score = 0
+        for p_element in pert:
+            for scenario in pop_scen:
+                ScenarioDefinition._load_world(scenario.town)
+                if not 'route' in scenario.trajectory:
+                    trajectory = [dict_to_location(t) for t in scenario.trajectory["trajectory"]]
+                    _, route = interpolate_trajectory(CarlaDataProvider.get_world(), trajectory)
+                    scenario.trajectory["route"] = [transform_to_dict(r[0]) for r in route]
+
+                pert_route = [{'x': p[0], 'y': p[1]} for p in scenario.build_actor_trajectory(p_element.value)]
+                total_score += single_trajectory_score(scenario.trajectory["route"], pert_route)
+        return total_score / len(pop_scen)
