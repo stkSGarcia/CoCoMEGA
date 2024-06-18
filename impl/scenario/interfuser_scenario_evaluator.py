@@ -329,9 +329,9 @@ class ScenarioEvaluator(object):
         except AgentError as e:
             # The agent has failed -> stop the route
             logger.error(f"\n\033[91mStopping the route, the agent has crashed: {e}")
-            # traceback.print_exc()
+            if CONFIG["debug"]:
+                traceback.print_exc()
             raise e
-
 
         except Exception as e:
             logger.error(f"\n\033[91mError during the simulation: {e}")
