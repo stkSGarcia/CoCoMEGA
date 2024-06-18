@@ -256,9 +256,11 @@ class ScenarioDefinition:
     def get_other_actors(self):
         return [actor.get_config() for actor in self.vehicles + self.walkers + self.statics]
 
-    def add_actor(self, category: str, new_actor):
+    def add_actor(self, category: str, new_actor, mark=False):
         actors = getattr(self, f"{category}s")
-        actors.append(deepcopy(new_actor))
+        new_actor_dc = deepcopy(new_actor)
+        new_actor_dc.mark = mark
+        actors.append(new_actor_dc)
 
     def remove_actor(self, category: str, region):
         actors = getattr(self, f"{category}s")
@@ -267,13 +269,15 @@ class ScenarioDefinition:
             del actors[index]
             self._actor_size[category] -= 1
 
-    def replace_actor(self, category: str, region, new_actor):
+    def replace_actor(self, category: str, region, new_actor, mark=False):
         actors = getattr(self, f"{category}s")
         index = ScenarioDefinition._pick_nearest_actor(actors, self._actor_size[category], region)
         if index >= 0:
             del actors[index]
             self._actor_size[category] -= 1
-            actors.append(deepcopy(new_actor))
+            new_actor_dc = deepcopy(new_actor)
+            new_actor_dc.mark = mark
+            actors.append(new_actor_dc)
 
     def update_attribute(self, category: str, value):
         setattr(self, category, value)
@@ -370,6 +374,10 @@ class ScenarioDefinition:
                 score += 1
         return score
 
+    def clear_marks(self):
+        for actor in self.vehicles + self.walkers + self.statics:
+            actor.mark = False
+
     @staticmethod
     def _list_eq(this, that):
         if len(this) != len(that): return False
@@ -415,6 +423,7 @@ class Actor(ABC):
         self.model = model
         self.region = None
         self.update_region()
+        self.mark = False
 
     def update_region(self):
         self.region = self._BOUNDARY.get_region(self.angle)
@@ -455,7 +464,7 @@ class Actor(ABC):
 
     def get_config(self):
         return {
-            "role_name": self.region.name.lower() if self.region else "others",
+            "role_name": f"{self.region.name.lower() if self.region else 'others'}{'-mark' if self.mark else ''}",
             "spawn_point": {
                 "x": self.radius * math.cos(math.radians(self.angle)),
                 "y": self.radius * math.sin(math.radians(self.angle)),

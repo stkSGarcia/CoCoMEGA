@@ -9,7 +9,7 @@ relation_steer = Invariance("steering")
 
 vehicle_pert_factory = PerturbationFactory("vehicle", None, Operation.ADD)
 
-walker_pert_factory = PerturbationFactory("walker", Boundary.Region.FOCUS, Operation.ADD)
+walker_pert_factory = PerturbationFactory("walker", Boundary.Region.FOCUS, Operation.ADD, mark=True)
 
 static_pert_factory = PerturbationFactory("static", Boundary.Region.RIGHT, Operation.ADD)
 

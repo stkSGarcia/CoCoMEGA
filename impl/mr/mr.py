@@ -24,21 +24,22 @@ class Operation(Enum):
 
 
 class Perturbation:
-    def __init__(self, category: str, operation: Operation, value, enabled=True):
+    def __init__(self, category: str, operation: Operation, value, mark, enabled=True):
         self.category = category
         self.operation = operation
         self.value = value
+        self.mark = mark
         self.enabled = enabled
 
     def perturb(self, scenario: ScenarioDefinition):
         if self.enabled is False: return
         if self.category in ScenarioDefinition.DYNAMIC:
             if self.operation == Operation.ADD:
-                scenario.add_actor(self.category, self.value)
+                scenario.add_actor(self.category, self.value, mark=self.mark)
             elif self.operation == Operation.REMOVE:
                 scenario.remove_actor(self.category, self.value)
             elif self.operation == Operation.REPLACE:
-                scenario.replace_actor(self.category, self.value[0], self.value[1])
+                scenario.replace_actor(self.category, self.value[0], self.value[1], mark=self.mark)
             else:
                 raise ValueError(f"Unsupported operation: {self.operation}.")
         elif self.category in ScenarioDefinition.ATTRIBUTES:
@@ -84,13 +85,15 @@ class Perturbation:
                 self.enabled == other.enabled and
                 self.category == other.category and
                 self.operation == other.operation and
-                self.value == other.value)
+                self.value == other.value and
+                self.mark == other.mark)
 
     def __repr__(self):
         return (f"{self.__class__.__name__}(enabled={self.enabled}, "
                 f"category={self.category}, "
                 f"operation={self.operation.name}, "
-                f"value={self.value})")
+                f"value={self.value}, "
+                f"mark={self.mark})")
 
 
 class Perturbations(list):
@@ -139,10 +142,11 @@ class Perturbations(list):
 
 
 class PerturbationFactory:
-    def __init__(self, category: str, boundary, operation: Operation = None):
+    def __init__(self, category: str, boundary, operation: Operation = None, mark=False):
         self.category = category
         self.boundary = boundary
         self.operation = operation
+        self.mark = mark
 
         if category in ScenarioDefinition.DYNAMIC:
             cls = getattr(scenario_definition, category.capitalize())
@@ -160,7 +164,12 @@ class PerturbationFactory:
             raise ValueError(f"Unsupported perturbation category: {category}.")
 
     def spawn(self) -> Perturbation:
-        return Perturbation(self.category, self.operation, self._spawn_func())
+        return Perturbation(self.category, self.operation, self._spawn_func(), mark=self.mark)
+
+    def get_label(self):
+        if self.category in ScenarioDefinition.DYNAMIC and self.boundary:
+            return f"{self.boundary.name.lower()}{'-mark' if self.mark else ''}"
+        return None
 
 
 class Relation(ABC):
@@ -171,26 +180,27 @@ class Relation(ABC):
         self.threshold = threshold
         self._extent_func = None
 
-    def is_violated(self, source, follow_up, regions=None) -> (bool, float):
+    def is_violated(self, source, follow_up, labels=None) -> (bool, float):
         """Determine if this relation is violated and quantify the extent of violation.
 
         @param source: The `DataFrame` of the source result.
         @param follow_up: The `DataFrame` of the follow-up result.
-        @param regions: Used in simulation-based strategy.
+        @param labels: Used in simulation-based strategy.
         @return: The `bool` value indicates whether the relation is violated.
         The `float` value denotes the extent to which this relation is violated.
         """
-        regions = [f"{Relation._d}-{region.name.lower()}" for region in regions or set()]
+        labels = [f"{Relation._d}-{label}" for label in labels or set()]
         matches = [(source.index.values[i], follow_up.index.values[j])
                    for i, j in dtw_path(source[self.field], follow_up[self.field])[0]]
         df = pd.DataFrame([(
             source.loc[i, self.field],
             follow_up.loc[j, self.field],
-            *[np.nanmin([source.loc[i].get(region, np.nan), follow_up.loc[j].get(region, np.nan)])
-              for region in [Relation._d] + regions],
-        ) for i, j in matches], columns=(Relation._s, Relation._f, *([Relation._d] + regions)))
+            *[np.nanmin([source.loc[i].get(label, np.nan), follow_up.loc[j].get(label, np.nan)])
+              for label in [Relation._d] + labels],
+        ) for i, j in matches], columns=(Relation._s, Relation._f, *([Relation._d] + labels)))
 
-        df = df.loc[df[regions].min(axis=1) < CONFIG["violation"]["threshold"]["max_ego_distance"]]
+        df = df.loc[(df[labels].min(axis=1) if len(labels) > 0 else df[Relation._d])
+                    < CONFIG["violation"]["threshold"]["max_ego_distance"]]
         if df.empty: return False, None
 
         df["extent"] = df.apply(self._extent_func, axis=1, result_type="reduce")
@@ -245,10 +255,10 @@ class MRSet:
         assert all(mr.relation == mrs[0].relation for mr in mrs)
 
         self.mrs = mrs
-        self.regions = set(factory.boundary
-                           for mr in mrs
-                           for factory in mr.perturbation_factories
-                           if factory.category in ScenarioDefinition.DYNAMIC)
+        self.labels = set(factory.get_label()
+                          for mr in mrs
+                          for factory in mr.perturbation_factories
+                          if factory.category in ScenarioDefinition.DYNAMIC)
         self.relation = mrs[0].relation
         self.field = self.relation.field
 
@@ -259,4 +269,4 @@ class MRSet:
         return Perturbations(perturbations)
 
     def is_violated(self, source, follow_up) -> (bool, float):
-        return self.relation.is_violated(source, follow_up, self.regions)
+        return self.relation.is_violated(source, follow_up, self.labels)
