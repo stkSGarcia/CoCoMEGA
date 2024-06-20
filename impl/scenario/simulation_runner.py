@@ -5,7 +5,8 @@ import pickle
 import traceback
 from concurrent.futures import ProcessPoolExecutor
 from copy import deepcopy
-from multiprocessing import Queue, Manager
+from multiprocessing import Manager
+from multiprocessing.pool import Pool
 
 import pandas as pd
 from deap import tools
@@ -41,35 +42,33 @@ from impl.scenario.interfuser_scenario_evaluator import ScenarioEvaluator
 
 logger = logging.getLogger(__name__)
 config = type("", (object,), {arg: value for _, arg, value in arguments})()
-
 evaluated_scenarios = Manager().list()
-
-carla_host = None
-carla_port = None
-tm_port = None
-cuda_device = None
+carla_host = carla_port = tm_port = cuda_device = None
 
 
 def _init_carla(instance_configs):
-    assert instance_configs.qsize() > 0
     global carla_host, carla_port, tm_port, cuda_device
-    carla_host, carla_port, tm_port, cuda_device = instance_configs.get()
+    carla_host, carla_port, tm_port, cuda_device = instance_configs.get(timeout=10)
     os.environ['CUDA_VISIBLE_DEVICES'] = str(cuda_device)
 
 
-def run_scenario(scenario: ScenarioDefinition, rerun=False):
+def run_scenario(scenario: ScenarioDefinition, rerun=False, process_configs=None):
     """Run a scenario defined in ScenarioDefinition.
 
     @return: The simulation result and whether the scenario was actually executed.
     """
+    global carla_host, carla_port, tm_port, cuda_device
+    if CONFIG["simulation"]["parallel"] and CONFIG["simulation"]["autopilot"]:
+        carla_host, carla_port, tm_port, cuda_device = process_configs.get()
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(cuda_device)
+    assert carla_host is not None and carla_port is not None and tm_port is not None and cuda_device is not None
+
     if not rerun:
         for evaluated_scenario, evaluated_result in evaluated_scenarios:
             if scenario == evaluated_scenario:
                 logger.debug(f"Scenario evaluated: {evaluated_scenario}.")
                 return evaluated_result, False
 
-    global carla_host, carla_port, tm_port, cuda_device
-    assert carla_host is not None and carla_port is not None and tm_port is not None and cuda_device is not None
     setattr(config, "host", carla_host)
     setattr(config, "port", carla_port)
     setattr(config, "trafficManagerPort", tm_port)
@@ -80,8 +79,9 @@ def run_scenario(scenario: ScenarioDefinition, rerun=False):
 
     is_successful = False
     for _ in range(1 + CONFIG["simulation"]["retry_times"]):
-        evaluator = ScenarioEvaluator(scenario, config)
+        evaluator = None
         try:
+            evaluator = ScenarioEvaluator(scenario, config)
             evaluator.run(config)
             is_successful = True
             break
@@ -107,6 +107,9 @@ def run_scenario(scenario: ScenarioDefinition, rerun=False):
     result = pd.read_csv(result_path)
     result.set_index(result.columns[0], inplace=True)
     evaluated_scenarios.append((scenario, result))
+
+    if CONFIG["simulation"]["parallel"] and CONFIG["simulation"]["autopilot"]:
+        process_configs.put((carla_host, carla_port, tm_port, cuda_device))
     return result, True
 
 
@@ -116,19 +119,26 @@ def run_scenarios(scenarios, rerun=False):
     @return: A list of simulation results and the number of simulations.
     """
     if CONFIG["simulation"]["parallel"]:
-        queue = Queue()
-        [queue.put((instance["host"], instance["port"], instance["tm_port"], instance["gpu_device"]))
-         for instance in CONFIG["simulation"]["docker"]["instances"]]
-        with ProcessPoolExecutor(max_workers=len(CONFIG["simulation"]["docker"]["instances"]),
-                                 initializer=_init_carla, initargs=(queue,)) as executor:
-            results = executor.map(run_scenario, scenarios, itertools.repeat(rerun, len(scenarios)))
+        process_configs = Manager().Queue()
+        for instance in CONFIG["simulation"]["docker"]["instances"]:
+            process_configs.put((instance["host"], instance["port"], instance["tm_port"], instance["gpu_device"]))
+        if CONFIG["simulation"]["autopilot"]:
+            # https://github.com/carla-simulator/carla/issues/3584
+            # https://github.com/carla-simulator/carla/issues/3540
+            # https://github.com/carla-simulator/leaderboard/issues/81
+            # https://github.com/carla-simulator/carla/issues/2781
+            with Pool(processes=len(CONFIG["simulation"]["docker"]["instances"]), maxtasksperchild=1) as executor:
+                results = executor.starmap(run_scenario, [(scenario, rerun, process_configs) for scenario in scenarios],
+                                           1)
+        else:
+            with ProcessPoolExecutor(max_workers=len(CONFIG["simulation"]["docker"]["instances"]),
+                                     initializer=_init_carla, initargs=(process_configs,)) as executor:
+                results = executor.map(run_scenario, scenarios, itertools.repeat(rerun, len(scenarios)))
     else:
         global carla_host, carla_port, tm_port, cuda_device
         instance = CONFIG["simulation"]["docker"]["instances"][0]
-        carla_host = instance["host"]
-        carla_port = instance["port"]
-        tm_port = instance["tm_port"]
-        cuda_device = instance["gpu_device"]
+        carla_host, carla_port, tm_port, cuda_device = (instance["host"], instance["port"],
+                                                        instance["tm_port"], instance["gpu_device"])
         results = map(run_scenario, scenarios, itertools.repeat(rerun, len(scenarios)))
 
     results, is_executed = zip(*results)

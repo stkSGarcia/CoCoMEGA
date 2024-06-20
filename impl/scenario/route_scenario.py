@@ -34,7 +34,7 @@ from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenarios.basic_scenario import BasicScenario
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import CollisionTest
 
-from srunner.scenariomanager.scenarioatomics.atomic_behaviors import AccelerateToVelocity
+from srunner.scenariomanager.scenarioatomics.atomic_behaviors import AccelerateToVelocity, ChangeAutoPilot
 
 from leaderboard.utils.route_parser import RouteParser, TRIGGER_THRESHOLD, TRIGGER_ANGLE_THRESHOLD
 from leaderboard.utils.route_manipulation import interpolate_trajectory
@@ -523,8 +523,12 @@ class RouteScenario(BasicScenario):
         actor_definitions = self.scenario_definition.get_other_actors()
         for i, other_actor in enumerate(self.other_actors):
             if other_actor is not None and 'speed' in actor_definitions[i]:
-                behavior.add_child(
-                    AccelerateToVelocity(other_actor, throttle_value=1, target_velocity=actor_definitions[i]['speed']))
+                # if "autopilot" in actor_definitions[i] and actor_definitions[i]["autopilot"]:
+                #     behavior.add_child(ChangeAutoPilot(other_actor, activate=True,
+                #                                        parameters={"max_speed": actor_definitions[i]["speed"]}))
+                # else:
+                behavior.add_child(AccelerateToVelocity(other_actor, throttle_value=1,
+                                                        target_velocity=actor_definitions[i]['speed']))
 
         return behavior
 

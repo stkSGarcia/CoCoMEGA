@@ -350,11 +350,14 @@ class ScenarioEvaluator(object):
                     self.client.stop_recorder()
 
                 # Remove all actors
-                if CONFIG["simulation"]["autopilot"]:
-                    for actor in scenario.other_actors:
-                        if isinstance(actor, carla.Vehicle):
-                            actor.set_autopilot(False, self.traffic_manager.get_port())
-                scenario.remove_all_actors()
+                # self.client.apply_batch([carla.command.SetAutopilot(actor.id, False, self.traffic_manager.get_port())
+                #                          for actor in scenario.other_actors
+                #                          if actor and isinstance(actor, carla.Vehicle)])
+                # scenario.remove_all_actors()
+                self.client.apply_batch([carla.command.DestroyActor(actor)
+                                         for actor in scenario.other_actors
+                                         if actor is not None])
+                scenario.other_actors = []
 
                 self._cleanup()
 
