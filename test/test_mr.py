@@ -20,7 +20,7 @@ class TestMR(TestCase):
             scenario = ScenarioDefinition.generate_random()
             print(scenario)
             original_length = len(scenario.vehicles)
-            factory = PerturbationFactory("vehicle", region, Operation.ADD)
+            factory = PerturbationFactory("vehicle", region, Operation.ADD, mark=True)
             perturbation = factory.spawn()
             print(perturbation)
             if region is not None:
@@ -37,7 +37,7 @@ class TestMR(TestCase):
             scenario.vehicles += [Vehicle.generate_random(region) for _ in range(3)]
             print(scenario)
             original_length = len([v for v in scenario.vehicles if region is None or v.region == region])
-            factory = PerturbationFactory("vehicle", region, Operation.REMOVE)
+            factory = PerturbationFactory("vehicle", region, Operation.REMOVE, mark=True)
             perturbation = factory.spawn()
             print(perturbation)
             perturbation.perturb(scenario)
@@ -53,7 +53,7 @@ class TestMR(TestCase):
             scenario.vehicles += [Vehicle.generate_random(region) for _ in range(3)]
             print(scenario)
             original_scenario = deepcopy(scenario)
-            factory = PerturbationFactory("vehicle", region, Operation.REPLACE)
+            factory = PerturbationFactory("vehicle", region, Operation.REPLACE, mark=True)
             perturbation = factory.spawn()
             print(perturbation)
             if region is not None:
@@ -69,18 +69,16 @@ class TestMR(TestCase):
 
     def test_actor_changes(self):
         print("==========Changes==========")
-        factories = [PerturbationFactory("vehicle", Boundary.Region.FOCUS, Operation.REPLACE),
-                     PerturbationFactory("vehicle", Boundary.Region.FOCUS, Operation.REMOVE),
-                     PerturbationFactory("vehicle", Boundary.Region.FOCUS, Operation.ADD)]
+        factories = [PerturbationFactory("vehicle", Boundary.Region.FOCUS, Operation.REPLACE, mark=True),
+                     PerturbationFactory("vehicle", Boundary.Region.FOCUS, Operation.REMOVE, mark=True),
+                     PerturbationFactory("vehicle", Boundary.Region.FOCUS, Operation.ADD, mark=True)]
         scenario = ScenarioDefinition._generate_empty_scenario()
         original_actors = [Vehicle.generate_random(Boundary.Region.FOCUS) for _ in range(3)]
         farthest_actor = sorted(original_actors, key=lambda v: v.radius, reverse=True)[0]
         scenario.vehicles += deepcopy(original_actors)
         print(scenario)
-        scenario.update_size()
         for factory in factories:
             factory.spawn().perturb(scenario)
         print(scenario)
         self.assertEqual(len(scenario.vehicles), 3)
-        self.assertEqual(scenario._actor_size["vehicle"], 1)
         self.assertEqual(scenario.vehicles[0], farthest_actor)

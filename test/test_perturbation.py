@@ -14,7 +14,6 @@ class TestPerturbation(TestCase):
         self.cxpb = 1.0
         self.mutpb = 1.0
         self.eta = 0.1
-        Boundary.Region.__repr__ = lambda x: x.name
         self.factories = [
             PerturbationFactory("vehicle", random.choice(list(Boundary.Region)), Operation.ADD),
             PerturbationFactory("vehicle", random.choice(list(Boundary.Region)), Operation.REMOVE),
@@ -100,7 +99,6 @@ class TestPerturbations(TestCase):
         self.cxpb = 1.0
         self.mutpb = 1.0
         self.eta = 0.1
-        Boundary.Region.__repr__ = lambda x: x.name
         relation = Decreasing("velocity")
         self.mr_set = MRSet([
             MR([
