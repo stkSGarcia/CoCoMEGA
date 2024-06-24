@@ -28,6 +28,9 @@ class Boundary(dict):
         FOCUS = CONFIG["boundary"]["region"]["focus"]
         RIGHT = CONFIG["boundary"]["region"]["right"]
 
+        def __repr__(self):
+            return self.name
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -160,16 +163,10 @@ class ScenarioDefinition:
         self.walkers = []
         self.statics = []
         self.weather = None
-        self._actor_size = {"vehicle": 0, "walker": 0, "static": 0}  # Used to record the size of original actors.
         return self
 
     def assign_new_id(self):
         self.id_ = uuid.uuid4().hex
-
-    def update_size(self):
-        self._actor_size["vehicle"] = len(self.vehicles)
-        self._actor_size["walker"] = len(self.walkers)
-        self._actor_size["static"] = len(self.statics)
 
     @classmethod
     def _load_world(cls, town):
@@ -264,17 +261,15 @@ class ScenarioDefinition:
 
     def remove_actor(self, category: str, region):
         actors = getattr(self, f"{category}s")
-        index = ScenarioDefinition._pick_nearest_actor(actors, self._actor_size[category], region)
+        index = ScenarioDefinition._pick_nearest_actor(actors, region)
         if index >= 0:
             del actors[index]
-            self._actor_size[category] -= 1
 
     def replace_actor(self, category: str, region, new_actor, mark=False):
         actors = getattr(self, f"{category}s")
-        index = ScenarioDefinition._pick_nearest_actor(actors, self._actor_size[category], region)
+        index = ScenarioDefinition._pick_nearest_actor(actors, region)
         if index >= 0:
             del actors[index]
-            self._actor_size[category] -= 1
             new_actor_dc = deepcopy(new_actor)
             new_actor_dc.mark = mark
             actors.append(new_actor_dc)
@@ -293,8 +288,9 @@ class ScenarioDefinition:
         return index
 
     @staticmethod
-    def _pick_nearest_actor(actors, size, region: Boundary.Region = None):
-        candidates = [(i, actor) for i, actor in enumerate(actors[:size]) if region is None or actor.region == region]
+    def _pick_nearest_actor(actors, region: Boundary.Region = None):
+        candidates = [(i, actor) for i, actor in enumerate(actors)
+                      if not actor.mark and (region is None or actor.region == region)]
         return sorted(candidates, key=lambda x: x[1].radius)[0][0] if candidates else -1
 
     def dist(self, other, scaling=CONFIG["scenario"]["dist_scaling"]):
@@ -484,7 +480,7 @@ class Actor(ABC):
                 self.model == other.model)
 
     def __repr__(self):
-        return (f"{self.__class__.__name__}(region={self.region}, " +
+        return (f"{self.__class__.__name__}{'*' if self.mark else ''}(region={self.region}, " +
                 ", ".join(f"{attr}={str(getattr(self, attr))}" for attr in Actor._ATTRIBUTES + self._ATTRIBUTES) + ")")
 
 
