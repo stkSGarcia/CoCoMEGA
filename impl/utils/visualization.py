@@ -272,14 +272,14 @@ class Visualizer:
 
         matches = [(source.index.values[i], follow_up.index.values[j])
                    for i, j in dtw_path(source[mr_set.field], follow_up[mr_set.field])[0]]
-        regions = [f"{Relation._d}-{region.name.lower()}" for region in mr_set.regions or set()] \
+        labels = [f"{Relation._d}-{label}" for label in mr_set.labels or set()] \
             if CONFIG["violation"]["strategy"] == "simulation" else []
         dtw_df = pd.DataFrame([(
             source.loc[i, mr_set.field],
             follow_up.loc[j, mr_set.field],
-            *[np.nanmin([source.loc[i].get(region, np.nan), follow_up.loc[j].get(region, np.nan)])
-              for region in [Relation._d] + regions],
-        ) for i, j in matches], columns=(Relation._s, Relation._f, *([Relation._d] + regions)))
+            *[np.nanmin([source.loc[i].get(label, np.nan), follow_up.loc[j].get(label, np.nan)])
+              for label in [Relation._d] + labels],
+        ) for i, j in matches], columns=(Relation._s, Relation._f, *([Relation._d] + labels)))
 
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8), sharey="all")
         for ax, df in zip((ax1, ax2), (origin_df, dtw_df)):
@@ -293,11 +293,8 @@ class Visualizer:
         for x, y in matches:
             ax1.plot((x, y), (source.loc[x, mr_set.field], follow_up.loc[y, mr_set.field] + offset), "--", color="gray")
 
-        critical_points = dtw_df.index[
-            dtw_df[regions].min(axis=1) < CONFIG["violation"]["threshold"]["max_ego_distance"]
-            if CONFIG["violation"]["strategy"] == "simulation" else
-            (dtw_df[Relation._s] - dtw_df[Relation._f]).abs() > CONFIG["violation"]["threshold"][mr_set.field]
-        ]
+        critical_points = dtw_df.index[(dtw_df[labels].min(axis=1) if len(labels) > 0 else dtw_df[Relation._d])
+                                       < CONFIG["violation"]["threshold"]["max_ego_distance"]]
 
         for points in np.split(critical_points, np.where(np.diff(critical_points) != 1)[0] + 1):
             ax2.axvspan(points[0] - 0.5, points[-1] + 0.5, color="red", alpha=0.1)
