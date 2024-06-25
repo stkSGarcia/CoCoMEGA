@@ -138,8 +138,7 @@ class ScenarioEvaluator(object):
         """
         Cleanup and delete actors, ScenarioManager and CARLA world
         """
-
-        self._cleanup()
+        # self._cleanup()
         if hasattr(self, 'manager') and self.manager:
             del self.manager
         if hasattr(self, 'world') and self.world:
@@ -289,12 +288,14 @@ class ScenarioEvaluator(object):
             # The sensors are invalid -> set the ejecution to rejected and stop
             logger.error(f"\n\033[91mThe sensor's configuration used is invalid: {e}")
             # traceback.print_exc()
+            self._cleanup()
             raise e
 
         except Exception as e:
             # The agent setup has failed -> start the next route
             logger.error(f"\n\033[91mCould not set up the required agent: {e}")
             # traceback.print_exc()
+            self._cleanup()
             raise AgentSetupFailedError(f"\n\033[91mCould not set up the required agent: {e}")
 
         logger.info("\033[1m> Loading the world\033[0m")
@@ -313,12 +314,14 @@ class ScenarioEvaluator(object):
                     "{}/{}_rep{}.log".format(args.record, self.scenario_definition.id_, repetition_index))
             self.manager.load_scenario(scenario, self.agent_instance, repetition_index)
         except InvalidScenarioDefinitionError as e:
+            self._cleanup()
             raise e
         except Exception as e:
             # The scenario is wrong -> set the ejecution to crashed and stop
             logger.error(f"\n\033[91mThe scenario could not be loaded: {e}")
             if CONFIG['debug']:
                 traceback.print_exc()
+            self._cleanup()
             raise LoadingScenarioFailedError(f"\n\033[91mThe scenario could not be loaded: {e}")
 
         logger.info("\033[1m> Running the scenario\033[0m")
@@ -331,40 +334,41 @@ class ScenarioEvaluator(object):
             logger.error(f"\n\033[91mStopping the route, the agent has crashed: {e}")
             if CONFIG["debug"]:
                 traceback.print_exc()
+            self._cleanup()
             raise e
 
         except Exception as e:
             logger.error(f"\n\033[91mError during the simulation: {e}")
             if CONFIG['debug']:
                 traceback.print_exc()
+            self._cleanup()
             raise SimulationError(f"\n\033[91mError during the simulation: {e}")
 
-        finally:
-            # Stop the scenario
-            try:
-                logger.info("\033[1m> Stopping the route\033[0m")
-                self.manager.stop_scenario()
-                # self._register_statistics(config, args.checkpoint, entry_status, crash_message)
+        # Stop the scenario
+        try:
+            logger.info("\033[1m> Stopping the route\033[0m")
+            self.manager.stop_scenario()
+            # self._register_statistics(config, args.checkpoint, entry_status, crash_message)
 
-                if args.record:
-                    self.client.stop_recorder()
+            if args.record:
+                self.client.stop_recorder()
 
-                # Remove all actors
-                # self.client.apply_batch([carla.command.SetAutopilot(actor.id, False, self.traffic_manager.get_port())
-                #                          for actor in scenario.other_actors
-                #                          if actor and isinstance(actor, carla.Vehicle)])
-                # scenario.remove_all_actors()
-                self.client.apply_batch([carla.command.DestroyActor(actor)
-                                         for actor in scenario.other_actors
-                                         if actor is not None])
-                scenario.other_actors = []
+            # Remove all actors
+            # self.client.apply_batch([carla.command.SetAutopilot(actor.id, False, self.traffic_manager.get_port())
+            #                          for actor in scenario.other_actors
+            #                          if actor and isinstance(actor, carla.Vehicle)])
+            # scenario.remove_all_actors()
+            # self.client.apply_batch([carla.command.DestroyActor(actor)
+            #                          for actor in scenario.other_actors
+            #                          if actor is not None])
+            # scenario.other_actors = []
 
-                self._cleanup()
+            self._cleanup()
 
-            except Exception as e:
-                logger.error(f"\n\033[91mFailed to stop the scenario: {e}")
-                # traceback.print_exc()
-                raise StoppingScenarioFailedError(f"\n\033[91mFailed to stop the scenario: {e}")
+        except Exception as e:
+            logger.error(f"\n\033[91mFailed to stop the scenario: {e}")
+            # traceback.print_exc()
+            raise StoppingScenarioFailedError(f"\n\033[91mFailed to stop the scenario: {e}")
 
     def run(self, args):
         """
