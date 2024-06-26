@@ -12,14 +12,7 @@ from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from impl.algorithm.base import BaseAlgorithm
 from impl.config import CONFIG
 from impl.scenario import simulation_runner
-<<<<<<< HEAD
-
 from impl.utils.trajectory import trajectory_score
-=======
-from impl.scenario.carla_utils import dict_to_location, initialize_carla, transform_to_dict
-from impl.scenario.scenario_definition import ScenarioDefinition
-from impl.utils.trajectory import single_trajectory_score
->>>>>>> cdcb44d8a4480aced11458867326176786d9c3e4
 
 logger = logging.getLogger(__name__)
 
