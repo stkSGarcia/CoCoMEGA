@@ -57,7 +57,7 @@ class TrajectorySolver:
             1 -> Clockwise
             2 -> Counterclockwise
         """
-        val = (float(q[1] - p[1]) * (r[0] - q[0])) - (float(q[0] - p[0]) * (r[1] - q[1]))
+        val = (float(q["y"] - p["y"]) * (r["x"] - q["x"])) - (float(q["x"] - p["x"]) * (r["y"] - q["y"]))
         if val > 0:
             return 1
         elif val < 0:
@@ -68,9 +68,19 @@ class TrajectorySolver:
     @staticmethod
     def _on_segment(p, q, r):
         """ Given collinear points p, q, r, check if point q lies on segment pr """
-        if min(p[0], r[0]) <= q[0] <= max(p[0], r[0]) and min(p[1], r[1]) <= q[1] <= max(p[1], r[1]):
+        if min(p["x"], r["x"]) <= q["x"] <= max(p["x"], r["x"]) and min(p["y"], r["y"]) <= q["y"] <= max(p["y"],
+                                                                                                         r["y"]):
             return True
         return False
+
+
+def trajectory_score(pert, pop_scen):
+    total_score = 0
+    for p_element in pert:
+        for scenario in pop_scen:
+            pert_route = scenario.build_actor_trajectory(p_element.value)
+            total_score += single_trajectory_score([t[0] for t in scenario.trajectory["route"]], pert_route)
+    return total_score / len(pop_scen)
 
 
 def single_trajectory_score(scen_route, pert_route):

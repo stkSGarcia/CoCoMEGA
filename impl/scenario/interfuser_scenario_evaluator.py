@@ -12,12 +12,15 @@ Provisional code to evaluate Autonomous Agents for the CARLA Autonomous Driving 
 """
 from __future__ import print_function
 
+import time
 import traceback
 import argparse
 from argparse import RawTextHelpFormatter
 import importlib
 import os
 import sys
+import numpy as np
+import pygame
 import signal
 import logging
 import carla
@@ -37,7 +40,6 @@ from leaderboard.scenarios.scenario_manager import ScenarioManager
 from impl.scenario.route_scenario import RouteScenario
 from leaderboard.envs.sensor_interface import SensorInterface, SensorConfigurationInvalid
 from leaderboard.autoagents.agent_wrapper import AgentWrapper, AgentError
-
 
 logger = logging.getLogger(__name__)
 sensors_to_icons = {
@@ -253,16 +255,13 @@ class ScenarioEvaluator(object):
             raise Exception("The CARLA server uses the wrong map!"
                             "This scenario requires to use map {}".format(self.scenario_definition.town))
 
-    def _load_and_run_scenario(self, args, repetition_index):
+    def _load_and_run_scenario(self, args, repetition_index, save_snapshot=False):
         """
         Load and run the scenario given by args.
 
         Depending on what code fails, the simulation will either stop the route and
         continue from the next one, or report a crash and stop.
         """
-
-        crash_message = ""
-        entry_status = "Started"
 
         logger.info(
             f"\n\033[1m========= Preparing {self.scenario_definition.id_} (repetition {repetition_index}) =========")
@@ -323,6 +322,9 @@ class ScenarioEvaluator(object):
 
         logger.info("\033[1m> Running the scenario\033[0m")
 
+        if save_snapshot:
+            self.capture_snapshot()
+
         # Run the scenario
         try:
             self.manager.run_scenario()
@@ -366,6 +368,29 @@ class ScenarioEvaluator(object):
                 # traceback.print_exc()
                 raise StoppingScenarioFailedError(f"\n\033[91mFailed to stop the scenario: {e}")
 
+    def capture_snapshot(self):
+        camera_bp = self.world.get_blueprint_library().find('sensor.camera.rgb')
+        camera = self.world.spawn_actor(camera_bp, self.world.get_spectator().get_transform())
+
+        def process_image(image):
+            array = np.frombuffer(image.raw_data, dtype=np.uint8)
+            array = array.reshape((image.height, image.width, 4))
+            array = array[:, :, :3]
+            array = array[:, :, ::-1]
+            surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
+            pygame.display.flip()
+            out_dir = os.path.join(CONFIG["workspace"]["sim_result"], "snapshots")
+            if not os.path.exists(out_dir):
+                os.mkdir(out_dir)
+            pygame.image.save(surface, os.path.join(out_dir, f"{self.scenario_definition.id_}.png"))
+            camera.stop()
+
+        camera.listen(process_image)
+        self.world.tick()
+        time.sleep(0.5)
+        pygame.event.pump()
+        camera.destroy()
+
     def run(self, args):
         """
         Run the challenge mode
@@ -373,7 +398,7 @@ class ScenarioEvaluator(object):
 
         for i in range(args.repetitions):
             # run
-            self._load_and_run_scenario(args, repetition_index=i)
+            self._load_and_run_scenario(args, repetition_index=i, save_snapshot=CONFIG["simulation"]["save_snapshot"])
 
 
 def main():

@@ -133,5 +133,27 @@ def transform_to_dict(transform):
     }
 
 
+def dict_to_transform(_dict):
+    return carla.Transform(
+        location=carla.Location(x=_dict["x"], y=_dict["y"], z=_dict["z"]),
+        rotation=carla.Rotation(yaw=_dict["yaw"], pitch=0, roll=0)
+    )
+
+
 def dict_to_location(_dict):
     return carla.Location(x=_dict["x"], y=_dict["y"], z=_dict["z"])
+
+
+def copy_transform(transform):
+    return carla.Transform(
+        carla.Location(
+            x=transform.location.x,
+            y=transform.location.y,
+            z=transform.location.z,
+        ),
+        carla.Rotation(
+            pitch=transform.rotation.pitch,
+            yaw=transform.rotation.yaw,
+            roll=transform.rotation.roll,
+        )
+    )

@@ -11,6 +11,7 @@ import numpy as np
 from deap import tools
 from scipy.spatial.distance import cdist
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+from leaderboard.utils.route_manipulation import interpolate_trajectory
 
 from impl.config import CONFIG
 from impl.scenario.LeaderboardFactory import LeaderBoardFactory
@@ -202,7 +203,8 @@ class ScenarioDefinition:
         scenario.town = trajectory_def["town"]
         trajectory_def["direction"] = random.choice(trajectory_def.get("direction", [None]))
         cls._load_world(scenario.town)
-        trajectory_def["trajectory"] = cls._build_trajectory(trajectory_def)
+        trajectory_def["trajectory"], trajectory_def["gps_route"], trajectory_def["route"] = cls._build_trajectory(
+            trajectory_def)
         scenario.trajectory = trajectory_def
 
         for attr in ScenarioDefinition.ATTRIBUTES:
@@ -214,38 +216,41 @@ class ScenarioDefinition:
         trajectory = []
         location = carla.Location(x=trajectory_def["start"]["x"], y=trajectory_def["start"]["y"], z=0)
         waypoint = CarlaDataProvider.get_map().get_waypoint(location)
-        trajectory.append(transform_to_dict(waypoint.transform))
+        trajectory.append(waypoint.transform)
 
         # Find the nearest junction
         while not waypoint.is_junction:
             waypoint = waypoint.next(1.0)[0]
+        trajectory.append(waypoint.transform)
 
-        if trajectory_def["direction"] is None:
-            trajectory.append(transform_to_dict(waypoint.transform))
-            return trajectory
+        if trajectory_def["direction"] is not None:
+            junction = waypoint.get_junction()
+            _, exit_wps = get_junction_topology(junction)
 
-        trajectory.append(transform_to_dict(waypoint.transform))
-        junction = waypoint.get_junction()
-        _, exit_wps = get_junction_topology(junction)
+            # Filter waypoints for the target lane direction
+            direction_mapping = {
+                'left': 'right',
+                'right': 'left',
+                'forward': 'ref',
+            }
+            target_exit_wps = filter_junction_wp_direction(waypoint, exit_wps,
+                                                           direction_mapping[trajectory_def["direction"]])
 
-        # Filter waypoints for the target lane direction
-        direction_mapping = {
-            'left': 'right',
-            'right': 'left',
-            'forward': 'ref',
-        }
-        target_exit_wps = filter_junction_wp_direction(waypoint, exit_wps,
-                                                       direction_mapping[trajectory_def["direction"]])
+            if not target_exit_wps:
+                raise InvalidScenarioDefinitionError(f"No lane found in the '{trajectory_def['direction']}' direction!")
 
-        if not target_exit_wps:
-            raise InvalidScenarioDefinitionError(f"No lane found in the '{trajectory_def['direction']}' direction!")
+            target_wp = get_closest_wp(wp_list=target_exit_wps, reference_wp=waypoint)
+            for i in range(5):
+                trajectory.append(target_wp.transform)
+                target_wp = target_wp.next(10)[0]
 
-        target_wp = get_closest_wp(wp_list=target_exit_wps, reference_wp=waypoint)
-        for i in range(5):
-            trajectory.append(transform_to_dict(target_wp.transform))
-            target_wp = target_wp.next(10)[0]
+        gps_route, route = interpolate_trajectory(CarlaDataProvider.get_world(), [t.location for t in trajectory])
 
-        return trajectory
+        trajectory = [transform_to_dict(t) for t in trajectory]
+        gps_route = [(t, ro.name) for t, ro in gps_route]
+        route = [(transform_to_dict(t), ro.name) for t, ro in route]
+
+        return trajectory, gps_route, route
 
     def get_trigger_position(self):
         return self.trajectory["start"]
@@ -342,7 +347,7 @@ class ScenarioDefinition:
     def correct(self):
         self.assign_new_id()
 
-    def build_actor_trajectory(self, actor_def):
+    def build_actor_trajectory(self, actor_def, scenario_duration=CONFIG["simulation"]["scenario_duration"]):
         num_trajectory_points = 30
         spawn_point = actor_def.get_config()['spawn_point']
 
@@ -352,14 +357,14 @@ class ScenarioDefinition:
         loc["y"] += self.trajectory["start"]["y"]
         yaw_rad = math.radians(spawn_point['yaw'])
 
-        total_distance = actor_def.speed * CONFIG['simulation']['scenario_duration'] \
+        total_distance = actor_def.speed * scenario_duration \
             if hasattr(actor_def, "speed") else 0.5
         trajectory = []
 
         for i in range(num_trajectory_points):
             trajectory.append(
-                (loc["x"] + total_distance * math.cos(yaw_rad) * i / num_trajectory_points,
-                 loc["y"] + total_distance * math.sin(yaw_rad) * i / num_trajectory_points))
+                {"x": loc["x"] + total_distance * math.cos(yaw_rad) * i / num_trajectory_points,
+                 "y": loc["y"] + total_distance * math.sin(yaw_rad) * i / num_trajectory_points})
 
         return trajectory
 
@@ -367,8 +372,7 @@ class ScenarioDefinition:
         score = 0
         for actor in self.vehicles + self.walkers + self.statics:
             actor_traj = self.build_actor_trajectory(actor)
-            ego_traj = [(t["x"], t["y"]) for t in self.trajectory["trajectory"]]
-            if TrajectorySolver.solve(ego_traj, actor_traj):
+            if TrajectorySolver.solve(self.trajectory["trajectory"], actor_traj):
                 score += 1
         return score
 

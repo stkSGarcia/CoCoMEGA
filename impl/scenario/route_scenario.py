@@ -22,13 +22,11 @@ from carla.libcarla import Location
 
 from agents.navigation.local_planner import RoadOption
 
-from impl.scenario.carla_utils import dict_to_location, transform_to_dict
+from impl.scenario.carla_utils import dict_to_transform, copy_transform, transform_to_dict
 from impl.scenario.criterions import VehicleMeasurementTest
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
 
-# pylint: disable=line-too-long
 from srunner.scenarioconfigs.scenario_configuration import ScenarioConfiguration, ActorConfigurationData
-# pylint: enable=line-too-long
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenarios.basic_scenario import BasicScenario
@@ -37,7 +35,6 @@ from srunner.scenariomanager.scenarioatomics.atomic_criteria import CollisionTes
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import AccelerateToVelocity, ChangeAutoPilot
 
 from leaderboard.utils.route_parser import RouteParser, TRIGGER_THRESHOLD, TRIGGER_ANGLE_THRESHOLD
-from leaderboard.utils.route_manipulation import interpolate_trajectory
 from impl.config import CONFIG
 from impl.scenario.scenario_definition import Walker
 
@@ -47,39 +44,6 @@ ROUTESCENARIO = ["RouteScenario"]
 
 SECONDS_GIVEN_PER_METERS = 0.8  # for timeout
 INITIAL_SECONDS_DELAY = 5.0
-
-
-def oneshot_behavior(name, variable_name, behaviour):
-    """
-    This is taken from py_trees.idiom.oneshot.
-    """
-    # Initialize the variables
-    blackboard = py_trees.blackboard.Blackboard()
-    _ = blackboard.set(variable_name, False)
-
-    # Wait until the scenario has ended
-    subtree_root = py_trees.composites.Selector(name=name)
-    check_flag = py_trees.blackboard.CheckBlackboardVariable(
-        name=variable_name + " Done?",
-        variable_name=variable_name,
-        expected_value=True,
-        clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE
-    )
-    set_flag = py_trees.blackboard.SetBlackboardVariable(
-        name="Mark Done",
-        variable_name=variable_name,
-        variable_value=True
-    )
-    # If it's a sequence, don't double-nest it in a redundant manner
-    if isinstance(behaviour, py_trees.composites.Sequence):
-        behaviour.add_child(set_flag)
-        sequence = behaviour
-    else:
-        sequence = py_trees.composites.Sequence(name="OneShot")
-        sequence.add_children([behaviour, set_flag])
-
-    subtree_root.add_children([check_flag, sequence])
-    return subtree_root
 
 
 def convert_json_to_transform(actor_dict):
@@ -110,17 +74,6 @@ def convert_json_to_actor(actor_dict):
         node.set('random_location', 'true')
 
     return ActorConfigurationData.parse_from_node(node, actor_dict.get('role_name', 'simulation'))
-
-
-def convert_transform_to_location(transform_vec):
-    """
-    Convert a vector of transforms to a vector of locations
-    """
-    location_vec = []
-    for transform_tuple in transform_vec:
-        location_vec.append((transform_tuple[0].location, transform_tuple[1]))
-
-    return location_vec
 
 
 def convert_polar_to_cartesian(radius, angle_degrees):
@@ -246,7 +199,7 @@ class RouteScenario(BasicScenario):
         self.scenario_definition = scenario_definition
         self.agent_instance = agent_instance
         self.timeout = CONFIG['simulation']['scenario_duration']
-        self._update_route(world, debug_mode > 0)
+        self._update_route()
         self._vehicle_lights = carla.VehicleLightState.Position | carla.VehicleLightState.LowBeam
         self.weather_preset, self.weather_preset_name = \
             CarlaDataProvider.find_weather_presets()[self.scenario_definition.weather]
@@ -265,23 +218,17 @@ class RouteScenario(BasicScenario):
         """
         initialization of other actors.
         """
-        anchor = carla.Transform(
-            carla.Location(
-                x=self.route[0][0].location.x,
-                y=self.route[0][0].location.y,
-                z=self.route[0][0].location.z,
-            ),
-            carla.Rotation(
-                pitch=self.route[0][0].rotation.pitch,
-                yaw=self.route[0][0].rotation.yaw,
-                roll=self.route[0][0].rotation.roll,
-            )
-        )
+        anchor = copy_transform(self.route[0][0])
+
         if CONFIG["debug"]:
-            self._draw_boundary(Walker._BOUNDARY.Region.FOCUS, anchor)
+            # self._draw_boundary(Walker._BOUNDARY.Region.FOCUS, anchor)
             # self._draw_boundary(Walker._BOUNDARY.Region.LEFT, anchor)
             # self._draw_boundary(Walker._BOUNDARY.Region.RIGHT, anchor)
-            self._draw_route(self.route)
+            self._draw_route([transform_to_dict(t) for t, _ in self.route])
+            for actor in self.scenario_definition.vehicles + self.scenario_definition.walkers:
+                if actor.mark:
+                    actor_traj = self.scenario_definition.build_actor_trajectory(actor, scenario_duration=20)
+                    self._draw_route(actor_traj)
 
         if config.other_actors:
             for actor_conf in config.other_actors:
@@ -298,21 +245,16 @@ class RouteScenario(BasicScenario):
                 )
                 self.other_actors.append(new_actor)
 
-    def _update_route(self, world, debug_mode):
+    def _update_route(self):
         """
-        Update the input route, i.e. refine waypoint list, and extract possible scenario locations
-
-        Parameters:
-        - world: CARLA world
-        - config: Scenario configuration (RouteConfiguration)
+        Update the input route and set ego vehicle's global plan.
         """
 
-        # prepare route's trajectory (build, interpolate and add the GPS route)
-        trajectory = [dict_to_location(t) for t in self.scenario_definition.trajectory["trajectory"]]
-        gps_route, route = interpolate_trajectory(world, trajectory)
+        gps_route = [(t, getattr(RoadOption, name)) for t, name in self.scenario_definition.trajectory["gps_route"]]
+        self.route = [(dict_to_transform(t), getattr(RoadOption, name)) for t, name in
+                      self.scenario_definition.trajectory["route"]]
 
-        self.route = route
-        CarlaDataProvider.set_ego_vehicle_route(convert_transform_to_location(self.route))
+        CarlaDataProvider.set_ego_vehicle_route([(t.location, ro) for t, ro in self.route])
 
         self.agent_instance.set_global_plan(gps_route, self.route)
 
@@ -408,15 +350,14 @@ class RouteScenario(BasicScenario):
 
     def _draw_route(self, trajectory, z=0.1):
         for i in range(len(trajectory) - 1):
-            # for i in range(40):
             start_point = carla.Location(
-                x=trajectory[i][0].location.x,
-                y=trajectory[i][0].location.y,
+                x=trajectory[i]["x"],
+                y=trajectory[i]["y"],
                 z=z
             )
             end_point = carla.Location(
-                x=trajectory[i + 1][0].location.x,
-                y=trajectory[i + 1][0].location.y,
+                x=trajectory[i + 1]["x"],
+                y=trajectory[i + 1]["y"],
                 z=z
             )
             CarlaDataProvider._world.debug.draw_line(start_point, end_point, thickness=0.15,
