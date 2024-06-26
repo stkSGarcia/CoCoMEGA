@@ -9,8 +9,6 @@ import numpy as np
 from deap import base, creator, tools
 from scipy.spatial.distance import pdist, squareform
 
-from impl.scenario.carla_utils import initialize_carla
-
 logger = logging.getLogger(__name__)
 
 
@@ -71,7 +69,6 @@ class BaseAlgorithm:
         self.toolbox = toolbox
         self.budget = budget
         random.seed(seed)
-        initialize_carla(seed)
 
         # Replace the original `dominates` function.
         if getattr(creator.Fitness, "dominates", None) is not None:

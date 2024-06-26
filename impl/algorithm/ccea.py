@@ -6,12 +6,20 @@ import time
 from multiprocessing import Manager
 
 from deap import tools
+from leaderboard.utils.route_manipulation import interpolate_trajectory
+from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
 from impl.algorithm.base import BaseAlgorithm
 from impl.config import CONFIG
 from impl.scenario import simulation_runner
+<<<<<<< HEAD
 
 from impl.utils.trajectory import trajectory_score
+=======
+from impl.scenario.carla_utils import dict_to_location, initialize_carla, transform_to_dict
+from impl.scenario.scenario_definition import ScenarioDefinition
+from impl.utils.trajectory import single_trajectory_score
+>>>>>>> cdcb44d8a4480aced11458867326176786d9c3e4
 
 logger = logging.getLogger(__name__)
 
@@ -76,11 +84,10 @@ class CCEA(BaseAlgorithm):
             # Generate offsprings.
             pop_scenario = self._breed(pop_scenario, len(pop_scenario) - len(archive_scenario))
 
-            pert_breed_size = len(pop_perturbation) - len(archive_perturbation)
-            pop_perturbation = self._breed(pop_perturbation, pert_breed_size,
+            perturbation_offspring_size = len(pop_perturbation) - len(archive_perturbation)
+            pop_perturbation = self._breed(pop_perturbation, perturbation_offspring_size,
                                            overproduction_factor=CONFIG["perturbation"]["overproduction"])
-            pop_perturbation = self._shrink(pop_perturbation, pert_breed_size,
-                                            pop_scenario)
+            pop_perturbation = self._shrink(pop_perturbation, perturbation_offspring_size, pop_scenario)
 
             pop_scenario += archive_scenario
             pop_perturbation += archive_perturbation

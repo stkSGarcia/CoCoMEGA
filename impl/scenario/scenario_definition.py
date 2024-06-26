@@ -16,7 +16,7 @@ from leaderboard.utils.route_manipulation import interpolate_trajectory
 from impl.config import CONFIG
 from impl.scenario.LeaderboardFactory import LeaderBoardFactory
 from impl.scenario.carla_utils import get_junction_topology, filter_junction_wp_direction, transform_to_dict, \
-    get_closest_wp
+    get_closest_wp, initialize_carla
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
 from impl.utils.trajectory import TrajectorySolver, rotate_vector
 
@@ -171,6 +171,8 @@ class ScenarioDefinition:
 
     @classmethod
     def _load_world(cls, town):
+        if CarlaDataProvider.get_client() is None:
+            initialize_carla()
         if CarlaDataProvider.get_world() is None or CarlaDataProvider.get_world().get_map().name != town:
             world = CarlaDataProvider.get_client().load_world(town)
             CarlaDataProvider.set_world(world)
