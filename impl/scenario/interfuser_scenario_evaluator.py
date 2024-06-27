@@ -375,6 +375,9 @@ class ScenarioEvaluator(object):
     def capture_snapshot(self):
         camera_bp = self.world.get_blueprint_library().find('sensor.camera.rgb')
         camera = self.world.spawn_actor(camera_bp, self.world.get_spectator().get_transform())
+        if not CONFIG["simulation"]["display_agent"]:
+            display_width, display_height = 1200, 600
+            display = pygame.display.set_mode((display_width, display_height))
 
         def process_image(image):
             array = np.frombuffer(image.raw_data, dtype=np.uint8)
@@ -382,6 +385,8 @@ class ScenarioEvaluator(object):
             array = array[:, :, :3]
             array = array[:, :, ::-1]
             surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
+            if not CONFIG["simulation"]["display_agent"]:
+                display.blit(surface, (0, 0))
             pygame.display.flip()
             out_dir = os.path.join(CONFIG["workspace"]["sim_result"], "snapshots")
             if not os.path.exists(out_dir):
@@ -394,6 +399,8 @@ class ScenarioEvaluator(object):
         time.sleep(0.5)
         pygame.event.pump()
         camera.destroy()
+        if not CONFIG["simulation"]["display_agent"]:
+            pygame.quit()
 
     def run(self, args):
         """
