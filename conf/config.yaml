@@ -21,7 +21,7 @@ simulation:
   frame_rate: 10
   high_graphics: true
   autopilot: false
-  save_snapshot: true
+  save_snapshot: false
   docker:
     enabled: true
     image: carla-0.9.10
