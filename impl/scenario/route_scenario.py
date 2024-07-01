@@ -221,7 +221,8 @@ class RouteScenario(BasicScenario):
         anchor = copy_transform(self.route[0][0])
 
         if CONFIG["debug"]:
-            # self._draw_boundary(Walker._BOUNDARY.Region.FOCUS, anchor)
+            self._draw_boundary(Walker._BOUNDARY.Region.FOCUS, anchor,
+                                tilt=self.scenario_definition.trajectory.get("direction", None))
             # self._draw_boundary(Walker._BOUNDARY.Region.LEFT, anchor)
             # self._draw_boundary(Walker._BOUNDARY.Region.RIGHT, anchor)
             self._draw_route([transform_to_dict(t) for t, _ in self.route])
@@ -331,8 +332,10 @@ class RouteScenario(BasicScenario):
         world.debug.draw_point(waypoints[-1][0].location + carla.Location(z=vertical_shift), size=0.2,
                                color=carla.Color(255, 0, 0), life_time=persistency)
 
-    def _draw_boundary(self, boundary, anchor, z=0.1):
+    def _draw_boundary(self, boundary, anchor, tilt=None, z=0.1):
         rads, angs = boundary.value["radius"], boundary.value["angle"]
+        coef = -1 if tilt == "left" else (1 if tilt == "right" else 0)
+        angs = [ang + coef * CONFIG["boundary"]["tilt_degrees"] for ang in angs]
         point_indices = [(0, 0), (0, 1), (1, 1), (1, 0)]
         points = [convert_polar_to_cartesian(rads[i], angs[j]) for i, j in point_indices]
         for i in range(len(points)):

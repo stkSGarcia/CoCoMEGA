@@ -118,6 +118,7 @@ trajectory:
       yaw: 90.0
 
 boundary:
+  tilt_degrees: 15
   region:
     left:
       radius: [ 5.0, 17.0 ]

@@ -260,10 +260,11 @@ class ScenarioDefinition:
     def get_other_actors(self):
         return [actor.get_config() for actor in self.vehicles + self.walkers + self.statics]
 
-    def add_actor(self, category: str, new_actor, mark=False):
+    def add_actor(self, category: str, new_actor, mark=False, tilt_dir=None):
         actors = getattr(self, f"{category}s")
         new_actor_dc = deepcopy(new_actor)
         new_actor_dc.mark = mark
+        new_actor_dc.tilt(tilt_dir)
         actors.append(new_actor_dc)
 
     def remove_actor(self, category: str, region):
@@ -272,13 +273,14 @@ class ScenarioDefinition:
         if index >= 0:
             del actors[index]
 
-    def replace_actor(self, category: str, region, new_actor, mark=False):
+    def replace_actor(self, category: str, region, new_actor, mark=False, tilt_dir=None):
         actors = getattr(self, f"{category}s")
         index = ScenarioDefinition._pick_nearest_actor(actors, region)
         if index >= 0:
             del actors[index]
             new_actor_dc = deepcopy(new_actor)
             new_actor_dc.mark = mark
+            new_actor_dc.tilt(tilt_dir)
             actors.append(new_actor_dc)
 
     def update_attribute(self, category: str, value):
@@ -465,6 +467,10 @@ class Actor(ABC):
         """Mutate actors in place."""
         _mutate_attrs(self, Actor._ATTRIBUTES + self._ATTRIBUTES, self._BOUNDARY, mutpb=mutpb, eta=eta, std=std)
         self.update_region()
+
+    def tilt(self, tilt_dir):
+        coef = -1 if tilt_dir == "left" else (1 if tilt_dir == "right" else 0)
+        self.angle += coef * CONFIG["boundary"]["tilt_degrees"]
 
     def get_config(self):
         return {

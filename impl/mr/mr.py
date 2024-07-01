@@ -35,11 +35,13 @@ class Perturbation:
         if self.enabled is False: return
         if self.category in ScenarioDefinition.DYNAMIC:
             if self.operation == Operation.ADD:
-                scenario.add_actor(self.category, self.value, mark=self.mark)
+                scenario.add_actor(self.category, self.value, mark=self.mark,
+                                   tilt_dir=scenario.trajectory.get("direction", None))
             elif self.operation == Operation.REMOVE:
                 scenario.remove_actor(self.category, self.value)
             elif self.operation == Operation.REPLACE:
-                scenario.replace_actor(self.category, self.value[0], self.value[1], mark=self.mark)
+                scenario.replace_actor(self.category, self.value[0], self.value[1], mark=self.mark,
+                                       tilt_dir=scenario.trajectory.get("direction", None))
             else:
                 raise ValueError(f"Unsupported operation: {self.operation}.")
         elif self.category in ScenarioDefinition.ATTRIBUTES:
