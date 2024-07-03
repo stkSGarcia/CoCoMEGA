@@ -42,6 +42,7 @@ WORKDIR /home/carla
 
 # Set the environment variable
 ENV SDL_VIDEODRIVER=offscreen
+ENV DISPLAY=""
 
 # Set the default command
 CMD ["/bin/bash", "CarlaUE4.sh", "--world-port=2000", "-opengl"]
