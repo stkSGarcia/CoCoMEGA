@@ -487,7 +487,7 @@ class RouteScenario(BasicScenario):
             actor=self.ego_vehicles[0],
             other_actors=self.other_actors,
             measures=['brake', 'throttle', 'steer', 'velocity'],
-            measurement_interval=10,
+            measurement_interval=CONFIG["simulation"]["measurement_interval"],
             scenario_def_id=self.scenario_definition.id_,
         )
 

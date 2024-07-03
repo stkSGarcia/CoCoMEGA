@@ -16,6 +16,7 @@ simulation:
   retry_times: 1
   display_agent: false
   scenario_duration: 20
+  measurement_interval: 5
   client_timeout: 10
   wait_for_world: 20
   frame_rate: 10
