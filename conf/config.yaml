@@ -26,6 +26,7 @@ simulation:
     enabled: true
     image: carla-0.9.10
     memory: 2g
+    shared_memory: 1g
     cpu: 1.5
     instances:
       - host: localhost

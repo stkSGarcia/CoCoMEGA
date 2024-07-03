@@ -32,6 +32,7 @@ def setup_carla(container_name, port):
         process = subprocess.Popen([
             f"docker run --privileged --rm --net=host" \
             + f" --memory {container_conf.get('memory', default_conf['memory'])}" \
+            + f" --shm-size {container_conf.get('shared_memory', default_conf['shared_memory'])}" \
             + f" --cpus {container_conf.get('cpu', default_conf['cpu'])}" \
             + f" --gpus '\"device={container_conf['gpu_device']}\"'" \
             + f" --name {container_name} {CONFIG['simulation']['docker']['image']} ./CarlaUE4.sh --world-port={port}" \
