@@ -17,6 +17,7 @@ from impl.mr.mr import Relation
 logger = logging.getLogger(__name__)
 
 verbose_map = {
+    'pop': 'Population',
     'pop_scen': 'Scenario',
     'pop_pert': 'Perturbation',
     'solution': 'Solution',

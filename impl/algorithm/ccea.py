@@ -6,8 +6,6 @@ import time
 from multiprocessing import Manager
 
 from deap import tools
-from leaderboard.utils.route_manipulation import interpolate_trajectory
-from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
 from impl.algorithm.base import BaseAlgorithm
 from impl.config import CONFIG
@@ -190,7 +188,7 @@ class CCEA(BaseAlgorithm):
         @param archive_size: The size of the archive.
         @return: An archive of the individuals.
         """
-        population = self.toolbox.clone(population)
+        population = list(map(self.toolbox.clone, population))
         archive = tools.selBest(population, 1)
         population.remove(archive[0])
 
@@ -231,7 +229,7 @@ class CCEA(BaseAlgorithm):
         offsprings = []
         for _ in range(size * overproduction_factor):
             parents = population[0].select(population)
-            parents = self.toolbox.clone(parents)
+            parents = list(map(self.toolbox.clone, parents))
             parents[0].mate(parents[1])
             if CONFIG["opt"]["diversity"]:
                 parents[0].mutate()

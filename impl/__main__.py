@@ -7,7 +7,8 @@ import argformat
 from impl import config
 from impl import problem
 from impl.algorithm.ccea import CCEA
-from impl.scenario.carla_utils import initialize_carla
+from impl.algorithm.ga import GeneticAlgorithm
+from impl.algorithm.rs import RandomSearch
 from impl.scenario.scenario_definition import ScenarioDefinition
 from impl.scenario.simulation_runner import run_scenarios, run_solutions
 from impl.utils.visualization import Visualizer
@@ -15,9 +16,13 @@ from impl.utils.visualization import Visualizer
 logger = logging.getLogger("impl")
 
 
-def ccea(algorithm: str, resume: bool):
+def search(algorithm: str, resume: bool):
     if algorithm == "ccea":
         solver = CCEA(toolbox=problem.toolbox, budget=problem.budget)
+    elif algorithm == "rs":
+        solver = RandomSearch(toolbox=problem.toolbox, budget=problem.budget)
+    elif algorithm == "ga":
+        solver = GeneticAlgorithm(toolbox=problem.toolbox, budget=problem.budget)
     else:
         raise ValueError(f"Unsupported algorithm: {algorithm}.")
     solver.solve(resume=resume)
@@ -30,7 +35,6 @@ def ccea(algorithm: str, resume: bool):
 
 
 def simulate(num: int, file: str):
-    initialize_carla()
     if file:
         logger.info(f"Loading solution file: {file}.")
         run_solutions(file, num)
@@ -59,10 +63,10 @@ if __name__ == "__main__":
     )
 
     parser_search = subparsers.add_parser("search", aliases=["srch"], help="Start the search")
-    parser_search.add_argument("-a", "--algorithm", choices=("ccea", "nsga2", "mosa"),
+    parser_search.add_argument("-a", "--algorithm", choices=("ccea", "rs", "ga"),
                                default="ccea", help="Choose the algorithm to use")
     parser_search.add_argument("-r", "--resume", action="store_true", help="Resume previous run")
-    parser_search.set_defaults(func=lambda args: ccea(args.algorithm, args.resume))
+    parser_search.set_defaults(func=lambda args: search(args.algorithm, args.resume))
 
     parser_sim = subparsers.add_parser("simulate", aliases=["sim"], help="Run the simulation")
     parser_sim.add_argument("-n", "--number", type=int, default=1, help="Number of simulations to run")
