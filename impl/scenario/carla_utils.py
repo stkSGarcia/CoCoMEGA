@@ -157,3 +157,10 @@ def copy_transform(transform):
             roll=transform.rotation.roll,
         )
     )
+
+
+def cleanup_carla_world(carla_host, carla_port):
+    client = carla.Client(carla_host, carla_port)
+    for actor in client.get_world().get_actors():
+        if actor.is_alive:
+            actor.destroy()

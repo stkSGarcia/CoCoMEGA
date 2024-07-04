@@ -17,6 +17,7 @@ simulation:
   display_agent: false
   scenario_duration: 20
   measurement_interval: 5
+  keep_world_actors: false # Keep traffic lights and signs
   client_timeout: 10
   wait_for_world: 20
   frame_rate: 10

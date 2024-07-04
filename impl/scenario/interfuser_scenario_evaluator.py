@@ -182,9 +182,6 @@ class ScenarioEvaluator(object):
             self.agent_instance.destroy()
             self.agent_instance = None
 
-        # if hasattr(self, 'statistics_manager') and self.statistics_manager:
-        #     self.statistics_manager.scenario = None
-
     def _prepare_ego_vehicles(self, ego_vehicles, wait_for_ego_vehicles=False):
         """
         Spawn or update the ego vehicles
@@ -227,6 +224,13 @@ class ScenarioEvaluator(object):
         """
 
         self.world = self.client.load_world(self.scenario_definition.town)
+
+        if not CONFIG["simulation"]["keep_world_actors"]:
+            # Remove all Traffic lights and Traffic signs
+            for actor in self.world.get_actors():
+                if actor.is_alive and actor.type_id != "spectator":
+                    actor.destroy()
+
         settings = self.world.get_settings()
         settings.fixed_delta_seconds = 1.0 / self.frame_rate
         settings.synchronous_mode = True
