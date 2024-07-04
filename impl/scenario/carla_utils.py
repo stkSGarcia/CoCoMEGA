@@ -162,5 +162,5 @@ def copy_transform(transform):
 def cleanup_carla_world(carla_host, carla_port):
     client = carla.Client(carla_host, carla_port)
     for actor in client.get_world().get_actors():
-        if actor.is_alive:
+        if actor.is_alive and actor.type_id != "spectator":
             actor.destroy()
