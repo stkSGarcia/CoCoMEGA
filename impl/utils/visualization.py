@@ -203,11 +203,12 @@ class Visualizer:
         fig.write_image(os.path.join(out_dir, name))
 
     @staticmethod
-    def visualize_in_one(file: str, verbose=False, show=False):
+    def visualize_in_one(file: str, verbose=False, plot_nan=True, show=False):
         """Plot all statistics data in one figure.
 
         @param file: Statistics data file.
         @param verbose: Show plots of populations and archives.
+        @param plot_nan: Plot NaN values.
         @param show: A boolean to determine whether to show the plots or not.
         """
         with open(file, "rb") as f:
@@ -232,13 +233,18 @@ class Visualizer:
         for pop_name, pop in stats.groupby("pop", sort=True):
             pop = pop.sort_values("gen", ascending=True)
             if pop_name == "solution" or verbose:
-                axs[i].plot(pop["gen"], pop["std"], ":C0", label="std", alpha=0.5)
-                axs[i].plot(pop["gen"], pop["min"], "--C1", label="min")
-                axs[i].plot(pop["gen"], pop["avg"], "o-C2", label="avg")
-                axs[i].plot(pop["gen"], pop["max"], "--C3", label="max")
+                for metric, fmt in [("std", ":C0"), ("min", "--C1"), ("avg", "o-C2"), ("max", "--C3")]:
+                    if plot_nan:
+                        masked = np.ma.masked_invalid(pop[metric])
+                        np.ma.set_fill_value(masked, 0.0)
+                        data = masked.filled()
+                    else:
+                        data = pop[metric]
+                    axs[i].plot(pop["gen"], data, fmt, label=metric)
                 axs[i].set_title(verbose_map[pop_name], fontsize=20)
                 axs[i].tick_params(labelsize=13)
                 axs[i].xaxis.set_major_locator(MaxNLocator(integer=True))
+                if not verbose: axs[i].legend(fontsize=15)
                 i += 1
 
             if pop_name == "solution":
@@ -254,12 +260,13 @@ class Visualizer:
                 axs[0].yaxis.set_major_locator(MaxNLocator(integer=True))
                 axs[0].legend(fontsize=15)
 
-        fig.supxlabel("Generations", fontsize=15)
-        fig.supylabel("Fitness", fontsize=15)
-        handles, labels = axs[-1].get_legend_handles_labels()
-        fig.legend(handles, labels, loc="lower right", ncol=4, fontsize=15)
-        fig.tight_layout()
+        if verbose:
+            fig.supxlabel("Generations", fontsize=15)
+            fig.supylabel("Fitness", fontsize=15)
+            handles, labels = axs[-1].get_legend_handles_labels()
+            fig.legend(handles, labels, loc="lower right", ncol=4, fontsize=15)
 
+        fig.tight_layout()
         fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"{Path(file).stem}.png"))
         if show: plt.show()
 
