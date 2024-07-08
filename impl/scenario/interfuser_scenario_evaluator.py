@@ -363,7 +363,7 @@ class ScenarioEvaluator(object):
             # self.client.apply_batch([carla.command.SetAutopilot(actor.id, False, self.traffic_manager.get_port())
             #                          for actor in scenario.other_actors
             #                          if actor and isinstance(actor, carla.Vehicle)])
-            scenario.remove_all_actors()
+            # scenario.remove_all_actors()
             # self.client.apply_batch([carla.command.DestroyActor(actor)
             #                          for actor in scenario.other_actors
             #                          if actor is not None])
