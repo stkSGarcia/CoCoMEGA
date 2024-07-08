@@ -21,7 +21,7 @@ simulation:
   wait_for_world: 20
   frame_rate: 10
   high_graphics: true
-  autopilot: false
+  autopilot: true
   keep_world_actors: true # Keep traffic lights and signs
   disable_spectator: true
   save_snapshot: false
@@ -42,9 +42,9 @@ simulation:
         gpu_device: 1
 
 budget:
-  max_sim: 1000
-  max_time: 3600
-  max_gen: 20
+  max_sim: 1000  # Set`null` to make it unlimited
+  max_time: 3600  # Set`null` to make it unlimited
+  max_gen: 20  # Set`null` to make it unlimited
   convergence_threshold: 0.9
 
 scenario:
@@ -56,7 +56,7 @@ scenario:
     walker: 0.5
     static: 0.1
   max_actors: 4
-  init_selection_factor: 1
+  init_selection_factor: 10
   dist_scaling: 0.4
   tournament: 3
   cxpb: 0.8
@@ -64,7 +64,7 @@ scenario:
   mut_eta: 10.0
   mut_std: 5.0
   mut_add: 0.6
-  mut_del: 0.2
+  mut_del: 0.5
 
 perturbation:
   pop_size: 10

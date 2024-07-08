@@ -17,6 +17,7 @@ from impl.mr.mr import Relation
 logger = logging.getLogger(__name__)
 
 verbose_map = {
+    'pop': 'Population',
     'pop_scen': 'Scenario',
     'pop_pert': 'Perturbation',
     'solution': 'Solution',
@@ -202,10 +203,12 @@ class Visualizer:
         fig.write_image(os.path.join(out_dir, name))
 
     @staticmethod
-    def visualize_in_one(file: str, show=False):
+    def visualize_in_one(file: str, verbose=False, plot_nan=True, show=False):
         """Plot all statistics data in one figure.
 
         @param file: Statistics data file.
+        @param verbose: Show plots of populations and archives.
+        @param plot_nan: Plot NaN values.
         @param show: A boolean to determine whether to show the plots or not.
         """
         with open(file, "rb") as f:
@@ -219,21 +222,35 @@ class Visualizer:
             stats[metric] = stats[metric].apply(lambda x: x[0])
 
         fig = plt.figure(figsize=(20, 8))
-        axs = [fig.add_subplot(2, 3, 5), fig.add_subplot(2, 3, 6)]
-        for i in [3, 4, 1, 2]:
-            axs.append(fig.add_subplot(2, 3, i, sharex=axs[1], sharey=axs[1]))
+        if verbose:
+            axs = [fig.add_subplot(2, 3, 5), fig.add_subplot(2, 3, 6)]
+            for i in [3, 4, 1, 2]:
+                axs.append(fig.add_subplot(2, 3, i, sharex=axs[1], sharey=axs[1]))
+        else:
+            axs = [fig.add_subplot(1, 2, 2), fig.add_subplot(1, 2, 1)]
 
-        for (pop_name, pop), ax in zip(stats.groupby("pop", sort=True), axs[1:]):
+        i = 1
+        for pop_name, pop in stats.groupby("pop", sort=True):
             pop = pop.sort_values("gen", ascending=True)
-            ax.plot(pop["gen"], pop["std"], ":C0", label="std", alpha=0.5)
-            ax.plot(pop["gen"], pop["min"], "--C1", label="min")
-            ax.plot(pop["gen"], pop["avg"], "o-C2", label="avg")
-            ax.plot(pop["gen"], pop["max"], "--C3", label="max")
-            ax.set_title(verbose_map[pop_name], fontsize=20)
-            ax.tick_params(labelsize=13)
-            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            if pop_name == "solution" or verbose:
+                for metric, fmt in [("std", ":C0"), ("min", "--C1"), ("avg", "o-C2"), ("max", "--C3")]:
+                    if plot_nan:
+                        masked = np.ma.masked_invalid(pop[metric])
+                        np.ma.set_fill_value(masked, 0.0)
+                        data = masked.filled()
+                    else:
+                        data = pop[metric]
+                    axs[i].plot(pop["gen"], data, fmt, label=metric)
+                axs[i].set_title(verbose_map[pop_name], fontsize=20)
+                axs[i].tick_params(labelsize=13)
+                axs[i].xaxis.set_major_locator(MaxNLocator(integer=True))
+                if not verbose: axs[i].legend(fontsize=15)
+                i += 1
 
             if pop_name == "solution":
+                logger.info(f"Average number of violations: {np.mean(pop['len'])}.")
+                logger.info(f"Average fitness of the last solution archive: {pop['avg'].iloc[-1]}.")
+                logger.info(f"Growth rate of fitness: {np.polyfit(pop['gen'], pop['avg'], 1)[0]}.")
                 axs[0].plot(pop["gen"], pop["len"], "o-C4", label="#violations")
                 axs[0].plot(pop["gen"], pop["sim"], "x-C5", label="#simulations")
                 axs[0].set_title("#Violations & #Simulations", fontsize=20)
@@ -243,12 +260,13 @@ class Visualizer:
                 axs[0].yaxis.set_major_locator(MaxNLocator(integer=True))
                 axs[0].legend(fontsize=15)
 
-        fig.supxlabel("Generations", fontsize=15)
-        fig.supylabel("Fitness", fontsize=15)
-        handles, labels = axs[-1].get_legend_handles_labels()
-        fig.legend(handles, labels, loc="lower right", ncol=4, fontsize=15)
-        fig.tight_layout()
+        if verbose:
+            fig.supxlabel("Generations", fontsize=15)
+            fig.supylabel("Fitness", fontsize=15)
+            handles, labels = axs[-1].get_legend_handles_labels()
+            fig.legend(handles, labels, loc="lower right", ncol=4, fontsize=15)
 
+        fig.tight_layout()
         fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"{Path(file).stem}.png"))
         if show: plt.show()
 
