@@ -1,5 +1,7 @@
 import argparse
 import logging.config
+import os
+import subprocess
 import sys
 
 import argformat
@@ -7,9 +9,10 @@ import argformat
 from impl import config
 from impl import problem
 from impl.algorithm.ccea import CCEA
-from impl.scenario.carla_utils import initialize_carla
+from impl.utils.carla_utils import initialize_carla
 from impl.scenario.scenario_definition import ScenarioDefinition
 from impl.scenario.simulation_runner import run_scenarios, run_solutions
+from impl.utils.docker_utils import cleanup_containers
 from impl.utils.visualization import Visualizer
 
 logger = logging.getLogger("impl")
@@ -78,3 +81,4 @@ if __name__ == "__main__":
         sys.exit(1)
     arguments = parser.parse_args()
     arguments.func(arguments)
+    cleanup_containers()

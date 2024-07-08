@@ -3,7 +3,7 @@ from unittest import TestCase
 
 import test
 from impl.mr.mr import PerturbationFactory, Operation
-from impl.scenario.carla_utils import initialize_carla
+from impl.utils.carla_utils import initialize_carla
 from impl.scenario.scenario_definition import Boundary, ScenarioDefinition, Vehicle
 
 config = test.CONFIG

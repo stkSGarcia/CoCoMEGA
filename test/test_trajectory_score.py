@@ -7,7 +7,7 @@ import os
 import time
 import pandas as pd
 from impl.mr.mr import PerturbationFactory, Operation, Decreasing, MR, MRSet
-from impl.scenario.carla_utils import initialize_carla
+from impl.utils.carla_utils import initialize_carla
 from impl.scenario.scenario_definition import Boundary, ScenarioDefinition
 from impl.scenario.simulation_runner import run_scenarios
 from impl.utils.trajectory import single_trajectory_score

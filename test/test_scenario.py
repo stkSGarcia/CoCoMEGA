@@ -4,7 +4,7 @@ from copy import deepcopy
 from unittest import TestCase
 
 import test
-from impl.scenario.carla_utils import initialize_carla
+from impl.utils.carla_utils import initialize_carla
 from impl.scenario.scenario_definition import ScenarioDefinition, Boundary
 from impl.scenario.scenario_definition import Vehicle, Walker, Static
 

@@ -1,4 +1,3 @@
-import atexit
 import itertools
 import logging
 import os
@@ -13,7 +12,6 @@ from deap import tools
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
 from impl.config import CONFIG
-from impl.scenario.carla_utils import cleanup_carla_world
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
 from impl.scenario.scenario_definition import ScenarioDefinition
 
@@ -52,7 +50,6 @@ def _init_carla(instance_configs):
     global carla_host, carla_port, tm_port, cuda_device
     carla_host, carla_port, tm_port, cuda_device = instance_configs.get(timeout=10)
     os.environ['CUDA_VISIBLE_DEVICES'] = str(cuda_device)
-    atexit.register(cleanup_carla_world, carla_host, carla_port)
 
 
 def run_scenario(scenario: ScenarioDefinition, rerun=False, process_configs=None):

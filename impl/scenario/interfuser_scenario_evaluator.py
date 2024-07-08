@@ -28,15 +28,15 @@ import carla
 from impl.config import CONFIG
 from impl.scenario.exceptions import StoppingScenarioFailedError, SimulationError, InvalidScenarioDefinitionError, \
     LoadingScenarioFailedError, AgentSetupFailedError
+from impl.scenario.scenario_manager import ScenarioManager
 
-from impl.scenario.docker_utils import setup_carla
+from impl.utils.docker_utils import setup_carla
 
 from impl.scenario.scenario_definition import ScenarioDefinition
 from srunner.scenariomanager.carla_data_provider import *
 from srunner.scenariomanager.timer import GameTime
 from srunner.scenariomanager.watchdog import Watchdog
 
-from leaderboard.scenarios.scenario_manager import ScenarioManager
 from impl.scenario.route_scenario import RouteScenario
 from leaderboard.envs.sensor_interface import SensorInterface, SensorConfigurationInvalid
 from leaderboard.autoagents.agent_wrapper import AgentWrapper, AgentError
@@ -226,9 +226,9 @@ class ScenarioEvaluator(object):
         self.world = self.client.load_world(self.scenario_definition.town)
 
         if not CONFIG["simulation"]["keep_world_actors"]:
-            # Remove all Traffic lights and Traffic signs
-            for actor in self.world.get_actors():
-                if actor.is_alive and actor.type_id != "spectator":
+            # Remove all Traffic lights
+            for actor in self.world.get_actors().filter('traffic.traffic_light'):
+                if actor.is_alive:
                     actor.destroy()
 
         settings = self.world.get_settings()

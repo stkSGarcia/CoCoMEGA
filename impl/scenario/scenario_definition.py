@@ -15,7 +15,7 @@ from leaderboard.utils.route_manipulation import interpolate_trajectory
 
 from impl.config import CONFIG
 from impl.scenario.LeaderboardFactory import LeaderBoardFactory
-from impl.scenario.carla_utils import get_junction_topology, filter_junction_wp_direction, transform_to_dict, \
+from impl.utils.carla_utils import get_junction_topology, filter_junction_wp_direction, transform_to_dict, \
     get_closest_wp, initialize_carla
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
 from impl.utils.trajectory import TrajectorySolver, rotate_vector

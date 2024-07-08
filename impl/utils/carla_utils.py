@@ -3,7 +3,7 @@ import math
 
 import carla
 from impl.config import CONFIG
-from impl.scenario.docker_utils import setup_carla
+from impl.utils.docker_utils import setup_carla
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
 logger = logging.getLogger(__name__)
@@ -157,10 +157,3 @@ def copy_transform(transform):
             roll=transform.rotation.roll,
         )
     )
-
-
-def cleanup_carla_world(carla_host, carla_port):
-    client = carla.Client(carla_host, carla_port)
-    for actor in client.get_world().get_actors():
-        if actor.is_alive and actor.type_id != "spectator":
-            actor.destroy()

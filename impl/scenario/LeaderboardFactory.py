@@ -6,7 +6,7 @@ import random
 import carla
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
-from impl.scenario.carla_utils import get_junction_topology, filter_junction_wp_direction, get_junction, \
+from impl.utils.carla_utils import get_junction_topology, filter_junction_wp_direction, get_junction, \
     dict_to_location
 
 # Set up logging

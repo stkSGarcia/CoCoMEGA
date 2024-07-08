@@ -58,3 +58,15 @@ def restart_carla(container_name, port):
         raise Exception(
             f"There was an error while stopping container {container_name}: {process.stdout}, {process.stderr}"
         )
+
+
+def cleanup_containers():
+    logger.info("Cleaning up Carla containers ...")
+    process = subprocess.run([
+        f'docker ps -a --filter "name=^{CONFIG["simulation"]["docker"]["image"]}-" -q | xargs docker stop'
+    ],
+        shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if process.returncode == 0:
+        logger.info("Containers cleaned up.")
+    else:
+        logger.warning(f"Cleaning up containers failed with return code f{process.returncode}")

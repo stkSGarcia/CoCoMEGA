@@ -22,7 +22,7 @@ from carla.libcarla import Location
 
 from agents.navigation.local_planner import RoadOption
 
-from impl.scenario.carla_utils import dict_to_transform, copy_transform, transform_to_dict
+from impl.utils.carla_utils import dict_to_transform, copy_transform, transform_to_dict
 from impl.scenario.criterions import VehicleMeasurementTest
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
 
@@ -279,9 +279,12 @@ class RouteScenario(BasicScenario):
         )
 
         spectator = CarlaDataProvider.get_world().get_spectator()
-        ego_trans = ego_vehicle.get_transform()
-        spectator.set_transform(carla.Transform(ego_trans.location + carla.Location(z=50),
-                                                carla.Rotation(pitch=-90)))
+        if CONFIG["simulation"]["disable_spectator"]:
+            spectator.set_transform(carla.Transform(carla.Location(x=0, y=0, z=0), carla.Rotation(pitch=-90)))
+        else:
+            ego_trans = ego_vehicle.get_transform()
+            spectator.set_transform(carla.Transform(ego_trans.location + carla.Location(z=50),
+                                                    carla.Rotation(pitch=-90)))
 
         if self.weather_preset.sun_altitude_angle < 0.0:
             ego_vehicle.set_light_state(carla.VehicleLightState(self._vehicle_lights))
