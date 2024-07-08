@@ -9,9 +9,9 @@ from enum import Enum
 import carla
 import numpy as np
 from deap import tools
+from leaderboard.utils.route_manipulation import interpolate_trajectory
 from scipy.spatial.distance import cdist
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
-from leaderboard.utils.route_manipulation import interpolate_trajectory
 
 from impl.config import CONFIG
 from impl.scenario.LeaderboardFactory import LeaderBoardFactory
@@ -346,7 +346,8 @@ class ScenarioDefinition:
                 times += 1
         else:
             for actors, cls in zip([self.vehicles, self.walkers, self.statics], [Vehicle, Walker, Static]):
-                actors += cls.generate_random_actors(CONFIG["scenario"]["mut_add"])
+                limit = CONFIG["scenario"]["max_actors"] - len(actors)
+                if limit > 0: actors += cls.generate_random_actors(CONFIG["scenario"]["mut_add"], limit)
 
     def correct(self):
         self.assign_new_id()
@@ -440,10 +441,10 @@ class Actor(ABC):
                       for attr in Actor._ATTRIBUTES + cls._ATTRIBUTES})
 
     @classmethod
-    def generate_random_actors(cls, probability):
+    def generate_random_actors(cls, probability, limit=CONFIG["scenario"]["max_actors"]):
         actors = []
         times = 1
-        while len(actors) < CONFIG["scenario"]["max_actors"] and random.random() < probability ** times:
+        while len(actors) < limit and random.random() < probability ** times:
             actors.append(cls.generate_random())
             times += 1
         return actors
