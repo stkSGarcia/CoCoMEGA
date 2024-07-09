@@ -3,6 +3,7 @@ from docker.errors import NotFound
 import subprocess
 from impl.config import CONFIG
 import time
+import os
 import logging
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ def setup_carla(container_name, port):
                           if int(conf["port"]) == int(port)][0]
 
         process = subprocess.Popen([
-            f"docker run --privileged --rm --net=host" \
+            f"docker run --user {os.getuid()}:{os.getgid()} --privileged --rm --net=host" \
             + f" --memory {container_conf.get('memory', default_conf['memory'])}" \
             + f" --shm-size {container_conf.get('shared_memory', default_conf['shared_memory'])}" \
             + f" --cpus {container_conf.get('cpu', default_conf['cpu'])}" \
@@ -60,13 +61,19 @@ def restart_carla(container_name, port):
         )
 
 
+def user_has_processes_in_container(container_id, username):
+    result = subprocess.run(['docker', 'exec', container_id, 'ps', '-u', username],
+                            shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    return result.returncode == 0
+
+
 def cleanup_containers():
     logger.info("Cleaning up Carla containers ...")
-    process = subprocess.run([
-        f'docker ps -a --filter "name=^{CONFIG["simulation"]["docker"]["image"]}-" -q | xargs docker stop'
-    ],
-        shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if process.returncode == 0:
-        logger.info("Containers cleaned up.")
-    else:
-        logger.warning(f"Cleaning up containers failed with return code f{process.returncode}")
+    container_ids = subprocess.run([
+        f'docker ps -a --filter "name=^{CONFIG["simulation"]["docker"]["image"]}-" -q'],
+        shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True).stdout.strip().split('\n')
+
+    for container_id in container_ids:
+        if container_id and user_has_processes_in_container(container_id, os.getlogin()):
+            subprocess.run(['docker', 'stop', container_id])
+            logger.info(f"Stopped container {container_id}.")
