@@ -150,16 +150,11 @@ class ScenarioEvaluator(object):
         """
         Remove and destroy all actors
         """
-
         # Simulation still running and in synchronous mode?
         if self.manager and self.manager.get_running_status() \
                 and hasattr(self, 'world') and self.world:
             # Reset to asynchronous mode
             self.world.set_weather(CarlaDataProvider.find_weather_presets()[0][0])
-            settings = self.world.get_settings()
-            settings.synchronous_mode = False
-            settings.fixed_delta_seconds = None
-            self.world.apply_settings(settings)
             if CONFIG["simulation"]["autopilot"]:
                 self.traffic_manager.set_synchronous_mode(False)
 
@@ -181,6 +176,11 @@ class ScenarioEvaluator(object):
         if hasattr(self, 'agent_instance') and self.agent_instance:
             self.agent_instance.destroy()
             self.agent_instance = None
+
+        # settings = self.world.get_settings()
+        # settings.synchronous_mode = False
+        # settings.fixed_delta_seconds = None
+        # self.world.apply_settings(settings)
 
     def _prepare_ego_vehicles(self, ego_vehicles, wait_for_ego_vehicles=False):
         """
@@ -225,12 +225,6 @@ class ScenarioEvaluator(object):
 
         self.world = self.client.load_world(self.scenario_definition.town)
 
-        if not CONFIG["simulation"]["keep_world_actors"]:
-            # Remove all Traffic lights
-            for actor in self.world.get_actors().filter('traffic.traffic_light'):
-                if actor.is_alive:
-                    actor.destroy()
-
         settings = self.world.get_settings()
         settings.fixed_delta_seconds = 1.0 / self.frame_rate
         settings.synchronous_mode = True
@@ -247,6 +241,12 @@ class ScenarioEvaluator(object):
             self.traffic_manager.set_hybrid_physics_mode(False)
             self.traffic_manager.set_synchronous_mode(True)
             self.traffic_manager.set_random_device_seed(int(args.trafficManagerSeed))
+
+        if not CONFIG["simulation"]["keep_world_actors"]:
+            # Remove all Traffic lights and signs
+            for actor in self.world.get_actors():
+                if actor.is_alive and actor.type_id != "spectator":
+                    actor.destroy()
 
         # Wait for the world to be ready
         if CarlaDataProvider.is_sync_mode():
