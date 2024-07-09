@@ -33,7 +33,7 @@ def _pop_scenario():
     pop_scenario = tools.initRepeat(list, toolbox.scenario,
                                     n=CONFIG["scenario"]["pop_size"] * CONFIG["scenario"]["init_selection_factor"])
     if CONFIG["scenario"]["init_selection_factor"] > 1:
-        pop_scenario = sorted(pop_scenario, key=lambda x: x.trajectory_collision_score(),
+        pop_scenario = sorted(pop_scenario, key=lambda x: x.trajectory_score(),
                               reverse=True)[:CONFIG["scenario"]["pop_size"]]
     return pop_scenario
 

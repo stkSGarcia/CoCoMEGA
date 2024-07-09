@@ -18,7 +18,7 @@ from impl.scenario.LeaderboardFactory import LeaderBoardFactory
 from impl.utils.carla_utils import get_junction_topology, filter_junction_wp_direction, transform_to_dict, \
     get_closest_wp, initialize_carla
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
-from impl.utils.trajectory import TrajectorySolver, rotate_vector
+from impl.utils.trajectory import rotate_vector, single_trajectory_score
 
 logger = logging.getLogger(__name__)
 
@@ -373,13 +373,14 @@ class ScenarioDefinition:
 
         return trajectory
 
-    def trajectory_collision_score(self):
+    def trajectory_score(self):
         score = 0
+        count = 0
         for actor in self.vehicles + self.walkers + self.statics:
             actor_traj = self.build_actor_trajectory(actor)
-            if TrajectorySolver.solve(self.trajectory["trajectory"], actor_traj):
-                score += 1
-        return score
+            score += single_trajectory_score([r[0] for r in self.trajectory["route"]], actor_traj)
+            count += 1
+        return score / count if count > 0 else 0
 
     def clear_marks(self):
         for actor in self.vehicles + self.walkers + self.statics:

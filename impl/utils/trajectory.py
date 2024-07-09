@@ -111,7 +111,9 @@ def angle_between_vectors(v1, v2):
     if magnitude_v1 * magnitude_v2 == 0:
         return 0
     cos_angle = dot_product / (magnitude_v1 * magnitude_v2)
+    cos_angle = clip(cos_angle, -1, 1)
     angle = math.acos(cos_angle)
+
     return math.degrees(angle)
 
 
@@ -123,3 +125,11 @@ def rotate_vector(v, degree):
     theta = math.radians(degree)
     return {'x': v['x'] * math.cos(theta) - v['y'] * math.sin(theta),
             'y': v['x'] * math.sin(theta) + v['y'] * math.cos(theta)}
+
+
+def clip(value, _min, _max):
+    if value < _min:
+        value = _min
+    elif value > _max:
+        value = _max
+    return value
