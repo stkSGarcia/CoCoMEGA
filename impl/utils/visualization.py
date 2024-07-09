@@ -3,6 +3,7 @@ import os
 import pickle
 import time
 from pathlib import Path
+from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,11 +19,14 @@ logger = logging.getLogger(__name__)
 
 verbose_map = {
     'pop': 'Population',
-    'pop_scen': 'Scenario',
-    'pop_pert': 'Perturbation',
-    'solution': 'Solution',
-    'arc_scen': 'Scenario Archive',
-    'arc_pert': 'Perturbation Archive',
+    'pop_scen': 'Population—Scenario',
+    'pop_pert': 'Population—Perturbation',
+    'solution': 'Complete Solutions',
+    'arc_scen': 'Archive—Scenario',
+    'arc_pert': 'Archive—Perturbation',
+    'ccea': 'CCEA',
+    'ga': 'Standard Genetic Algorithm',
+    'rs': 'Random Search'
 }
 
 
@@ -212,63 +216,103 @@ class Visualizer:
         @param show: A boolean to determine whether to show the plots or not.
         """
         with open(file, "rb") as f:
-            logbook = pickle.load(f)
-        stats = pd.DataFrame(logbook)
+            stats = pd.DataFrame(pickle.load(f))
         if len(stats) == 0:
             logger.warning('No statistics provided. Nothing to visualize.')
             return
-
         for metric in ["std", "min", "avg", "max"]:
             stats[metric] = stats[metric].apply(lambda x: x[0])
 
         fig = plt.figure(figsize=(20, 8))
         if verbose:
-            axs = [fig.add_subplot(2, 3, 5), fig.add_subplot(2, 3, 6)]
-            for i in [3, 4, 1, 2]:
-                axs.append(fig.add_subplot(2, 3, i, sharex=axs[1], sharey=axs[1]))
+            axs = [fig.add_subplot(2, 3, 2), fig.add_subplot(2, 3, 5)]
+            for i in [1, 3, 4, 6]:
+                axs.append(fig.add_subplot(2, 3, i, sharex=axs[0], sharey=axs[0]))
         else:
-            axs = [fig.add_subplot(1, 2, 2), fig.add_subplot(1, 2, 1)]
+            axs = [fig.add_subplot(1, 2, 1), fig.add_subplot(1, 2, 2)]
 
-        i = 1
-        for pop_name, pop in stats.groupby("pop", sort=True):
-            pop = pop.sort_values("gen", ascending=True)
-            if pop_name == "solution" or verbose:
-                for metric, fmt in [("std", ":C0"), ("min", "--C1"), ("avg", "o-C2"), ("max", "--C3")]:
-                    if plot_nan:
-                        masked = np.ma.masked_invalid(pop[metric])
-                        np.ma.set_fill_value(masked, 0.0)
-                        data = masked.filled()
-                    else:
-                        data = pop[metric]
-                    axs[i].plot(pop["gen"], data, fmt, label=metric)
-                axs[i].set_title(verbose_map[pop_name], fontsize=20)
-                axs[i].tick_params(labelsize=13)
-                axs[i].xaxis.set_major_locator(MaxNLocator(integer=True))
-                if not verbose: axs[i].legend(fontsize=15)
-                i += 1
+        def plot_metrics(_ax, _pop, _name):
+            for _metric, _fmt in [("std", ":C0"), ("min", "--C1"), ("avg", "o-C2"), ("max", "--C3")]:
+                _ax.plot(_pop["gen"], Visualizer._fill_nan(_pop[_metric]) if plot_nan else _pop[_metric],
+                         _fmt, label=_metric)
+            _ax.set_title(verbose_map[_name], fontsize=20)
+            _ax.tick_params(labelsize=13)
+            _ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
-            if pop_name == "solution":
-                logger.info(f"Average number of violations: {np.mean(pop['len'])}.")
-                logger.info(f"Average fitness of the last solution archive: {pop['avg'].iloc[-1]}.")
-                logger.info(f"Growth rate of fitness: {np.polyfit(pop['gen'], pop['avg'], 1)[0]}.")
-                axs[0].plot(pop["gen"], pop["len"], "o-C4", label="#violations")
-                axs[0].plot(pop["gen"], pop["sim"], "x-C5", label="#simulations")
-                axs[0].set_title("#Violations & #Simulations", fontsize=20)
-                axs[0].set_ylabel("Num", fontsize=15)
-                axs[0].tick_params(labelsize=13)
-                axs[0].xaxis.set_major_locator(MaxNLocator(integer=True))
-                axs[0].yaxis.set_major_locator(MaxNLocator(integer=True))
-                axs[0].legend(fontsize=15)
+        groups = stats.groupby("pop")
+        pop = groups.get_group("solution").sort_values("gen", ascending=True)
+        plot_metrics(axs[0], pop, "solution")
+        if not verbose:
+            axs[0].set_ylabel("Fitness", fontsize=15)
+            axs[0].legend(fontsize=15)
 
+        logger.info(f"Number of violations: {pop['len'].iloc[-1]}.")
+        logger.info(f"Average fitness of the last solution archive: {pop['avg'].iloc[-1]}.")
+        logger.info(f"Growth rate of fitness: {np.polyfit(pop['gen'], Visualizer._fill_nan(pop['avg']), 1)[0]}.")
+
+        axs[1].plot(pop["gen"], pop["len"], "o-C4", label="#violations")
+        axs[1].plot(pop["gen"], pop["sim"], "x-C5", label="#simulations")
+        axs[1].set_title("#Violations & #Simulations", fontsize=20)
+        axs[1].set_ylabel("Num", fontsize=15)
+        axs[1].tick_params(labelsize=13)
+        axs[1].xaxis.set_major_locator(MaxNLocator(integer=True))
+        axs[1].yaxis.set_major_locator(MaxNLocator(integer=True))
+        axs[1].legend(fontsize=15)
+
+        fig.supxlabel("Generations", fontsize=15)
         if verbose:
-            fig.supxlabel("Generations", fontsize=15)
-            fig.supylabel("Fitness", fontsize=15)
+            for ax, name in zip(axs[2:], ("pop_scen", "arc_scen", "pop_pert", "arc_pert")):
+                pop = groups.get_group(name).sort_values("gen", ascending=True)
+                plot_metrics(ax, pop, name)
+            fig.supylabel("Fitness", x=0, fontsize=15)
             handles, labels = axs[-1].get_legend_handles_labels()
             fig.legend(handles, labels, loc="lower right", ncol=4, fontsize=15)
 
         fig.tight_layout()
         fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"{Path(file).stem}.png"))
         if show: plt.show()
+
+    @staticmethod
+    def visualize_comparison(files: Dict, plot_nan=True, show=False):
+        """Plot comparisons among different algorithms.
+
+        @param files: Statistics data files of different algorithms.
+        @param plot_nan: Plot NaN values.
+        @param show: A boolean to determine whether to show the plots or not.
+        """
+        for name, file in files.items():
+            with open(file, "rb") as f:
+                df = pd.DataFrame(pickle.load(f))
+            for metric in ["std", "min", "avg", "max"]:
+                df[metric] = df[metric].apply(lambda x: x[0])
+            files[name] = df
+
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(20, 16), sharex="all")
+        for (name, stats), color in zip(files.items(), ("C1", "C2", "C0")):
+            pop = stats.groupby("pop").get_group("solution").sort_values("gen", ascending=True)
+            for ax, metric, title in ((ax1, "max", "Max fitness vs. #simulations"),
+                                      (ax2, "avg", "Average fitness vs. #simulations"),
+                                      (ax3, "len", "#violations vs. #simulations")):
+                ax.plot(pop["sim"].cumsum(axis=0),
+                        Visualizer._fill_nan(pop[metric]) if plot_nan else pop[metric],
+                        label=verbose_map[name], marker="o", color=color)
+                ax.set_title(title, fontsize=20)
+                ax.tick_params(labelsize=13)
+                ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+
+        fig.supxlabel("Simulations", fontsize=15)
+        fig.supylabel("Fitness", x=0, fontsize=15)
+        ax1.legend(fontsize=15)
+
+        fig.tight_layout()
+        fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], "comparison.png"))
+        if show: plt.show()
+
+    @staticmethod
+    def _fill_nan(column):
+        masked = np.ma.masked_invalid(column)
+        np.ma.set_fill_value(masked, 0)
+        return masked.filled()
 
     @staticmethod
     def visualize_violation(source, follow_up, mr_set, offset=3, show=False):
@@ -322,7 +366,7 @@ class Visualizer:
         ax2.legend(fontsize=15)
         fig.supxlabel("Ticks", fontsize=15)
         fig.supylabel(mr_set.field.capitalize(), fontsize=15)
-        fig.tight_layout()
 
-        fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"violation.png"))
+        fig.tight_layout()
+        fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], "violation.png"))
         if show: plt.show()
