@@ -30,8 +30,6 @@ from impl.scenario.exceptions import StoppingScenarioFailedError, SimulationErro
     LoadingScenarioFailedError, AgentSetupFailedError
 from impl.scenario.scenario_manager import ScenarioManager
 
-from impl.utils.docker_utils import setup_carla
-
 from impl.scenario.scenario_definition import ScenarioDefinition
 from srunner.scenariomanager.carla_data_provider import *
 from srunner.scenariomanager.timer import GameTime
@@ -76,10 +74,6 @@ class ScenarioEvaluator(object):
         self.scenario_definition = scenario_definition
         # self.statistics_manager = statistics_manager
 
-        docker = CONFIG['simulation']['docker']['enabled']
-        if docker:
-            setup_carla(container_name=f"{CONFIG['simulation']['docker']['image']}-{args.port}", port=args.port)
-
         self.sensors = None
         self.sensor_icons = []
         # self._vehicle_lights = carla.VehicleLightState.Position | carla.VehicleLightState.LowBeam
@@ -87,10 +81,7 @@ class ScenarioEvaluator(object):
         # First of all, we need to create the client that will send the requests
         # to the simulator. Here we'll assume the simulator is accepting
         # requests in the localhost at port 2000.
-        self.client = carla.Client(args.host, int(args.port))
-        if args.timeout:
-            self.client_timeout = float(args.timeout)
-        self.client.set_timeout(self.client_timeout)
+        self.client = CarlaDataProvider.get_client()
 
         if CONFIG["simulation"]["autopilot"]:
             self.traffic_manager = self.client.get_trafficmanager(int(args.trafficManagerPort))
@@ -153,7 +144,6 @@ class ScenarioEvaluator(object):
         # Simulation still running and in synchronous mode?
         if self.manager and self.manager.get_running_status() \
                 and hasattr(self, 'world') and self.world:
-            # Reset to asynchronous mode
             self.world.set_weather(CarlaDataProvider.find_weather_presets()[0][0])
             if CONFIG["simulation"]["autopilot"]:
                 self.traffic_manager.set_synchronous_mode(False)
@@ -162,7 +152,30 @@ class ScenarioEvaluator(object):
             self.manager.cleanup()
 
         GameTime.restart()
-        CarlaDataProvider.cleanup()
+        DestroyActor = carla.command.DestroyActor
+        batch = []
+
+        for actor_id in CarlaDataProvider._carla_actor_pool.copy():
+            actor = CarlaDataProvider._carla_actor_pool[actor_id]
+            if actor.is_alive:
+                batch.append(DestroyActor(actor))
+
+        if CarlaDataProvider._client:
+            try:
+                CarlaDataProvider._client.apply_batch_sync(batch)
+            except RuntimeError as e:
+                if "time-out" in str(e):
+                    pass
+                else:
+                    raise e
+
+        CarlaDataProvider._actor_velocity_map.clear()
+        CarlaDataProvider._actor_location_map.clear()
+        CarlaDataProvider._actor_transform_map.clear()
+        CarlaDataProvider._traffic_light_map.clear()
+        CarlaDataProvider._ego_vehicle_route = None
+        CarlaDataProvider._carla_actor_pool = dict()
+        CarlaDataProvider._spawn_index = 0
 
         for i, _ in enumerate(self.ego_vehicles):
             if self.ego_vehicles[i]:
@@ -176,11 +189,6 @@ class ScenarioEvaluator(object):
         if hasattr(self, 'agent_instance') and self.agent_instance:
             self.agent_instance.destroy()
             self.agent_instance = None
-
-        # settings = self.world.get_settings()
-        # settings.synchronous_mode = False
-        # settings.fixed_delta_seconds = None
-        # self.world.apply_settings(settings)
 
     def _prepare_ego_vehicles(self, ego_vehicles, wait_for_ego_vehicles=False):
         """
@@ -218,24 +226,26 @@ class ScenarioEvaluator(object):
         # sync state
         CarlaDataProvider.get_world().tick()
 
+    # @profile
     def _load_and_wait_for_world(self, args):
         """
         Load a new CARLA world and provide data to CarlaDataProvider
         """
 
-        self.world = self.client.load_world(self.scenario_definition.town)
+        if CarlaDataProvider.get_world() is None or CarlaDataProvider.get_map().name != self.scenario_definition.town:
+            self.world = self.client.load_world(self.scenario_definition.town)
+            CarlaDataProvider.set_world(self.world)
+        else:
+            self.world = CarlaDataProvider.get_world()
 
         settings = self.world.get_settings()
-        settings.fixed_delta_seconds = 1.0 / self.frame_rate
-        settings.synchronous_mode = True
-        self.world.apply_settings(settings)
+        if settings.fixed_delta_seconds != 1.0 / self.frame_rate or not settings.synchronous_mode:
+            settings.fixed_delta_seconds = 1.0 / self.frame_rate
+            settings.synchronous_mode = True
+            self.world.apply_settings(settings)
+            CarlaDataProvider.set_world(self.world)
 
         self.world.reset_all_traffic_lights()
-
-        CarlaDataProvider.set_client(self.client)
-        CarlaDataProvider.set_world(self.world)
-        CarlaDataProvider.set_traffic_manager_port(int(args.trafficManagerPort))
-        CarlaDataProvider.set_random_seed(int(args.carlaProviderSeed))
 
         if CONFIG["simulation"]["autopilot"]:
             self.traffic_manager.set_hybrid_physics_mode(False)
@@ -248,16 +258,13 @@ class ScenarioEvaluator(object):
                 if actor.is_alive and actor.type_id != "spectator":
                     actor.destroy()
 
-        # Wait for the world to be ready
-        if CarlaDataProvider.is_sync_mode():
             self.world.tick()
-        else:
-            self.world.wait_for_tick()
 
         if CarlaDataProvider.get_map().name != self.scenario_definition.town:
             raise Exception("The CARLA server uses the wrong map!"
                             "This scenario requires to use map {}".format(self.scenario_definition.town))
 
+    # @profile
     def _load_and_run_scenario(self, args, repetition_index, save_snapshot=False):
         """
         Load and run the scenario given by args.

@@ -9,19 +9,23 @@ from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 logger = logging.getLogger(__name__)
 
 
-def initialize_carla(seed=2000):
+def initialize_carla(host=None, port=None, tm_port=None, seed=2000):
     try:
         # Initialize the Carla client and the world
         conf = CONFIG["simulation"]["docker"]["instances"][0]
+        host = host or conf["host"]
+        port = port or conf["port"]
+        tm_port = tm_port or conf["tm_port"]
         if CONFIG["simulation"]["docker"]["enabled"]:
-            setup_carla(container_name=f"{CONFIG['simulation']['docker']['image']}-{conf['port']}",
-                        port=conf['port'])
-        client = carla.Client(conf["host"], conf["port"])
+            setup_carla(container_name=f"{CONFIG['simulation']['docker']['image']}-{port}",
+                        port=port)
+        client = carla.Client(host, port)
         client.set_timeout(CONFIG["simulation"]["client_timeout"])
 
-        if CarlaDataProvider.get_client() is None:
-            CarlaDataProvider.set_client(client)
-            CarlaDataProvider.set_random_seed(seed)
+        CarlaDataProvider.set_client(client)
+        CarlaDataProvider.set_traffic_manager_port(tm_port)
+        CarlaDataProvider.set_random_seed(seed)
+
     except Exception as e:
         logger.error(f"Error initializing Carla: {e}")
         raise e
@@ -157,3 +161,11 @@ def copy_transform(transform):
             roll=transform.rotation.roll,
         )
     )
+
+
+def load_world(town):
+    if CarlaDataProvider.get_client() is None:
+        initialize_carla()
+    if CarlaDataProvider.get_world() is None or CarlaDataProvider.get_world().get_map().name != town:
+        world = CarlaDataProvider.get_client().load_world(town)
+        CarlaDataProvider.set_world(world)

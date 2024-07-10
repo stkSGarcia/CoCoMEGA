@@ -16,7 +16,7 @@ from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from impl.config import CONFIG
 from impl.scenario.LeaderboardFactory import LeaderBoardFactory
 from impl.utils.carla_utils import get_junction_topology, filter_junction_wp_direction, transform_to_dict, \
-    get_closest_wp, initialize_carla
+    get_closest_wp, initialize_carla, load_world
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
 from impl.utils.trajectory import rotate_vector, single_trajectory_score
 
@@ -170,14 +170,6 @@ class ScenarioDefinition:
         self.id_ = uuid.uuid4().hex
 
     @classmethod
-    def _load_world(cls, town):
-        if CarlaDataProvider.get_client() is None:
-            initialize_carla()
-        if CarlaDataProvider.get_world() is None or CarlaDataProvider.get_world().get_map().name != town:
-            world = CarlaDataProvider.get_client().load_world(town)
-            CarlaDataProvider.set_world(world)
-
-    @classmethod
     def generate_random(cls):
         scenario = cls._generate_empty_scenario()
         scenario.vehicles = Vehicle.generate_random_actors(CONFIG["scenario"]["init_pb"]["vehicle"])
@@ -204,7 +196,7 @@ class ScenarioDefinition:
         trajectory_def = random.choice(ScenarioDefinition._TRAJECTORY).copy()
         scenario.town = trajectory_def["town"]
         trajectory_def["direction"] = random.choice(trajectory_def.get("direction", [None]))
-        cls._load_world(scenario.town)
+        load_world(scenario.town)
         trajectory_def["trajectory"], trajectory_def["gps_route"], trajectory_def["route"] = cls._build_trajectory(
             trajectory_def)
         scenario.trajectory = trajectory_def

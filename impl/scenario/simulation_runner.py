@@ -7,6 +7,7 @@ from concurrent.futures import ProcessPoolExecutor
 from copy import deepcopy
 from multiprocessing import Manager
 
+import carla
 import pandas as pd
 from deap import tools
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
@@ -14,6 +15,7 @@ from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from impl.config import CONFIG
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
 from impl.scenario.scenario_definition import ScenarioDefinition
+from impl.utils.carla_utils import initialize_carla
 
 arguments = [
     ("SCENARIOS", "scenarios",
@@ -50,6 +52,8 @@ def _init_carla(instance_configs):
     global carla_host, carla_port, tm_port, cuda_device
     carla_host, carla_port, tm_port, cuda_device = instance_configs.get(timeout=10)
     os.environ['CUDA_VISIBLE_DEVICES'] = str(cuda_device)
+    CarlaDataProvider.cleanup()
+    initialize_carla(carla_host, carla_port, tm_port)
 
 
 def run_scenario(scenario: ScenarioDefinition, rerun=False, process_configs=None):
@@ -74,7 +78,6 @@ def run_scenario(scenario: ScenarioDefinition, rerun=False, process_configs=None
                  f"traffic manager port: {config.trafficManagerPort} on cuda device {config.cuda_device}.")
     logger.debug(scenario)
 
-    CarlaDataProvider.cleanup()
     is_successful = False
     for _ in range(1 + CONFIG["simulation"]["retry_times"]):
         evaluator = None
