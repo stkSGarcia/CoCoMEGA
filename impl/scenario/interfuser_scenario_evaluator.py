@@ -39,6 +39,8 @@ from impl.scenario.route_scenario import RouteScenario
 from leaderboard.envs.sensor_interface import SensorInterface, SensorConfigurationInvalid
 from leaderboard.autoagents.agent_wrapper import AgentWrapper, AgentError
 
+from impl.utils.carla_utils import initialize_carla
+
 logger = logging.getLogger(__name__)
 sensors_to_icons = {
     'sensor.camera.rgb': 'carla_camera',
@@ -81,6 +83,9 @@ class ScenarioEvaluator(object):
         # First of all, we need to create the client that will send the requests
         # to the simulator. Here we'll assume the simulator is accepting
         # requests in the localhost at port 2000.
+        if CarlaDataProvider.get_client() is None:
+            initialize_carla()
+
         self.client = CarlaDataProvider.get_client()
 
         if CONFIG["simulation"]["autopilot"]:
