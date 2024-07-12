@@ -77,6 +77,8 @@ def _evaluate_solutions(solutions):
     results, sim_num = run_scenarios(scenarios)
     for solution, source, follow_up in zip(solutions, results[::2], results[1::2]):
         if source is not None and follow_up is not None:
+            solution.source = source
+            solution.follow_up = follow_up
             solution.is_violated, extent = _fitness(source, follow_up)
             if extent:
                 solution.fitness.values = extent
