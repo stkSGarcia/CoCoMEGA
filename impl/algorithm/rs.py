@@ -35,8 +35,8 @@ class RandomSearch(BaseAlgorithm):
 
         while not self.budget.is_reached():
             # Randomly generate complete solutions.
-            complete_solutions = [self.toolbox.collaborate(self.toolbox.scenario(), self.toolbox.perturbation()) for _
-                                  in range(max(CONFIG["scenario"]["pop_size"], CONFIG["perturbation"]["pop_size"]))]
+            complete_solutions = [self.toolbox.collaborate(self.toolbox.scenario(), self.toolbox.perturbation())
+                                  for _ in range(CONFIG["scenario"]["pop_size"])]
 
             # Remove repetitive complete solutions.
             unique_solutions = []
@@ -55,22 +55,25 @@ class RandomSearch(BaseAlgorithm):
             else:
                 logger.warning("Candidate solution list is empty!")
                 sim_num = 0
-            archive_solution = [self.toolbox.clone(ind) for ind in evaluated_solutions
-                                if ind.fitness.valid and ind in unique_solutions]
+            current_solutions = [self.toolbox.clone(ind) for ind in evaluated_solutions
+                                 if ind.fitness.valid and ind in unique_solutions]
 
-            violated_solutions = [solution for solution in archive_solution if solution.is_violated]
+            violated_solutions = [solution for solution in current_solutions if solution.is_violated]
             violated_solutions_count = len(violated_solutions)
             logger.info(f"The number of solutions violating the relation: {violated_solutions_count}.")
+            archive_solution += [solution for solution in current_solutions if solution not in archive_solution]
 
             # Terminate if the archive has converged.
             if (self.budget.gen_num > 0 and
-                    violated_solutions_count > self.budget.convergence_threshold * len(archive_solution)):
+                    violated_solutions_count > self.budget.convergence_threshold * len(current_solutions)):
                 logger.info(f"Terminate due to the number of violations reaching the threshold: "
-                            f"{violated_solutions_count} > {self.budget.convergence_threshold}*{len(archive_solution)}.")
+                            f"{violated_solutions_count} > {self.budget.convergence_threshold}*{len(current_solutions)}.")
                 break
 
             self.budget.acc_sim(sim_num)
             self.record_statistics(violated_solutions, self.budget.gen_num, pop_name="solution", sim_num=sim_num)
+            self.record_statistics(archive_solution, self.budget.gen_num, pop_name="archive",
+                                   sim_num=self.budget.sim_num)
             self.budget.acc_gen()
 
             logger.info("Generation info:\n" + self.logbook.stream)

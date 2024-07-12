@@ -1,7 +1,5 @@
 import argparse
 import logging.config
-import os
-import subprocess
 import sys
 
 import argformat
@@ -26,6 +24,8 @@ def search(algorithm: str, resume: bool):
         solver = RandomSearch(toolbox=problem.toolbox, budget=problem.budget)
     elif algorithm == "ga":
         solver = GeneticAlgorithm(toolbox=problem.toolbox, budget=problem.budget)
+    elif algorithm == "gawa":
+        solver = GeneticAlgorithm(toolbox=problem.toolbox, budget=problem.budget, keep_best=True)
     else:
         raise ValueError(f"Unsupported algorithm: {algorithm}.")
     solver.solve(resume=resume)
@@ -66,7 +66,7 @@ if __name__ == "__main__":
     )
 
     parser_search = subparsers.add_parser("search", aliases=["srch"], help="Start the search")
-    parser_search.add_argument("-a", "--algorithm", choices=("ccea", "rs", "ga"),
+    parser_search.add_argument("-a", "--algorithm", choices=("ccea", "rs", "ga", "gawa"),
                                default="ccea", help="Choose the algorithm to use")
     parser_search.add_argument("-r", "--resume", action="store_true", help="Resume previous run")
     parser_search.set_defaults(func=lambda args: search(args.algorithm, args.resume))

@@ -47,24 +47,27 @@ class CCEA(BaseAlgorithm):
 
         while not self.budget.is_reached():
             # Evaluate the population.
-            archive_solution, sim_num = self._evaluate(pop_scenario, archive_scenario,
-                                                       pop_perturbation, archive_perturbation,
-                                                       evaluated_solutions)
-            violated_solutions = [solution for solution in archive_solution if solution.is_violated]
+            current_solutions, sim_num = self._evaluate(pop_scenario, archive_scenario,
+                                                        pop_perturbation, archive_perturbation,
+                                                        evaluated_solutions)
+            violated_solutions = [solution for solution in current_solutions if solution.is_violated]
             violated_solutions_count = len(violated_solutions)
             logger.info(f"The number of solutions violating the relation: {violated_solutions_count}.")
+            archive_solution += [solution for solution in current_solutions if solution not in archive_solution]
 
             # Terminate if the archive has converged.
             if (self.budget.gen_num > 0 and
-                    violated_solutions_count > self.budget.convergence_threshold * len(archive_solution)):
+                    violated_solutions_count > self.budget.convergence_threshold * len(current_solutions)):
                 logger.info(f"Terminate due to the number of violations reaching the threshold: "
-                            f"{violated_solutions_count} > {self.budget.convergence_threshold}*{len(archive_solution)}.")
+                            f"{violated_solutions_count} > {self.budget.convergence_threshold}*{len(current_solutions)}.")
                 break
 
             self.budget.acc_sim(sim_num)
             self.record_statistics(pop_scenario, self.budget.gen_num, pop_name="pop_scen")
             self.record_statistics(pop_perturbation, self.budget.gen_num, pop_name="pop_pert")
             self.record_statistics(violated_solutions, self.budget.gen_num, pop_name="solution", sim_num=sim_num)
+            self.record_statistics(archive_solution, self.budget.gen_num, pop_name="archive",
+                                   sim_num=self.budget.sim_num)
 
             # Update archive.
             archive_scenario = self._update_archive(pop_scenario, CONFIG["scenario"]["archive_size"])
