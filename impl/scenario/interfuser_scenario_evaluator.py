@@ -145,6 +145,10 @@ class ScenarioEvaluator(object):
         if self.manager and self.manager.get_running_status() \
                 and hasattr(self, 'world') and self.world:
             self.world.set_weather(CarlaDataProvider.find_weather_presets()[0][0])
+            settings = self.world.get_settings()
+            settings.synchronous_mode = False
+            settings.fixed_delta_seconds = None
+            self.world.apply_settings(settings)
             if CONFIG["simulation"]["autopilot"]:
                 self.traffic_manager.set_synchronous_mode(False)
 

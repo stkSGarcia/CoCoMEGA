@@ -7,7 +7,6 @@ from concurrent.futures import ProcessPoolExecutor
 from copy import deepcopy
 from multiprocessing import Manager
 
-import carla
 import pandas as pd
 from deap import tools
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
