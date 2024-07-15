@@ -1,7 +1,6 @@
 import argparse
 import logging.config
 import sys
-from typing import List
 
 import argformat
 
@@ -40,7 +39,7 @@ def simulate(num: int, file: str):
         run_scenarios([ScenarioDefinition.generate_random_or_leaderboard() for _ in range(num)])
 
 
-def visualize(files: List[str], mode: str):
+def visualize(files, mode: str):
     if mode == "concise" or mode == "full":
         for file in files:
             logger.info(f"Plotting statistics data from file: {file}.")
@@ -50,6 +49,21 @@ def visualize(files: List[str], mode: str):
         Visualizer.visualize_comparison(files)
     else:
         raise ValueError(f"Unsupported mode: {mode}.")
+
+
+class StoreDictKeyPair(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        is_kv = ["=" in value for value in values]
+        if all(is_kv):
+            pairs = {}
+            for value in values:
+                k, v = value.split("=")
+                pairs[k] = v
+            setattr(namespace, self.dest, pairs)
+        elif not any(is_kv):
+            setattr(namespace, self.dest, values)
+        else:
+            parser.error("expected consistent type of arguments")
 
 
 if __name__ == "__main__":
@@ -82,7 +96,8 @@ if __name__ == "__main__":
     parser_sim.set_defaults(func=lambda args: simulate(args.number, args.file))
 
     parser_viz = subparsers.add_parser("visualize", aliases=["viz"], help="visualize the results")
-    parser_viz.add_argument("-f", "--file", nargs="+", required=True, help="statistics files")
+    parser_viz.add_argument("-f", "--file", nargs="+", required=True, action=StoreDictKeyPair,
+                            metavar="VAL|KEY=VAL", help="statistics files")
     parser_viz.add_argument("-m", "--mode", choices=("concise", "full", "compare"),
                             default="concise", help="visualization mode")
     parser_viz.set_defaults(func=lambda args: visualize(args.file, args.mode))
