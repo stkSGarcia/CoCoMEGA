@@ -45,7 +45,6 @@ budget:
   max_sim: 1000  # Set`null` to make it unlimited
   max_time: 3600  # Set`null` to make it unlimited
   max_gen: 20  # Set`null` to make it unlimited
-  convergence_threshold: 0.9
 
 scenario:
   pop_size: 10
