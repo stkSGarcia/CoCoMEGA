@@ -30,13 +30,6 @@ def search(algorithm: str, resume: bool):
         raise ValueError(f"Unsupported algorithm: {algorithm}.")
     solver.solve(resume=resume)
 
-    Visualizer.visualize_gen_stats(
-        stats=solver.logbook,
-        show=False,
-        out_dir=config.CONFIG["workspace"]["visualization"],
-    )
-
-
 def simulate(num: int, file: str):
     if file:
         logger.info(f"Loading solution file: {file}.")
