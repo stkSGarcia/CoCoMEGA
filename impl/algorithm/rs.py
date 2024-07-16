@@ -63,19 +63,11 @@ class RandomSearch(BaseAlgorithm):
             logger.info(f"The number of solutions violating the relation: {violated_solutions_count}.")
             archive_solution += [solution for solution in current_solutions if solution not in archive_solution]
 
-            # Terminate if the archive has converged.
-            if (self.budget.gen_num > 0 and
-                    violated_solutions_count > self.budget.convergence_threshold * len(current_solutions)):
-                logger.info(f"Terminate due to the number of violations reaching the threshold: "
-                            f"{violated_solutions_count} > {self.budget.convergence_threshold}*{len(current_solutions)}.")
-                break
-
             self.budget.acc_sim(sim_num)
             self.record_statistics(violated_solutions, self.budget.gen_num, pop_name="solution", sim_num=sim_num)
             self.record_statistics(archive_solution, self.budget.gen_num, pop_name="archive",
                                    sim_num=self.budget.sim_num)
             self.budget.acc_gen()
-
             logger.info("Generation info:\n" + self.logbook.stream)
             logger.info(f"Number of simulations: {sim_num}/{self.budget.sim_num}.")
 
@@ -90,11 +82,4 @@ class RandomSearch(BaseAlgorithm):
 
         logger.info(f"Terminate due to reaching the threshold.")
         # Store the complete solutions.
-        suffix = int(round(time.time() * 1000))
-        statistics_path = f"statistics-{suffix}.pickle"
-        with open(os.path.join(CONFIG["workspace"]["solution"], f"solutions-{suffix}.pickle"), "wb") as f:
-            pickle.dump(archive_solution, f)
-        with open(os.path.join(CONFIG["workspace"]["solution"], statistics_path), "wb") as f:
-            pickle.dump(self.logbook, f)
-
-        return archive_solution, statistics_path
+        self.dump_results(archive_solution)

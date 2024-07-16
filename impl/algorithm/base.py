@@ -1,4 +1,6 @@
 import logging
+import os
+import pickle
 import random
 import time
 from abc import abstractmethod
@@ -9,22 +11,23 @@ import numpy as np
 from deap import base, creator, tools
 from scipy.spatial.distance import pdist, squareform
 
+from impl.config import CONFIG
+from impl.utils.visualization import Visualizer
+
 logger = logging.getLogger(__name__)
 
 
 class Budget:
-    def __init__(self, max_sim, max_time, max_gen, convergence_threshold):
+    def __init__(self, max_sim, max_time, max_gen):
         """Constructor.
 
         @param max_sim: The maximum number of simulations for the search.
         @param max_time: The maximum execution time for the search.
         @param max_gen: The maximum number of iterations for the search.
-        @param convergence_threshold: The minimum percentage of individuals in the archive that violate the given MRs.
         """
         self.max_sim = max_sim
         self.max_time = max_time
         self.max_gen = max_gen
-        self.convergence_threshold = convergence_threshold
         self.sim_num = None
         self.start_time = None
         self.gen_num = None
@@ -101,6 +104,16 @@ class BaseAlgorithm:
         record = self.stats.compile(population) if len(population) > 0 \
             else {"avg": [np.nan], "std": [np.nan], "min": [np.nan], "max": [np.nan]}
         self.logbook.record(pop=pop_name, gen=gen_num, len=len(population), sim=sim_num, **record)
+
+    def dump_results(self, results):
+        """Dump results and statistics."""
+        timestamp = int(round(time.time() * 1000))
+        with open(os.path.join(CONFIG["workspace"]["solution"], f"solutions-{timestamp}.pickle"), "wb") as f:
+            pickle.dump(results, f)
+        statistics_path = f"statistics-{timestamp}.pickle"
+        with open(os.path.join(CONFIG["workspace"]["solution"], statistics_path), "wb") as f:
+            pickle.dump(self.logbook, f)
+        Visualizer.visualize_in_one(self.logbook, verbose=True)
 
     def fitness_sharing(self, population, punishment=1.0, scaling=1.0):
         """Adjust the fitness using fitness sharing.

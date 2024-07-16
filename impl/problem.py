@@ -15,8 +15,7 @@ mr_set = mr_set1
 # Define the budget.
 budget = Budget(max_sim=CONFIG["budget"]["max_sim"],
                 max_time=CONFIG["budget"]["max_time"],
-                max_gen=CONFIG["budget"]["max_gen"],
-                convergence_threshold=CONFIG["budget"]["convergence_threshold"])
+                max_gen=CONFIG["budget"]["max_gen"])
 
 # Define individuals.
 creator.create("Fitness", base.Fitness, weights=(1.0,))

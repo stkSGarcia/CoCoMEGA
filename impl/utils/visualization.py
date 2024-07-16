@@ -22,11 +22,12 @@ verbose_map = {
     'pop_scen': 'Population—Scenario',
     'pop_pert': 'Population—Perturbation',
     'solution': 'Complete Solutions',
+    'archive': 'Archive',
     'arc_scen': 'Archive—Scenario',
     'arc_pert': 'Archive—Perturbation',
     'ccea': 'CCEA',
+    'rs': 'Random Search',
     'ga': 'Standard Genetic Algorithm',
-    'rs': 'Random Search'
 }
 
 
@@ -207,16 +208,20 @@ class Visualizer:
         fig.write_image(os.path.join(out_dir, name))
 
     @staticmethod
-    def visualize_in_one(file: str, verbose=False, plot_nan=True, show=False):
+    def visualize_in_one(data, verbose=False, plot_nan=True, show=False, file_name=None):
         """Plot all statistics data in one figure.
 
-        @param file: Statistics data file.
+        @param data: Statistics data or data file.
         @param verbose: Show plots of populations and archives.
         @param plot_nan: Plot NaN values.
         @param show: A boolean to determine whether to show the plots or not.
+        @param file_name: Specify the file name for plots when the data is not a file path.
         """
-        with open(file, "rb") as f:
-            stats = pd.DataFrame(pickle.load(f))
+        if isinstance(data, str):
+            file_name = Path(data).stem
+            with open(data, "rb") as f:
+                data = pickle.load(f)
+        stats = pd.DataFrame(data)
         if len(stats) == 0:
             logger.warning('No statistics provided. Nothing to visualize.')
             return
@@ -246,9 +251,19 @@ class Visualizer:
             axs[0].set_ylabel("Fitness", fontsize=15)
             axs[0].legend(fontsize=15)
 
-        logger.info(f"Number of violations: {pop['len'].iloc[-1]}.")
+        logger.info(f"#violations of the last solution archive: {pop['len'].iloc[-1]}.")
+        logger.info(f"Average #violations: {np.mean(pop['len'])}.")
+        logger.info(f"Max fitness of the last solution archive: {pop['max'].iloc[-1]}.")
         logger.info(f"Average fitness of the last solution archive: {pop['avg'].iloc[-1]}.")
-        logger.info(f"Growth rate of fitness: {np.polyfit(pop['gen'], Visualizer._fill_nan(pop['avg']), 1)[0]}.")
+        logger.info(f"Max fitness: {np.max(pop['max'])}.")
+        logger.info("Growth rate of average fitness over generations: " +
+                    f"{np.polyfit(pop['gen'], Visualizer._fill_nan(pop['avg']), 1)[0]}.")
+        logger.info("Growth rate of max fitness over generations: " +
+                    f"{np.polyfit(pop['gen'], Visualizer._fill_nan(pop['max']), 1)[0]}.")
+        logger.info("Growth rate of average fitness over simulations: " +
+                    f"{np.polyfit(pop['sim'].cumsum(axis=0), Visualizer._fill_nan(pop['avg']), 1)[0]}.")
+        logger.info("Growth rate of max fitness over simulations: " +
+                    f"{np.polyfit(pop['sim'].cumsum(axis=0), Visualizer._fill_nan(pop['max']), 1)[0]}.")
 
         axs[1].plot(pop["gen"], pop["len"], "o-C4", label="#violations")
         axs[1].plot(pop["gen"], pop["sim"], "x-C5", label="#simulations")
@@ -269,7 +284,7 @@ class Visualizer:
             fig.legend(handles, labels, loc="lower right", ncol=4, fontsize=15)
 
         fig.tight_layout()
-        fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"{Path(file).stem}.png"))
+        fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"{file_name}.png"))
         if show: plt.show()
 
     @staticmethod

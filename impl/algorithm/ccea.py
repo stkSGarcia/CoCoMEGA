@@ -55,13 +55,6 @@ class CCEA(BaseAlgorithm):
             logger.info(f"The number of solutions violating the relation: {violated_solutions_count}.")
             archive_solution += [solution for solution in current_solutions if solution not in archive_solution]
 
-            # Terminate if the archive has converged.
-            if (self.budget.gen_num > 0 and
-                    violated_solutions_count > self.budget.convergence_threshold * len(current_solutions)):
-                logger.info(f"Terminate due to the number of violations reaching the threshold: "
-                            f"{violated_solutions_count} > {self.budget.convergence_threshold}*{len(current_solutions)}.")
-                break
-
             self.budget.acc_sim(sim_num)
             self.record_statistics(pop_scenario, self.budget.gen_num, pop_name="pop_scen")
             self.record_statistics(pop_perturbation, self.budget.gen_num, pop_name="pop_pert")
@@ -104,14 +97,7 @@ class CCEA(BaseAlgorithm):
 
         logger.info(f"Terminate due to reaching the threshold.")
         # Store the complete solutions.
-        suffix = int(round(time.time() * 1000))
-        statistics_path = f"statistics-{suffix}.pickle"
-        with open(os.path.join(CONFIG["workspace"]["solution"], f"solutions-{suffix}.pickle"), "wb") as f:
-            pickle.dump(archive_solution, f)
-        with open(os.path.join(CONFIG["workspace"]["solution"], statistics_path), "wb") as f:
-            pickle.dump(self.logbook, f)
-
-        return archive_solution, statistics_path
+        self.dump_results(archive_solution)
 
     def _evaluate(self, pop_scenario, archive_scenario, pop_perturbation, archive_perturbation, evaluated_solutions):
         """Form complete solutions and evaluate their joint fitness as well as the individual fitness values.
@@ -148,7 +134,6 @@ class CCEA(BaseAlgorithm):
                 unique_solutions.append(ind)
 
         # Evaluate joint fitness.
-        # TODO: avoid evaluating similar scenarios.
         candidates = [ind for ind in unique_solutions if ind not in evaluated_solutions]
         logger.debug(f"#complete solutions: {len(complete_solutions)}, "
                      f"#unique solutions: {len(unique_solutions)}, "
@@ -165,7 +150,6 @@ class CCEA(BaseAlgorithm):
         # Evaluate individual fitness.
         for scenario in pop_scenario:
             self.toolbox.evaluate_individual(scenario, archive_solution)
-
         for perturbation in pop_perturbation:
             self.toolbox.evaluate_individual(perturbation, archive_solution)
 
@@ -252,9 +236,10 @@ class CCEA(BaseAlgorithm):
 
     def _shrink(self, population, size, co_population):
         """Select from over-producted population based on a heuristic function.
-                @param population: The over-producted population.
-                @param size: The size of the target population.
-                @param co_population: The coop population
-                @return: A list of selected individuals.
-                """
+
+        @param population: The over-producted population.
+        @param size: The size of the target population.
+        @param co_population: The coop population
+        @return: A list of selected individuals.
+        """
         return sorted(population, key=lambda p: trajectory_score(p, co_population), reverse=True)[:size]
