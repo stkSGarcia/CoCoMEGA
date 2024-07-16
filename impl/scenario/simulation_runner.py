@@ -55,7 +55,7 @@ def _init_carla(instance_configs):
     initialize_carla(carla_host, carla_port, tm_port)
 
 
-def run_scenario(scenario: ScenarioDefinition, rerun=False, process_configs=None):
+def run_scenario(scenario: ScenarioDefinition, rerun=False):
     """Run a scenario defined in ScenarioDefinition.
 
     @return: The simulation result and whether the scenario was actually executed.

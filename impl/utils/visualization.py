@@ -228,61 +228,37 @@ class Visualizer:
         for metric in ["std", "min", "avg", "max"]:
             stats[metric] = stats[metric].apply(lambda x: x[0])
 
-        fig = plt.figure(figsize=(20, 8))
-        if verbose:
-            axs = [fig.add_subplot(2, 3, 2), fig.add_subplot(2, 3, 5)]
-            for i in [1, 3, 4, 6]:
-                axs.append(fig.add_subplot(2, 3, i, sharex=axs[0], sharey=axs[0]))
-        else:
-            axs = [fig.add_subplot(1, 2, 1), fig.add_subplot(1, 2, 2)]
-
-        def plot_metrics(_ax, _pop, _name):
-            for _metric, _fmt in [("std", ":C0"), ("min", "--C1"), ("avg", "o-C2"), ("max", "--C3")]:
-                _ax.plot(_pop["gen"], Visualizer._fill_nan(_pop[_metric]) if plot_nan else _pop[_metric],
-                         _fmt, label=_metric)
-            _ax.set_title(verbose_map[_name], fontsize=20)
-            _ax.tick_params(labelsize=13)
-            _ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-
         groups = stats.groupby("pop")
-        pop = groups.get_group("solution").sort_values("gen", ascending=True)
-        plot_metrics(axs[0], pop, "solution")
-        if not verbose:
-            axs[0].set_ylabel("Fitness", fontsize=15)
-            axs[0].legend(fontsize=15)
+        assert "solution" in groups.groups
+        Visualizer._log_statistics(groups)
+        core_plots = [name for name in ("solution", "solution", "archive") if name in groups.groups]
+        addition_plots = [name for name in ("pop_scen", "arc_scen", "pop_pert", "arc_pert") if name in groups.groups]
+        plots = core_plots + addition_plots if verbose else core_plots
+        row_num = int(np.ceil(len(plots) / 3))
+        column_num = len(plots) if row_num == 1 else 3
 
-        logger.info(f"#violations of the last solution archive: {pop['len'].iloc[-1]}.")
-        logger.info(f"Average #violations: {np.mean(pop['len'])}.")
-        logger.info(f"Max fitness of the last solution archive: {pop['max'].iloc[-1]}.")
-        logger.info(f"Average fitness of the last solution archive: {pop['avg'].iloc[-1]}.")
-        logger.info(f"Max fitness: {np.max(pop['max'])}.")
-        logger.info("Growth rate of average fitness over generations: " +
-                    f"{np.polyfit(pop['gen'], Visualizer._fill_nan(pop['avg']), 1)[0]}.")
-        logger.info("Growth rate of max fitness over generations: " +
-                    f"{np.polyfit(pop['gen'], Visualizer._fill_nan(pop['max']), 1)[0]}.")
-        logger.info("Growth rate of average fitness over simulations: " +
-                    f"{np.polyfit(pop['sim'].cumsum(axis=0), Visualizer._fill_nan(pop['avg']), 1)[0]}.")
-        logger.info("Growth rate of max fitness over simulations: " +
-                    f"{np.polyfit(pop['sim'].cumsum(axis=0), Visualizer._fill_nan(pop['max']), 1)[0]}.")
+        fig = plt.figure(figsize=(6 * column_num, 4 * row_num))
+        axs = []
+        for i, name in enumerate(plots):
+            ax = fig.add_subplot(row_num, column_num, i + 1,
+                                 sharex=axs[0] if i > 0 else None,
+                                 sharey=axs[1] if i > 1 else None)
+            axs.append(ax)
+            pop = groups.get_group(name).sort_values("gen", ascending=True)
+            if i > 0:
+                Visualizer._plot_metrics(ax, pop, name, x_axis="gen", plot_nan=plot_nan, legend=i == 1,
+                                         ylabel=(i == 1 or i % 3 == 0))
+            else:
+                ax.plot(pop["gen"], pop["len"], "o-C4", label="#violations")
+                ax.plot(pop["gen"], pop["sim"], "x-C5", label="#simulations")
+                ax.set_title("#violations & #simulations", fontsize=20)
+                ax.set_ylabel("Num", fontsize=15)
+                ax.tick_params(labelsize=13)
+                ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+                ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+                ax.legend(fontsize=15)
 
-        axs[1].plot(pop["gen"], pop["len"], "o-C4", label="#violations")
-        axs[1].plot(pop["gen"], pop["sim"], "x-C5", label="#simulations")
-        axs[1].set_title("#Violations & #Simulations", fontsize=20)
-        axs[1].set_ylabel("Num", fontsize=15)
-        axs[1].tick_params(labelsize=13)
-        axs[1].xaxis.set_major_locator(MaxNLocator(integer=True))
-        axs[1].yaxis.set_major_locator(MaxNLocator(integer=True))
-        axs[1].legend(fontsize=15)
-
-        fig.supxlabel("Generations", fontsize=15)
-        if verbose:
-            for ax, name in zip(axs[2:], ("pop_scen", "arc_scen", "pop_pert", "arc_pert")):
-                pop = groups.get_group(name).sort_values("gen", ascending=True)
-                plot_metrics(ax, pop, name)
-            fig.supylabel("Fitness", x=0, fontsize=15)
-            handles, labels = axs[-1].get_legend_handles_labels()
-            fig.legend(handles, labels, loc="lower right", ncol=4, fontsize=15)
-
+        fig.supxlabel("Generation", fontsize=15)
         fig.tight_layout()
         fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"{file_name}.png"))
         if show: plt.show()
@@ -322,12 +298,6 @@ class Visualizer:
         fig.tight_layout()
         fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], "comparison.png"))
         if show: plt.show()
-
-    @staticmethod
-    def _fill_nan(column):
-        masked = np.ma.masked_invalid(column)
-        np.ma.set_fill_value(masked, 0)
-        return masked.filled()
 
     @staticmethod
     def visualize_violation(source, follow_up, mr_set, offset=3, show=False):
@@ -385,3 +355,45 @@ class Visualizer:
         fig.tight_layout()
         fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], "violation.png"))
         if show: plt.show()
+
+    @staticmethod
+    def _plot_metrics(ax, pop, name, x_axis="gen", plot_nan=True, xlabel=False, ylabel=False, legend=False):
+        for metric, fmt in [("std", ":C0"), ("min", "--C1"), ("avg", "o-C2"), ("max", "--C3")]:
+            ax.plot(pop["sim"].cumsum(axis=0) if x_axis == "accsim" else pop[x_axis],
+                    Visualizer._fill_nan(pop[metric]) if plot_nan else pop[metric],
+                    fmt, label=metric)
+        ax.set_title(verbose_map[name], fontsize=20)
+        ax.tick_params(labelsize=13)
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        if xlabel: ax.set_xlabel("Generation" if x_axis == "gen" else "#simulations", fontsize=15)
+        if ylabel: ax.set_ylabel("Fitness", fontsize=15)
+        if legend: ax.legend(fontsize=15)
+
+    @staticmethod
+    def _growth_rate(x, y):
+        return np.polyfit(x, Visualizer._fill_nan(y), 1)[0]
+
+    @staticmethod
+    def _fill_nan(column):
+        masked = np.ma.masked_invalid(column)
+        np.ma.set_fill_value(masked, 0)
+        return masked.filled()
+
+    @staticmethod
+    def _log_statistics(groups):
+        if "archive" not in groups.groups:
+            logger.warning("Cannot find statistics of archives.")
+            return
+        pop = groups.get_group("archive").sort_values("gen", ascending=True)
+        logger.info(f"#violations of the last archive: {pop['len'].iloc[-1]}.")
+        logger.info(f"Max fitness of the last archive: {pop['max'].iloc[-1]}.")
+        logger.info(f"Average fitness of the last archive: {pop['avg'].iloc[-1]}.")
+        if len(pop["gen"]) > 1:
+            logger.info("Growth rate of average fitness over generations: "
+                        f"{Visualizer._growth_rate(pop['gen'], pop['avg'])}.")
+            logger.info("Growth rate of max fitness over generations: "
+                        f"{Visualizer._growth_rate(pop['gen'], pop['max'])}.")
+            logger.info("Growth rate of average fitness over simulations: " +
+                        f"{Visualizer._growth_rate(pop['sim'], pop['avg'])}.")
+            logger.info("Growth rate of max fitness over simulations: " +
+                        f"{Visualizer._growth_rate(pop['sim'], pop['max'])}.")
