@@ -517,7 +517,7 @@ class RouteScenario(BasicScenario):
         criteria.append(vehicle_measurement)
         # criteria.append(completion_criterion)
         # criteria.append(outsidelane_criterion)
-        criteria.append(collision_criterion)
+        # criteria.append(collision_criterion)
         # criteria.append(red_light_criterion)
         # criteria.append(stop_criterion)
         # criteria.append(route_criterion)
