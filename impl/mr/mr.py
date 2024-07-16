@@ -186,22 +186,14 @@ class Relation(ABC):
 
         @param source: The `DataFrame` of the source result.
         @param follow_up: The `DataFrame` of the follow-up result.
-        @param labels: Used in simulation-based strategy.
+        @param labels: Labels determining the perturbed objects.
         @return: The `bool` value indicates whether the relation is violated.
         The `float` value denotes the extent to which this relation is violated.
         """
-        labels = [f"{Relation._d}-{label}" for label in labels or set()]
-        matches = [(source.index.values[i], follow_up.index.values[j])
-                   for i, j in dtw_path(source[self.field], follow_up[self.field])[0]]
-        df = pd.DataFrame([(
-            source.loc[i, self.field],
-            follow_up.loc[j, self.field],
-            *[np.nanmin([source.loc[i].get(label, np.nan), follow_up.loc[j].get(label, np.nan)])
-              for label in [Relation._d] + labels],
-        ) for i, j in matches], columns=(Relation._s, Relation._f, *([Relation._d] + labels)))
-
-        df = df.loc[(df[labels].min(axis=1) if len(labels) > 0 else df[Relation._d])
-                    < CONFIG["violation"]["threshold"]["max_ego_distance"]]
+        labels = Relation.convert_labels(labels)
+        _, df = Relation.dtw_dataframe(source, follow_up, self.field, labels)
+        critical_intervals = Relation.critical_intervals(df, labels)
+        df = df.iloc[critical_intervals]
         if df.empty: return False, None
 
         df["extent"] = df.apply(self._extent_func, axis=1, result_type="reduce")
@@ -210,6 +202,44 @@ class Relation(ABC):
 
         extent = df["extent"].mean()
         return extent > 0, extent
+
+    @staticmethod
+    def convert_labels(labels):
+        """Convert the given labels into those in the result `DataFrame`."""
+        return [f"{Relation._d}-{label}" for label in labels or set()]
+
+    @staticmethod
+    def dtw_dataframe(source, follow_up, field, labels, radius=5):
+        """Generate `DataFrame` from source and follow-up results using DTW algorithm.
+
+        @param source: The `DataFrame` of the source result.
+        @param follow_up: The `DataFrame` of the follow-up result.
+        @param field: The metric to be compared.
+        @param labels: Labels determining the perturbed objects.
+        @param radius: The Sakoe-Chiba radius.
+        @return: A tuple of the DTW path and the generated `DataFrame`.
+        """
+        matches = [(source.index.values[i], follow_up.index.values[j])
+                   for i, j in dtw_path(source[field], follow_up[field],
+                                        global_constraint="sakoe_chiba", sakoe_chiba_radius=radius)[0]]
+        df = pd.DataFrame([(
+            source.loc[i, field], follow_up.loc[j, field],
+            *[np.nanmin([source.loc[i].get(label, np.nan), follow_up.loc[j].get(label, np.nan)])
+              for label in [Relation._d] + labels],
+        ) for i, j in matches], columns=(Relation._s, Relation._f, *([Relation._d] + labels)))
+        return matches, df
+
+    @staticmethod
+    def critical_intervals(dataframe, labels):
+        """Fiter the given `DataFrame` by removing data where the perturbed
+        objects are not in the field of view of the ego vehicle.
+
+        @param dataframe: The `DataFrame` to be filtered.
+        @param labels: Labels determining the perturbed objects.
+        @return: A sequence of indices that indicate the critical intervals.
+        """
+        return dataframe.index[(dataframe[labels].min(axis=1) if len(labels) > 0 else dataframe[Relation._d])
+                               < CONFIG["violation"]["threshold"]["max_ego_distance"]]
 
     def __eq__(self, other):
         return (isinstance(other, self.__class__) and

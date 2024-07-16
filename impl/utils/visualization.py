@@ -3,14 +3,13 @@ import os
 import pickle
 import time
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from matplotlib.ticker import MaxNLocator
-from tslearn.metrics import dtw_path
 
 from impl.config import CONFIG
 from impl.mr.mr import Relation
@@ -225,7 +224,7 @@ class Visualizer:
         if len(stats) == 0:
             logger.warning('No statistics provided. Nothing to visualize.')
             return
-        for metric in ["std", "min", "avg", "max"]:
+        for metric in ("std", "min", "avg", "max"):
             stats[metric] = stats[metric].apply(lambda x: x[0])
 
         groups = stats.groupby("pop")
@@ -317,41 +316,29 @@ class Visualizer:
         ) for i in origin_index], columns=(Relation._s, Relation._f))
         origin_df.set_index(origin_index, inplace=True)
 
-        matches = [(source.index.values[i], follow_up.index.values[j])
-                   for i, j in dtw_path(source[mr_set.field], follow_up[mr_set.field])[0]]
-        labels = [f"{Relation._d}-{label}" for label in mr_set.labels or set()] \
-            if CONFIG["violation"]["strategy"] == "simulation" else []
-        dtw_df = pd.DataFrame([(
-            source.loc[i, mr_set.field],
-            follow_up.loc[j, mr_set.field],
-            *[np.nanmin([source.loc[i].get(label, np.nan), follow_up.loc[j].get(label, np.nan)])
-              for label in [Relation._d] + labels],
-        ) for i, j in matches], columns=(Relation._s, Relation._f, *([Relation._d] + labels)))
+        labels = Relation.convert_labels(mr_set.labels)
+        matches, dtw_df = Relation.dtw_dataframe(source, follow_up, mr_set.field, labels)
 
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8), sharey="all")
-        for ax, df in zip((ax1, ax2), (origin_df, dtw_df)):
+        for ax, df, title in zip((ax1, ax2), (origin_df, dtw_df), ("Original difference", "DTW difference")):
             ax.plot(df.index.values, df[Relation._s], "-C0", label="source")
-            ax.plot(df.index.values, df[Relation._f] + (offset if ax is ax1 else 0), "-C1", label="follow up")
-            ax.plot(df.index.values, df.apply(mr_set.relation._extent_func, axis=1, result_type="reduce"), "o:C2",
-                    label="diff")
+            ax.plot(df.index.values, df[Relation._f] + (offset if ax is ax1 else 0), "-C1", label="follow-up")
+            ax.plot(df.index.values, df.apply(mr_set.relation._extent_func, axis=1, result_type="reduce"),
+                    "o:C2", label="difference")
+            ax1.set_title(title, fontsize=20)
             ax.tick_params(labelsize=13)
+            ax.set_xlabel("Tick" if ax == ax1 else "Match", fontsize=15)
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        ax1.legend(fontsize=15)
 
         for x, y in matches:
             ax1.plot((x, y), (source.loc[x, mr_set.field], follow_up.loc[y, mr_set.field] + offset), "--", color="gray")
 
-        critical_points = dtw_df.index[(dtw_df[labels].min(axis=1) if len(labels) > 0 else dtw_df[Relation._d])
-                                       < CONFIG["violation"]["threshold"]["max_ego_distance"]]
-
-        for points in np.split(critical_points, np.where(np.diff(critical_points) != 1)[0] + 1):
+        critical_intervals = Relation.critical_intervals(dtw_df, labels)
+        for points in np.split(critical_intervals, np.where(np.diff(critical_intervals) != 1)[0] + 1):
             ax2.axvspan(points[0] - 0.5, points[-1] + 0.5, color="red", alpha=0.1)
 
-        ax1.set_title("Original difference", fontsize=20)
-        ax2.set_title("DTW difference", fontsize=20)
-        ax2.legend(fontsize=15)
-        fig.supxlabel("Ticks", fontsize=15)
         fig.supylabel(mr_set.field.capitalize(), fontsize=15)
-
         fig.tight_layout()
         fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], "violation.png"))
         if show: plt.show()
