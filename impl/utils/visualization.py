@@ -226,6 +226,8 @@ class Visualizer:
             return
         for metric in ("std", "min", "avg", "max"):
             stats[metric] = stats[metric].apply(lambda x: x[0])
+        if plot_nan:
+            stats.fillna(0, inplace=True)
 
         groups = stats.groupby("pop")
         assert "solution" in groups.groups
@@ -236,6 +238,16 @@ class Visualizer:
         row_num = int(np.ceil(len(plots) / 3))
         column_num = len(plots) if row_num == 1 else 3
 
+        def _plot_metrics(_ax, _pop, _name, xlabel=False, ylabel=False, legend=False):
+            for _metric, _fmt in [("std", ":C0"), ("min", "--C1"), ("avg", "o-C2"), ("max", "--C3")]:
+                _ax.plot(_pop["gen"], _pop[_metric], _fmt, label=_metric)
+            _ax.set_title(verbose_map[_name], fontsize=20)
+            _ax.tick_params(labelsize=13)
+            _ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            if xlabel: _ax.set_xlabel("Generation", fontsize=15)
+            if ylabel: _ax.set_ylabel("Fitness", fontsize=15)
+            if legend: _ax.legend(fontsize=15)
+
         fig = plt.figure(figsize=(6 * column_num, 4 * row_num))
         axs = []
         for i, name in enumerate(plots):
@@ -245,8 +257,7 @@ class Visualizer:
             axs.append(ax)
             pop = groups.get_group(name).sort_values("gen", ascending=True)
             if i > 0:
-                Visualizer._plot_metrics(ax, pop, name, x_axis="gen", plot_nan=plot_nan, legend=i == 1,
-                                         ylabel=(i == 1 or i % 3 == 0))
+                _plot_metrics(ax, pop, name, legend=i == 1, ylabel=(i == 1 or i % 3 == 0))
             else:
                 ax.plot(pop["gen"], pop["len"], "o-C4", label="#violations")
                 ax.plot(pop["gen"], pop["sim"], "x-C5", label="#simulations")
@@ -263,37 +274,50 @@ class Visualizer:
         if show: plt.show()
 
     @staticmethod
-    def visualize_comparison(files: Dict, plot_nan=True, show=False):
+    def visualize_comparison(files: Dict[str, List[str]], plot_nan=True, show=False):
         """Plot comparisons among different algorithms.
 
         @param files: Statistics data files of different algorithms.
         @param plot_nan: Plot NaN values.
         @param show: A boolean to determine whether to show the plots or not.
         """
-        for name, file in files.items():
-            with open(file, "rb") as f:
-                df = pd.DataFrame(pickle.load(f))
-            for metric in ["std", "min", "avg", "max"]:
-                df[metric] = df[metric].apply(lambda x: x[0])
-            files[name] = df
+        data = {}
+        for name, file_list in files.items():
+            df_list = []
+            for file in file_list:
+                with open(file, "rb") as f:
+                    df = pd.DataFrame(pickle.load(f))
+                df = df.groupby("pop").get_group("archive").sort_values("gen", ascending=True)
+                for metric in ("std", "min", "avg", "max"):
+                    df[metric] = df[metric].apply(lambda x: x[0])
+                if plot_nan:
+                    df.fillna(0, inplace=True)
+                df_list.append(df)
+            data[name] = pd.concat(df_list).groupby("gen").agg(list)
 
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(20, 16), sharex="all")
-        for (name, stats), color in zip(files.items(), ("C1", "C2", "C0")):
-            pop = stats.groupby("pop").get_group("solution").sort_values("gen", ascending=True)
-            for ax, metric, title in ((ax1, "max", "Max fitness vs. #simulations"),
-                                      (ax2, "avg", "Average fitness vs. #simulations"),
-                                      (ax3, "len", "#violations vs. #simulations")):
-                ax.plot(pop["sim"].cumsum(axis=0),
-                        Visualizer._fill_nan(pop[metric]) if plot_nan else pop[metric],
-                        label=verbose_map[name], marker="o", color=color)
+        fig = plt.figure(figsize=(20, 12))
+        ax1 = fig.add_subplot(3, 1, 1)
+        ax2 = fig.add_subplot(3, 1, 2, sharex=ax1)
+        ax3 = fig.add_subplot(3, 1, 3, sharex=ax1, sharey=ax2)
+
+        for (name, df), color in zip(data.items(), ("C1", "C2", "C0")):
+            size = len(df["sim"].iloc[0])
+            pos = df["sim"].apply(np.nanmean)
+            for ax, metric, title in ((ax1, "len", "#violations"),
+                                      (ax2, "max", "Max fitness of the archive"),
+                                      (ax3, "avg", "Average fitness of the archive")):
+                ax.plot(pos.cumsum(axis=0), df[metric].apply(np.nanmean), "o:", color=color, label=verbose_map[name])
+                if size > 1:
+                    ax.boxplot(df[metric], positions=pos, widths=2, patch_artist=True, manage_ticks=False,
+                               showfliers=False, boxprops=dict(facecolor=color, alpha=0.4))
                 ax.set_title(title, fontsize=20)
                 ax.tick_params(labelsize=13)
                 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+                ax.set_ylabel("#violations" if ax == ax1 else "Fitness", fontsize=15)
 
-        fig.supxlabel("Simulations", fontsize=15)
-        fig.supylabel("Fitness", x=0, fontsize=15)
+        ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
         ax1.legend(fontsize=15)
-
+        fig.supxlabel("#simulations", fontsize=15)
         fig.tight_layout()
         fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], "comparison.png"))
         if show: plt.show()
@@ -344,43 +368,20 @@ class Visualizer:
         if show: plt.show()
 
     @staticmethod
-    def _plot_metrics(ax, pop, name, x_axis="gen", plot_nan=True, xlabel=False, ylabel=False, legend=False):
-        for metric, fmt in [("std", ":C0"), ("min", "--C1"), ("avg", "o-C2"), ("max", "--C3")]:
-            ax.plot(pop["sim"].cumsum(axis=0) if x_axis == "accsim" else pop[x_axis],
-                    Visualizer._fill_nan(pop[metric]) if plot_nan else pop[metric],
-                    fmt, label=metric)
-        ax.set_title(verbose_map[name], fontsize=20)
-        ax.tick_params(labelsize=13)
-        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-        if xlabel: ax.set_xlabel("Generation" if x_axis == "gen" else "#simulations", fontsize=15)
-        if ylabel: ax.set_ylabel("Fitness", fontsize=15)
-        if legend: ax.legend(fontsize=15)
-
-    @staticmethod
-    def _growth_rate(x, y):
-        return np.polyfit(x, Visualizer._fill_nan(y), 1)[0]
-
-    @staticmethod
-    def _fill_nan(column):
-        masked = np.ma.masked_invalid(column)
-        np.ma.set_fill_value(masked, 0)
-        return masked.filled()
-
-    @staticmethod
     def _log_statistics(groups):
         if "archive" not in groups.groups:
             logger.warning("Cannot find statistics of archives.")
             return
-        pop = groups.get_group("archive").sort_values("gen", ascending=True)
+        pop = groups.get_group("archive").sort_values("gen", ascending=True).fillna(0)
         logger.info(f"#violations of the last archive: {pop['len'].iloc[-1]}.")
         logger.info(f"Max fitness of the last archive: {pop['max'].iloc[-1]}.")
         logger.info(f"Average fitness of the last archive: {pop['avg'].iloc[-1]}.")
         if len(pop["gen"]) > 1:
             logger.info("Growth rate of average fitness over generations: "
-                        f"{Visualizer._growth_rate(pop['gen'], pop['avg'])}.")
+                        f"{np.polyfit(pop['gen'], pop['avg'], 1)[0]}.")
             logger.info("Growth rate of max fitness over generations: "
-                        f"{Visualizer._growth_rate(pop['gen'], pop['max'])}.")
+                        f"{np.polyfit(pop['gen'], pop['max'], 1)[0]}.")
             logger.info("Growth rate of average fitness over simulations: " +
-                        f"{Visualizer._growth_rate(pop['sim'], pop['avg'])}.")
+                        f"{np.polyfit(pop['sim'], pop['avg'], 1)[0]}.")
             logger.info("Growth rate of max fitness over simulations: " +
-                        f"{Visualizer._growth_rate(pop['sim'], pop['max'])}.")
+                        f"{np.polyfit(pop['sim'], pop['max'], 1)[0]}.")

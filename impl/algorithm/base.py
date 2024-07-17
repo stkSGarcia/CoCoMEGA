@@ -105,12 +105,12 @@ class BaseAlgorithm:
             else {"avg": [np.nan], "std": [np.nan], "min": [np.nan], "max": [np.nan]}
         self.logbook.record(pop=pop_name, gen=gen_num, len=len(population), sim=sim_num, **record)
 
-    def dump_results(self, results):
+    def dump_results(self, results, name=None):
         """Dump results and statistics."""
-        timestamp = int(round(time.time() * 1000))
-        with open(os.path.join(CONFIG["workspace"]["solution"], f"solutions-{timestamp}.pickle"), "wb") as f:
+        suffix = (f"{name}-" if name else "") + str(int(round(time.time() * 1000)))
+        with open(os.path.join(CONFIG["workspace"]["solution"], f"solutions-{suffix}.pickle"), "wb") as f:
             pickle.dump(results, f)
-        statistics_path = f"statistics-{timestamp}.pickle"
+        statistics_path = f"statistics-{suffix}.pickle"
         with open(os.path.join(CONFIG["workspace"]["solution"], statistics_path), "wb") as f:
             pickle.dump(self.logbook, f)
         Visualizer.visualize_in_one(self.logbook, verbose=True)

@@ -99,7 +99,7 @@ class GeneticAlgorithm(BaseAlgorithm):
 
         logger.info(f"Terminate due to reaching the threshold.")
         # Store the complete solutions.
-        self.dump_results(archive_solution)
+        self.dump_results(archive_solution, "gawa" if self.keep_best else "ga")
 
     def _breed(self, population, size):
         """Perform selection, crossover and mutation on individuals.
