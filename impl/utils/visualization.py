@@ -306,7 +306,7 @@ class Visualizer:
             for ax, metric, title in ((ax1, "len", "#violations"),
                                       (ax2, "max", "Max fitness of the archive"),
                                       (ax3, "avg", "Average fitness of the archive")):
-                ax.plot(pos.cumsum(axis=0), df[metric].apply(np.nanmean), "o:", color=color, label=verbose_map[name])
+                ax.plot(pos, df[metric].apply(np.nanmean), "o:", color=color, label=verbose_map[name])
                 if size > 1:
                     ax.boxplot(df[metric], positions=pos, widths=2, patch_artist=True, manage_ticks=False,
                                showfliers=False, boxprops=dict(facecolor=color, alpha=0.4))
@@ -317,6 +317,9 @@ class Visualizer:
 
         ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
         ax1.legend(fontsize=15)
+        ax1.grid()
+        ax2.grid()
+        ax3.grid()
         fig.supxlabel("#simulations", fontsize=15)
         fig.tight_layout()
         fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], "comparison.png"))
