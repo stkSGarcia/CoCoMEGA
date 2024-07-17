@@ -61,7 +61,7 @@ class RandomSearch(BaseAlgorithm):
             violated_solutions = [solution for solution in current_solutions if solution.is_violated]
             violated_solutions_count = len(violated_solutions)
             logger.info(f"The number of solutions violating the relation: {violated_solutions_count}.")
-            archive_solution += [solution for solution in current_solutions if solution not in archive_solution]
+            archive_solution += [solution for solution in violated_solutions if solution not in archive_solution]
 
             self.budget.acc_sim(sim_num)
             self.record_statistics(violated_solutions, self.budget.gen_num, pop_name="solution", sim_num=sim_num)
