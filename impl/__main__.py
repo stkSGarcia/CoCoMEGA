@@ -58,7 +58,7 @@ class StoreDictKeyPair(argparse.Action):
             pairs = {}
             for value in values:
                 k, v = value.split("=")
-                pairs[k] = v
+                pairs[k] = v.split(",")
             setattr(namespace, self.dest, pairs)
         elif not any(is_kv):
             setattr(namespace, self.dest, values)
@@ -97,7 +97,7 @@ if __name__ == "__main__":
 
     parser_viz = subparsers.add_parser("visualize", aliases=["viz"], help="visualize the results")
     parser_viz.add_argument("-f", "--file", nargs="+", required=True, action=StoreDictKeyPair,
-                            metavar="VAL|KEY=VAL", help="statistics files")
+                            metavar="(VAL|KEY=VAL,VAL,...)", help="statistics files")
     parser_viz.add_argument("-m", "--mode", choices=("concise", "full", "compare"),
                             default="concise", help="visualization mode")
     parser_viz.set_defaults(func=lambda args: visualize(args.file, args.mode))
