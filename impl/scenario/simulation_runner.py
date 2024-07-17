@@ -5,7 +5,7 @@ import pickle
 import traceback
 from concurrent.futures import ProcessPoolExecutor
 from copy import deepcopy
-from multiprocessing import Manager
+from multiprocessing import Manager, Process
 
 import pandas as pd
 from deap import tools
@@ -152,4 +152,6 @@ def run_solutions(file: str, top: int = 1):
         follow_up = deepcopy(source)
         follow_up.id_ = f"top{i + 1}_follow-up"
         perturbations.perturb(follow_up)
-        run_scenarios([source, follow_up], rerun=True)
+        run_process = Process(target=run_scenarios, args=([source, follow_up], True))
+        run_process.start()
+        run_process.join()
