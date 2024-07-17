@@ -15,6 +15,7 @@ from impl.config import CONFIG
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
 from impl.scenario.scenario_definition import ScenarioDefinition
 from impl.utils.carla_utils import initialize_carla
+from impl.utils.process_utils import run_silently
 
 arguments = [
     ("SCENARIOS", "scenarios",
@@ -138,7 +139,7 @@ def run_scenarios(scenarios, rerun=False):
     return results, is_executed.count(True)
 
 
-def run_solutions(file: str, top: int = 1):
+def run_solutions(file: str, top: int = 1, verbose=True):
     """Run scenarios from a solution file.
 
     @param file: The solution file.
@@ -152,6 +153,9 @@ def run_solutions(file: str, top: int = 1):
         follow_up = deepcopy(source)
         follow_up.id_ = f"top{i + 1}_follow-up"
         perturbations.perturb(follow_up)
-        run_process = Process(target=run_scenarios, args=([source, follow_up], True))
+        if verbose:
+            run_process = Process(target=run_scenarios, args=([source, follow_up], True))
+        else:
+            run_process = Process(target=run_silently, args=(run_scenarios, [source, follow_up], True))
         run_process.start()
         run_process.join()
