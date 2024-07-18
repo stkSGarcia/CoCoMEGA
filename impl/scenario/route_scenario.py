@@ -352,7 +352,7 @@ class RouteScenario(BasicScenario):
             )
             CarlaDataProvider._world.debug.draw_line(start_point, end_point, thickness=0.15,
                                                      color=carla.Color(225, 10, 10),
-                                                     life_time=0)
+                                                     life_time=CONFIG["simulation"]["scenario_duration"] + 1)
 
     def _draw_route(self, trajectory, z=0.1):
         for i in range(len(trajectory) - 1):
@@ -368,7 +368,7 @@ class RouteScenario(BasicScenario):
             )
             CarlaDataProvider._world.debug.draw_line(start_point, end_point, thickness=0.15,
                                                      color=carla.Color(10, 10, 225),
-                                                     life_time=0)
+                                                     life_time=CONFIG["simulation"]["scenario_duration"] + 1)
 
     def _scenario_sampling(self, potential_scenarios_definitions, random_seed=0):
         """
