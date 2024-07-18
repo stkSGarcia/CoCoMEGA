@@ -274,10 +274,18 @@ class Visualizer:
         if show: plt.show()
 
     @staticmethod
-    def visualize_comparison(files: Dict[str, List[str]], plot_nan=True, show=False):
+    def visualize_comparison(files: Dict[str, List[str]], pop_name="archive", box=True, interval=10,
+                             trend_line=False, regression_degree=10, scatter=False,
+                             plot_nan=True, show=False):
         """Plot comparisons among different algorithms.
 
         @param files: Statistics data files of different algorithms.
+        @param pop_name: The name of the population for comparison. Options are "archive" and "solution".
+        @param box: Show box plots.
+        @param interval: Width of intervals for aggregation.
+        @param trend_line: Show trend lines.
+        @param regression_degree: Degree of regression.
+        @param scatter: Show scatter plots.
         @param plot_nan: Plot NaN values.
         @param show: A boolean to determine whether to show the plots or not.
         """
@@ -287,39 +295,49 @@ class Visualizer:
             for file in file_list:
                 with open(file, "rb") as f:
                     df = pd.DataFrame(pickle.load(f))
-                df = df.groupby("pop").get_group("archive").sort_values("gen", ascending=True)
+                df = df.groupby("pop").get_group(pop_name).sort_values("gen", ascending=True)
                 for metric in ("std", "min", "avg", "max"):
                     df[metric] = df[metric].apply(lambda x: x[0])
                 if plot_nan:
                     df.fillna(0, inplace=True)
+                if pop_name == "solution":
+                    df["sim"] = df["sim"].cumsum()
                 df_list.append(df)
-            data[name] = pd.concat(df_list).groupby("gen").agg(list)
+            df = pd.concat(df_list).sort_values("sim", ascending=True)
+            lower = int(np.floor(df["sim"].iloc[0] / interval)) * interval
+            upper = int(np.ceil(df["sim"].iloc[-1] / interval)) * interval
+            agg = df.groupby(pd.cut(df["sim"], range(lower, upper + 1, interval))).agg(list).drop(columns="pop")
+            agg = agg[agg["gen"].str.len() > 0]
+            agg["sim"] = agg["sim"].apply(np.nanmean)
+            data[name] = (df, agg)
 
         fig = plt.figure(figsize=(20, 12))
         ax1 = fig.add_subplot(3, 1, 1)
         ax2 = fig.add_subplot(3, 1, 2, sharex=ax1)
-        ax3 = fig.add_subplot(3, 1, 3, sharex=ax1, sharey=ax2)
+        ax3 = fig.add_subplot(3, 1, 3, sharex=ax1)
 
-        for (name, df), color in zip(data.items(), ("C1", "C2", "C0")):
-            size = len(df["sim"].iloc[0])
-            pos = df["sim"].apply(np.nanmean)
-            for ax, metric, title in ((ax1, "len", "#violations"),
-                                      (ax2, "max", "Max fitness of the archive"),
-                                      (ax3, "avg", "Average fitness of the archive")):
-                ax.plot(pos, df[metric].apply(np.nanmean), "o:", color=color, label=verbose_map[name])
-                if size > 1:
-                    ax.boxplot(df[metric], positions=pos, widths=2, patch_artist=True, manage_ticks=False,
+        for ax, metric, title in ((ax1, "len", "#violations"),
+                                  (ax2, "max", "Max fitness"),
+                                  (ax3, "avg", "Average fitness")):
+            for (name, (df, agg)), color in zip(data.items(), ("C1", "C2", "C0", "C4")):
+                ax.plot(agg["sim"], agg[metric].apply(np.nanmean), "o-", color=color, label=verbose_map[name])
+                if box:
+                    ax.boxplot(agg[metric], positions=agg["sim"], widths=2, patch_artist=True, manage_ticks=False,
                                showfliers=False, boxprops=dict(facecolor=color, alpha=0.4))
-                ax.set_title(title, fontsize=20)
-                ax.tick_params(labelsize=13)
-                ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-                ax.set_ylabel("#violations" if ax == ax1 else "Fitness", fontsize=15)
+                if trend_line:
+                    f = np.poly1d(np.polyfit(df["sim"], df[metric], regression_degree))
+                    ax.plot(df["sim"], f(df["sim"]), ":", color=color)
+                if scatter:
+                    ax.scatter(df["sim"], df[metric], marker="x", color=color, alpha=0.6)
+
+            ax.set_title(title, fontsize=20)
+            ax.tick_params(labelsize=13)
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            ax.set_ylabel("#violations" if ax == ax1 else "Fitness", fontsize=15)
+            ax.grid()
 
         ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
         ax1.legend(fontsize=15)
-        ax1.grid()
-        ax2.grid()
-        ax3.grid()
         fig.supxlabel("#simulations", fontsize=15)
         fig.tight_layout()
         fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], "comparison.png"))
