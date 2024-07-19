@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from matplotlib.lines import Line2D
 from matplotlib.ticker import MaxNLocator
 
 from impl.config import CONFIG
@@ -27,6 +28,7 @@ verbose_map = {
     'ccea': 'CCEA',
     'rs': 'Random Search',
     'ga': 'Standard Genetic Algorithm',
+    'gawa': 'SGA with Archives',
 }
 
 
@@ -274,8 +276,9 @@ class Visualizer:
         if show: plt.show()
 
     @staticmethod
-    def visualize_comparison(files: Dict[str, List[str]], pop_name="archive", box=True, interval=10,
-                             trend_line=False, regression_degree=10, scatter=False,
+    def visualize_comparison(files: Dict[str, List[str]], pop_name="archive",
+                             box=True, interval=10, avg_line=False,
+                             trend_line=True, regression_degree=3, all_lines=False,
                              plot_nan=True, show=False):
         """Plot comparisons among different algorithms.
 
@@ -283,9 +286,10 @@ class Visualizer:
         @param pop_name: The name of the population for comparison. Options are "archive" and "solution".
         @param box: Show box plots.
         @param interval: Width of intervals for aggregation.
+        @param avg_line: Show average lines.
         @param trend_line: Show trend lines.
         @param regression_degree: Degree of regression.
-        @param scatter: Show scatter plots.
+        @param all_lines: Show original lines.
         @param plot_nan: Plot NaN values.
         @param show: A boolean to determine whether to show the plots or not.
         """
@@ -309,27 +313,31 @@ class Visualizer:
             agg = df.groupby(pd.cut(df["sim"], range(lower, upper + 1, interval))).agg(list).drop(columns="pop")
             agg = agg[agg["gen"].str.len() > 0]
             agg["sim"] = agg["sim"].apply(np.nanmean)
-            data[name] = (df, agg)
+            data[name] = (df_list, df, agg)
 
         fig = plt.figure(figsize=(20, 12))
         ax1 = fig.add_subplot(3, 1, 1)
         ax2 = fig.add_subplot(3, 1, 2, sharex=ax1)
         ax3 = fig.add_subplot(3, 1, 3, sharex=ax1)
-
+        legend_elements = {}
         for ax, metric, title in ((ax1, "len", "#violations"),
                                   (ax2, "max", "Max fitness"),
                                   (ax3, "avg", "Average fitness")):
-            for (name, (df, agg)), color in zip(data.items(), ("C1", "C2", "C0", "C4")):
-                ax.plot(agg["sim"], agg[metric].apply(np.nanmean), "o-", color=color, label=verbose_map[name])
+            for (name, (df_list, df, agg)), color in zip(data.items(), ("C1", "C2", "C0", "C4")):
                 if box:
                     ax.boxplot(agg[metric], positions=agg["sim"], widths=2, patch_artist=True, manage_ticks=False,
                                showfliers=False, boxprops=dict(facecolor=color, alpha=0.4))
+                if avg_line:
+                    ax.plot(agg["sim"], agg[metric].apply(np.nanmean), "o-", color=color)
                 if trend_line:
                     f = np.poly1d(np.polyfit(df["sim"], df[metric], regression_degree))
-                    ax.plot(df["sim"], f(df["sim"]), ":", color=color)
-                if scatter:
-                    ax.scatter(df["sim"], df[metric], marker="x", color=color, alpha=0.6)
-
+                    ax.plot(df["sim"], f(df["sim"]), "-", color=color)
+                if all_lines:
+                    for line in df_list:
+                        ax.plot(line["sim"], line[metric], "x--", color=color, alpha=0.6)
+                if name not in legend_elements:
+                    legend_elements[name] = Line2D([0], [0], linestyle="-", marker="o",
+                                                   color=color, lw=2, label=verbose_map[name])
             ax.set_title(title, fontsize=20)
             ax.tick_params(labelsize=13)
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -337,7 +345,7 @@ class Visualizer:
             ax.grid()
 
         ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
-        ax1.legend(fontsize=15)
+        ax1.legend(handles=legend_elements.values(), fontsize=15)
         fig.supxlabel("#simulations", fontsize=15)
         fig.tight_layout()
         fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], "comparison.png"))
