@@ -362,23 +362,20 @@ class Visualizer:
         @param offset: The offset between the source and follow-up curves.
         @param show: A boolean to determine whether to show the plots or not.
         """
-        origin_index = source.index.union(follow_up.index)
-        origin_df = pd.DataFrame([(
-            source[mr_set.field].get(i, np.nan),
-            follow_up[mr_set.field].get(i, np.nan)
-        ) for i in origin_index], columns=(Relation._s, Relation._f))
-        origin_df.set_index(origin_index, inplace=True)
-
         labels = Relation.convert_labels(mr_set.labels)
-        matches, dtw_df = Relation.dtw_dataframe(source, follow_up, mr_set.field, labels)
+        matches, origin_df = Relation.pairwise_dataframe(source, follow_up, mr_set.field, labels)
+        if CONFIG["violation"]["dtw"]:
+            matches, pair_df = Relation.dtw_dataframe(source, follow_up, mr_set.field, labels)
+        else:
+            pair_df = origin_df.reset_index()
 
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8), sharey="all")
-        for ax, df, title in zip((ax1, ax2), (origin_df, dtw_df), ("Original difference", "DTW difference")):
+        for ax, df, title in zip((ax1, ax2), (origin_df, pair_df), ("Matches", "Difference")):
             ax.plot(df.index.values, df[Relation._s], "-C0", label="source")
             ax.plot(df.index.values, df[Relation._f] + (offset if ax is ax1 else 0), "-C1", label="follow-up")
             ax.plot(df.index.values, df.apply(mr_set.relation._extent_func, axis=1, result_type="reduce"),
                     "o:C2", label="difference")
-            ax1.set_title(title, fontsize=20)
+            ax.set_title(title, fontsize=20)
             ax.tick_params(labelsize=13)
             ax.set_xlabel("Tick" if ax == ax1 else "Match", fontsize=15)
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -387,7 +384,7 @@ class Visualizer:
         for x, y in matches:
             ax1.plot((x, y), (source.loc[x, mr_set.field], follow_up.loc[y, mr_set.field] + offset), "--", color="gray")
 
-        critical_intervals = Relation.critical_intervals(dtw_df, labels)
+        critical_intervals = Relation.critical_intervals(pair_df, labels)
         for points in np.split(critical_intervals, np.where(np.diff(critical_intervals) != 1)[0] + 1):
             ax2.axvspan(points[0] - 0.5, points[-1] + 0.5, color="red", alpha=0.1)
 

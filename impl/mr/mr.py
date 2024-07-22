@@ -191,9 +191,10 @@ class Relation(ABC):
         The `float` value denotes the extent to which this relation is violated.
         """
         labels = Relation.convert_labels(labels)
-        _, df = Relation.dtw_dataframe(source, follow_up, self.field, labels)
+        _, df = Relation.dtw_dataframe(source, follow_up, self.field, labels) if CONFIG["violation"]["dtw"] \
+            else Relation.pairwise_dataframe(source, follow_up, self.field, labels)
         critical_intervals = Relation.critical_intervals(df, labels)
-        df = df.iloc[critical_intervals]
+        df = df.loc[critical_intervals]
         if df.empty: return False, None
 
         df["extent"] = df.apply(self._extent_func, axis=1, result_type="reduce")
@@ -210,7 +211,7 @@ class Relation(ABC):
 
     @staticmethod
     def dtw_dataframe(source, follow_up, field, labels, radius=5):
-        """Generate `DataFrame` from source and follow-up results using DTW algorithm.
+        """Generate a `DataFrame` from source and follow-up results using DTW algorithm.
 
         @param source: The `DataFrame` of the source result.
         @param follow_up: The `DataFrame` of the follow-up result.
@@ -228,6 +229,25 @@ class Relation(ABC):
               for label in [Relation._d] + labels],
         ) for i, j in matches], columns=(Relation._s, Relation._f, *([Relation._d] + labels)))
         return matches, df
+
+    @staticmethod
+    def pairwise_dataframe(source, follow_up, field, labels):
+        """Generate a `DataFrame` from source and follow-up results based on common indices.
+
+        @param source: The `DataFrame` of the source result.
+        @param follow_up: The `DataFrame` of the follow-up result.
+        @param field: The metric to be compared.
+        @param labels: Labels determining the perturbed objects.
+        @return: A tuple of matches and the generated `DataFrame`.
+        """
+        indices = source.index.union(follow_up.index)
+        df = pd.DataFrame([(
+            source[field].get(i, np.nan), follow_up[field].get(i, np.nan),
+            *[np.nanmin([d.get(label, pd.Series()).get(i, np.nan) for d in [source, follow_up]])
+              for label in [Relation._d] + labels],
+        ) for i in indices], columns=(Relation._s, Relation._f, *([Relation._d] + labels)))
+        df.set_index(indices, inplace=True)
+        return [(i, i) for i in indices], df
 
     @staticmethod
     def critical_intervals(dataframe, labels):
