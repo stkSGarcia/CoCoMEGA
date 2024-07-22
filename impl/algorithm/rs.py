@@ -23,6 +23,7 @@ class RandomSearch(BaseAlgorithm):
                 raise ValueError("No checkpoints found.")
             logger.info(f"Resuming from checkpoint: {files[0]}.")
             with open(os.path.join(CONFIG["workspace"]["checkpoint"], files[0]), "rb") as f:
+                current_solutions = pickle.load(f)
                 archive_solution = pickle.load(f)
                 evaluated_solutions = pickle.load(f)
                 simulation_runner.evaluated_scenarios = Manager().list(pickle.load(f))
@@ -74,6 +75,7 @@ class RandomSearch(BaseAlgorithm):
             # Store the current status into a checkpoint.
             with open(os.path.join(CONFIG["workspace"]["checkpoint"], f"{int(round(time.time() * 1000))}.pickle"),
                       "wb") as f:
+                pickle.dump(current_solutions, f)
                 pickle.dump(archive_solution, f)
                 pickle.dump(evaluated_solutions, f)
                 pickle.dump(list(simulation_runner.evaluated_scenarios), f)
