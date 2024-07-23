@@ -311,11 +311,10 @@ class Visualizer:
                         df.fillna(0, inplace=True)
                     full[pop_name].append(df)
                 df_solution["sim"] = df_solution["sim"].cumsum()
-                lower = int(np.ceil(df["sim"].iloc[0] / interval)) * interval
-                low = min(low, lower)
-                upper = int(np.floor(df["sim"].iloc[-1] / interval)) * interval
-                high = max(high, upper)
+                low = min(low, int(np.ceil(df["sim"].iloc[0] / interval)) * interval)
+                high = max(high, int(np.floor(df["sim"].iloc[-1] / interval)) * interval)
 
+            helper = pd.DataFrame({"sim": range(low, high + 1, interval)})
             for pop_name, df_list in full.items():
                 df = pd.concat(df_list).sort_values("sim", ascending=True)
                 merged[pop_name] = df
@@ -323,8 +322,7 @@ class Visualizer:
                 for df in df_list:
                     first_row, last_row = df.iloc[0].copy(), df.iloc[-1].copy()
                     first_row["sim"], last_row["sim"] = low, high
-                    df = df.append([first_row, last_row], ignore_index=True)
-                    helper = pd.DataFrame({"sim": range(low, high + 1, interval)})
+                    df = pd.concat([pd.DataFrame([first_row]), df, pd.DataFrame([last_row])], ignore_index=True)
                     agg_df = pd.merge(df, helper, on="sim", how="outer").sort_values("sim", ascending=True)
                     for metric in ("len", "std", "min", "avg", "max"):
                         agg_df[metric].interpolate("linear", inplace=True)
