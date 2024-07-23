@@ -2,6 +2,7 @@ import logging
 import os
 import pickle
 import time
+from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List
 
@@ -276,14 +277,14 @@ class Visualizer:
         if show: plt.show()
 
     @staticmethod
-    def visualize_comparison(files: Dict[str, List[str]], pop_name="archive",
-                             box=True, interval=10, avg_line=False,
+    def visualize_comparison(files: Dict[str, List[str]], max_percentile=0.75,
+                             box=True, interval=15, avg_line=False,
                              trend_line=True, regression_degree=3, all_lines=False,
                              plot_nan=True, show=False):
         """Plot comparisons among different algorithms.
 
         @param files: Statistics data files of different algorithms.
-        @param pop_name: The name of the population for comparison. Options are "archive" and "solution".
+        @param max_percentile: Plot the given percentile of max fitness.
         @param box: Show box plots.
         @param interval: Width of intervals for aggregation.
         @param avg_line: Show average lines.
@@ -295,46 +296,67 @@ class Visualizer:
         """
         data = {}
         for name, file_list in files.items():
-            df_list = []
+            full, merged, agg = defaultdict(list), {}, {}
+            low, high = float("inf"), float("-inf")
             for file in file_list:
                 with open(file, "rb") as f:
                     df = pd.DataFrame(pickle.load(f))
-                df = df.groupby("pop").get_group(pop_name).sort_values("gen", ascending=True)
-                for metric in ("std", "min", "avg", "max"):
-                    df[metric] = df[metric].apply(lambda x: x[0])
-                if plot_nan:
-                    df.fillna(0, inplace=True)
-                if pop_name == "solution":
-                    df["sim"] = df["sim"].cumsum()
-                df_list.append(df)
-            df = pd.concat(df_list).sort_values("sim", ascending=True)
-            lower = int(np.floor(df["sim"].iloc[0] / interval)) * interval
-            upper = int(np.ceil(df["sim"].iloc[-1] / interval)) * interval
-            agg = df.groupby(pd.cut(df["sim"], range(lower, upper + 1, interval))).agg(list).drop(columns="pop")
-            agg = agg[agg["gen"].str.len() > 0]
-            agg["sim"] = agg["sim"].apply(np.nanmean)
-            data[name] = (df_list, df, agg)
+                groups = df.groupby("pop")
+                df_solution = groups.get_group("solution").sort_values("gen", ascending=True)
+                df_archive = groups.get_group("archive").sort_values("gen", ascending=True)
+                for df, pop_name in ((df_solution, "solution"), (df_archive, "archive")):
+                    for metric in ("std", "min", "avg", "max"):
+                        df[metric] = df[metric].apply(lambda x: x[0])
+                    if plot_nan:
+                        df.fillna(0, inplace=True)
+                    full[pop_name].append(df)
+                df_solution["sim"] = df_solution["sim"].cumsum()
+                lower = int(np.ceil(df["sim"].iloc[0] / interval)) * interval
+                low = min(low, lower)
+                upper = int(np.floor(df["sim"].iloc[-1] / interval)) * interval
+                high = max(high, upper)
 
-        fig = plt.figure(figsize=(20, 12))
+            for pop_name, df_list in full.items():
+                df = pd.concat(df_list).sort_values("sim", ascending=True)
+                merged[pop_name] = df
+                agg_list = []
+                for df in df_list:
+                    first_row, last_row = df.iloc[0].copy(), df.iloc[-1].copy()
+                    first_row["sim"], last_row["sim"] = low, high
+                    df = df.append([first_row, last_row], ignore_index=True)
+                    helper = pd.DataFrame({"sim": range(low, high + 1, interval)})
+                    agg_df = pd.merge(df, helper, on="sim", how="outer").sort_values("sim", ascending=True)
+                    for metric in ("len", "std", "min", "avg", "max"):
+                        agg_df[metric].interpolate("linear", inplace=True)
+                    agg_df = agg_df[agg_df["sim"] % interval == 0]
+                    agg_list.append(agg_df)
+                df = pd.concat(agg_list).groupby("sim").agg(list)
+                df["max"] = df["max"].apply(lambda x: [i for i in x if i >= np.quantile(x, max_percentile)])
+                agg[pop_name] = df
+            data[name] = (full, merged, agg)
+
+        fig = plt.figure(figsize=(20, 15))
         ax1 = fig.add_subplot(3, 1, 1)
         ax2 = fig.add_subplot(3, 1, 2, sharex=ax1)
         ax3 = fig.add_subplot(3, 1, 3, sharex=ax1)
         legend_elements = {}
-        for ax, metric, title in ((ax1, "len", "#violations"),
-                                  (ax2, "max", "Max fitness"),
-                                  (ax3, "avg", "Average fitness")):
-            for (name, (df_list, df, agg)), color in zip(data.items(), ("C1", "C2", "C0", "C4")):
+        for ax, metric, pop_name, title in ((ax1, "len", "archive", "#violations"),
+                                            (ax2, "max", "solution",
+                                             f"Max fitness{f' (percentile: {max_percentile})' if max_percentile > 0 else ''} "),
+                                            (ax3, "avg", "solution", "Average fitness")):
+            for (name, (full, merged, agg)), color in zip(data.items(), ("C1", "C2", "C0", "C4")):
+                full, merged, agg = full[pop_name], merged[pop_name], agg[pop_name]
                 if box:
-                    ax.boxplot(agg[metric], positions=agg["sim"], widths=2, patch_artist=True, manage_ticks=False,
-                               showfliers=False, boxprops=dict(facecolor=color, alpha=0.4))
+                    ax.boxplot(agg[metric], positions=agg.index.values, widths=2, patch_artist=True, manage_ticks=False,
+                               whis=(0, 100), boxprops=dict(facecolor=color, alpha=0.4))
                 if avg_line:
-                    ax.plot(agg["sim"], agg[metric].apply(np.nanmean), "o-", color=color)
+                    ax.plot(agg.index.values, agg[metric].apply(np.nanmean), "o-", color=color)
                 if trend_line:
-                    f = np.poly1d(np.polyfit(df["sim"], df[metric], regression_degree))
-                    ax.plot(df["sim"], f(df["sim"]), "-", color=color)
+                    f = np.poly1d(np.polyfit(merged["sim"], merged[metric], regression_degree))
+                    ax.plot(merged["sim"], f(merged["sim"]), "-", lw=2, color=color)
                 if all_lines:
-                    for line in df_list:
-                        ax.plot(line["sim"], line[metric], "x--", color=color, alpha=0.6)
+                    for line in full:
+                        ax.plot(line["sim"], line[metric], "x--", lw=1, color=color, alpha=0.6)
                 if name not in legend_elements:
                     legend_elements[name] = Line2D([0], [0], linestyle="-", marker="o",
                                                    color=color, lw=2, label=verbose_map[name])
