@@ -3,12 +3,13 @@ import math
 import random
 from abc import ABC
 from enum import Enum, auto
+from functools import partial
 from typing import List
 
 import numpy as np
 import pandas as pd
 from deap import tools
-from tslearn.metrics import dtw_path
+from tslearn.metrics import dtw_path, ctw_path
 
 from impl.config import CONFIG
 from impl.scenario import scenario_definition
@@ -210,19 +211,21 @@ class Relation(ABC):
         return [f"{Relation._d}-{label}" for label in labels or set()]
 
     @staticmethod
-    def dtw_dataframe(source, follow_up, field, labels, radius=5):
+    def dtw_dataframe(source, follow_up, field, labels):
         """Generate a `DataFrame` from source and follow-up results using DTW algorithm.
 
         @param source: The `DataFrame` of the source result.
         @param follow_up: The `DataFrame` of the follow-up result.
         @param field: The metric to be compared.
         @param labels: Labels determining the perturbed objects.
-        @param radius: The Sakoe-Chiba radius.
         @return: A tuple of the DTW path and the generated `DataFrame`.
         """
+        if CONFIG["violation"]["strategy"] == "position":
+            func, columns = partial(ctw_path), ["position_x", "position_y"]
+        else:
+            func, columns = partial(dtw_path, global_constraint="sakoe_chiba", sakoe_chiba_radius=5), field
         matches = [(source.index.values[i], follow_up.index.values[j])
-                   for i, j in dtw_path(source[field], follow_up[field],
-                                        global_constraint="sakoe_chiba", sakoe_chiba_radius=radius)[0]]
+                   for i, j in func(source[columns].to_numpy(), follow_up[columns].to_numpy())[0]]
         df = pd.DataFrame([(
             source.loc[i, field], follow_up.loc[j, field],
             *[np.nanmin([source.loc[i].get(label, np.nan), follow_up.loc[j].get(label, np.nan)])
