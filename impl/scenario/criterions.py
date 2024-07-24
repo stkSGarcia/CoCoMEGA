@@ -69,6 +69,11 @@ class VehicleMeasurementTest(Criterion):
                 **{measure: getattr(control, measure, None) for measure in self.measures if
                    hasattr(control, measure)},
             }
+            if 'position' in self.measures:
+                position = self.actor.get_transform().location
+                measure_dict['position_x'] = position.x
+                measure_dict['position_y'] = position.y
+
             if 'velocity' in self.measures:
                 velocity = self.actor.get_velocity()
                 measure_dict['velocity_x'] = velocity.x

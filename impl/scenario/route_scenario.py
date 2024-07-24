@@ -489,7 +489,7 @@ class RouteScenario(BasicScenario):
         vehicle_measurement = VehicleMeasurementTest(
             actor=self.ego_vehicles[0],
             other_actors=self.other_actors,
-            measures=['brake', 'throttle', 'steer', 'velocity'],
+            measures=['brake', 'throttle', 'steer', 'velocity', 'position'],
             measurement_interval=CONFIG["simulation"]["measurement_interval"],
             scenario_def_id=self.scenario_definition.id_,
         )
