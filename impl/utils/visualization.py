@@ -2,6 +2,7 @@ import logging
 import os
 import pickle
 import time
+from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List
 
@@ -9,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from matplotlib.lines import Line2D
 from matplotlib.ticker import MaxNLocator
 
 from impl.config import CONFIG
@@ -27,6 +29,7 @@ verbose_map = {
     'ccea': 'CCEA',
     'rs': 'Random Search',
     'ga': 'Standard Genetic Algorithm',
+    'gawa': 'SGA with Archives',
 }
 
 
@@ -274,52 +277,95 @@ class Visualizer:
         if show: plt.show()
 
     @staticmethod
-    def visualize_comparison(files: Dict[str, List[str]], plot_nan=True, show=False):
+    def visualize_comparison(files: Dict[str, List[str]], max_percentile=0.75,
+                             box=True, interval=15, avg_line=False,
+                             trend_line=True, regression_degree=3, all_lines=False,
+                             plot_nan=True, show=False):
         """Plot comparisons among different algorithms.
 
         @param files: Statistics data files of different algorithms.
+        @param max_percentile: Plot the given percentile of max fitness.
+        @param box: Show box plots.
+        @param interval: Width of intervals for aggregation.
+        @param avg_line: Show average lines.
+        @param trend_line: Show trend lines.
+        @param regression_degree: Degree of regression.
+        @param all_lines: Show original lines.
         @param plot_nan: Plot NaN values.
         @param show: A boolean to determine whether to show the plots or not.
         """
         data = {}
         for name, file_list in files.items():
-            df_list = []
+            full, merged, agg = defaultdict(list), {}, {}
+            low, high = float("inf"), float("-inf")
             for file in file_list:
                 with open(file, "rb") as f:
                     df = pd.DataFrame(pickle.load(f))
-                df = df.groupby("pop").get_group("archive").sort_values("gen", ascending=True)
-                for metric in ("std", "min", "avg", "max"):
-                    df[metric] = df[metric].apply(lambda x: x[0])
-                if plot_nan:
-                    df.fillna(0, inplace=True)
-                df_list.append(df)
-            data[name] = pd.concat(df_list).groupby("gen").agg(list)
+                groups = df.groupby("pop")
+                df_solution = groups.get_group("solution").sort_values("gen", ascending=True)
+                df_archive = groups.get_group("archive").sort_values("gen", ascending=True)
+                for df, pop_name in ((df_solution, "solution"), (df_archive, "archive")):
+                    for metric in ("std", "min", "avg", "max"):
+                        df[metric] = df[metric].apply(lambda x: x[0])
+                    if plot_nan:
+                        df.fillna(0, inplace=True)
+                    full[pop_name].append(df)
+                df_solution["sim"] = df_solution["sim"].cumsum()
+                low = min(low, int(np.ceil(df["sim"].iloc[0] / interval)) * interval)
+                high = max(high, int(np.floor(df["sim"].iloc[-1] / interval)) * interval)
 
-        fig = plt.figure(figsize=(20, 12))
+            helper = pd.DataFrame({"sim": range(low, high + 1, interval)})
+            for pop_name, df_list in full.items():
+                df = pd.concat(df_list).sort_values("sim", ascending=True)
+                merged[pop_name] = df
+                agg_list = []
+                for df in df_list:
+                    first_row, last_row = df.iloc[0].copy(), df.iloc[-1].copy()
+                    first_row["sim"], last_row["sim"] = low, high
+                    df = pd.concat([pd.DataFrame([first_row]), df, pd.DataFrame([last_row])], ignore_index=True)
+                    agg_df = pd.merge(df, helper, on="sim", how="outer").sort_values("sim", ascending=True)
+                    for metric in ("len", "std", "min", "avg", "max"):
+                        agg_df[metric].interpolate("linear", inplace=True)
+                    agg_df = agg_df[agg_df["sim"] % interval == 0]
+                    agg_list.append(agg_df)
+                df = pd.concat(agg_list).groupby("sim").agg(list)
+                df["max"] = df["max"].apply(lambda x: [i for i in x if i >= np.quantile(x, max_percentile)])
+                agg[pop_name] = df
+            data[name] = (full, merged, agg)
+
+        fig = plt.figure(figsize=(20, 15))
         ax1 = fig.add_subplot(3, 1, 1)
         ax2 = fig.add_subplot(3, 1, 2, sharex=ax1)
-        ax3 = fig.add_subplot(3, 1, 3, sharex=ax1, sharey=ax2)
-
-        for (name, df), color in zip(data.items(), ("C1", "C2", "C0")):
-            size = len(df["sim"].iloc[0])
-            pos = df["sim"].apply(np.nanmean)
-            for ax, metric, title in ((ax1, "len", "#violations"),
-                                      (ax2, "max", "Max fitness of the archive"),
-                                      (ax3, "avg", "Average fitness of the archive")):
-                ax.plot(pos, df[metric].apply(np.nanmean), "o:", color=color, label=verbose_map[name])
-                if size > 1:
-                    ax.boxplot(df[metric], positions=pos, widths=2, patch_artist=True, manage_ticks=False,
-                               showfliers=False, boxprops=dict(facecolor=color, alpha=0.4))
-                ax.set_title(title, fontsize=20)
-                ax.tick_params(labelsize=13)
-                ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-                ax.set_ylabel("#violations" if ax == ax1 else "Fitness", fontsize=15)
+        ax3 = fig.add_subplot(3, 1, 3, sharex=ax1)
+        legend_elements = {}
+        for ax, metric, pop_name, title in ((ax1, "len", "archive", "#violations"),
+                                            (ax2, "max", "solution",
+                                             f"Max fitness{f' (percentile: {max_percentile})' if max_percentile > 0 else ''} "),
+                                            (ax3, "avg", "solution", "Average fitness")):
+            for (name, (full, merged, agg)), color in zip(data.items(), ("C1", "C2", "C0", "C4")):
+                full, merged, agg = full[pop_name], merged[pop_name], agg[pop_name]
+                if box:
+                    ax.boxplot(agg[metric], positions=agg.index.values, widths=2, patch_artist=True, manage_ticks=False,
+                               whis=(0, 100), boxprops=dict(facecolor=color, alpha=0.4))
+                if avg_line:
+                    ax.plot(agg.index.values, agg[metric].apply(np.nanmean), "o-", color=color)
+                if trend_line:
+                    f = np.poly1d(np.polyfit(merged["sim"], merged[metric], regression_degree))
+                    ax.plot(merged["sim"], f(merged["sim"]), "-", lw=2, color=color)
+                if all_lines:
+                    for line in full:
+                        ax.plot(line["sim"], line[metric], "x--", lw=1, color=color, alpha=0.6)
+                if name not in legend_elements:
+                    legend_elements[name] = Line2D([0], [0], linestyle="-", marker="o",
+                                                   color=color, lw=2, label=verbose_map[name])
+            ax.set_title(title, fontsize=20)
+            ax.tick_params(labelsize=13)
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            ax.set_ylabel("#violations" if ax == ax1 else "Fitness", fontsize=15)
+            ax.grid()
 
         ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
-        ax1.legend(fontsize=15)
-        ax1.grid()
-        ax2.grid()
-        ax3.grid()
+        ax1.legend(handles=legend_elements.values(), fontsize=15)
         fig.supxlabel("#simulations", fontsize=15)
         fig.tight_layout()
         fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], "comparison.png"))
@@ -336,23 +382,20 @@ class Visualizer:
         @param offset: The offset between the source and follow-up curves.
         @param show: A boolean to determine whether to show the plots or not.
         """
-        origin_index = source.index.union(follow_up.index)
-        origin_df = pd.DataFrame([(
-            source[mr_set.field].get(i, np.nan),
-            follow_up[mr_set.field].get(i, np.nan)
-        ) for i in origin_index], columns=(Relation._s, Relation._f))
-        origin_df.set_index(origin_index, inplace=True)
-
         labels = Relation.convert_labels(mr_set.labels)
-        matches, dtw_df = Relation.dtw_dataframe(source, follow_up, mr_set.field, labels)
+        matches, origin_df = Relation.pairwise_dataframe(source, follow_up, mr_set.field, labels)
+        if CONFIG["violation"]["dtw"]:
+            matches, pair_df = Relation.dtw_dataframe(source, follow_up, mr_set.field, labels)
+        else:
+            pair_df = origin_df.reset_index()
 
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8), sharey="all")
-        for ax, df, title in zip((ax1, ax2), (origin_df, dtw_df), ("Original difference", "DTW difference")):
+        for ax, df, title in zip((ax1, ax2), (origin_df, pair_df), ("Matches", "Difference")):
             ax.plot(df.index.values, df[Relation._s], "-C0", label="source")
             ax.plot(df.index.values, df[Relation._f] + (offset if ax is ax1 else 0), "-C1", label="follow-up")
             ax.plot(df.index.values, df.apply(mr_set.relation._extent_func, axis=1, result_type="reduce"),
                     "o:C2", label="difference")
-            ax1.set_title(title, fontsize=20)
+            ax.set_title(title, fontsize=20)
             ax.tick_params(labelsize=13)
             ax.set_xlabel("Tick" if ax == ax1 else "Match", fontsize=15)
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -361,7 +404,7 @@ class Visualizer:
         for x, y in matches:
             ax1.plot((x, y), (source.loc[x, mr_set.field], follow_up.loc[y, mr_set.field] + offset), "--", color="gray")
 
-        critical_intervals = Relation.critical_intervals(dtw_df, labels)
+        critical_intervals = Relation.critical_intervals(pair_df, labels)
         for points in np.split(critical_intervals, np.where(np.diff(critical_intervals) != 1)[0] + 1):
             ax2.axvspan(points[0] - 0.5, points[-1] + 0.5, color="red", alpha=0.1)
 
