@@ -339,16 +339,21 @@ class Visualizer:
 
         height = 4
         title_size, text_size, tick_size = height * 5, height * 4, height * 3
-        row_num = 3 if verbose else 2
+        row_num = 5 if verbose else 2
         fig = plt.figure(figsize=(height * 4, height * row_num))
         ax1 = fig.add_subplot(row_num, 1, 1)
         ax2 = fig.add_subplot(row_num, 1, 2, sharex=ax1)
         plots = [(ax1, "len", "archive", "#violations"),
                  (ax2, "max", "solution",
-                  f"Max fitness{f' (percentile: {max_percentile})' if max_percentile > 0 else ''} ")]
+                  f"Max fitness{f' (percentile: {max_percentile})' if max_percentile > 0 else ''}")]
         if verbose:
             ax3 = fig.add_subplot(row_num, 1, 3, sharex=ax1)
-            plots.append((ax3, "avg", "solution", "Average fitness"))
+            ax4 = fig.add_subplot(row_num, 1, 4, sharex=ax1, sharey=ax2)
+            ax5 = fig.add_subplot(row_num, 1, 5, sharex=ax1, sharey=ax3)
+            plots += [(ax3, "avg", "solution", "Average fitness"),
+                      (ax4, "max", "archive",
+                       f"Max fitness of archives{f' (percentile: {max_percentile})' if max_percentile > 0 else ''}"),
+                      (ax5, "avg", "archive", "Average fitness of archives")]
         legend_elements = {}
 
         for ax, metric, pop_name, title in plots:
