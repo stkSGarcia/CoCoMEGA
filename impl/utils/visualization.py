@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
 from matplotlib.ticker import MaxNLocator
 
@@ -210,14 +211,14 @@ class Visualizer:
         fig.write_image(os.path.join(out_dir, name))
 
     @staticmethod
-    def visualize_in_one(data, verbose=False, plot_nan=True, show=False, file_name=None):
+    def visualize_in_one(data, file_name=None, plot_nan=True, verbose=False, show=False):
         """Plot all statistics data in one figure.
 
         @param data: Statistics data or data file.
-        @param verbose: Show plots of populations and archives.
-        @param plot_nan: Plot NaN values.
-        @param show: A boolean to determine whether to show the plots or not.
         @param file_name: Specify the file name for plots when the data is not a file path.
+        @param plot_nan: Plot NaN values.
+        @param verbose: Show plots of populations and archives.
+        @param show: A boolean to determine whether to show the plots or not.
         """
         if isinstance(data, str):
             file_name = Path(data).stem
@@ -240,18 +241,20 @@ class Visualizer:
         plots = core_plots + addition_plots if verbose else core_plots
         row_num = int(np.ceil(len(plots) / 3))
         column_num = len(plots) if row_num == 1 else 3
+        height = 4
+        title_size, text_size, tick_size = height * 5, height * 4, height * 3
 
         def _plot_metrics(_ax, _pop, _name, xlabel=False, ylabel=False, legend=False):
             for _metric, _fmt in [("std", ":C0"), ("min", "--C1"), ("avg", "o-C2"), ("max", "--C3")]:
                 _ax.plot(_pop["gen"], _pop[_metric], _fmt, label=_metric)
-            _ax.set_title(verbose_map[_name], fontsize=20)
-            _ax.tick_params(labelsize=13)
+            _ax.set_title(verbose_map[_name], fontsize=title_size)
+            _ax.tick_params(labelsize=tick_size)
             _ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-            if xlabel: _ax.set_xlabel("Generation", fontsize=15)
-            if ylabel: _ax.set_ylabel("Fitness", fontsize=15)
-            if legend: _ax.legend(fontsize=15)
+            if xlabel: _ax.set_xlabel("Generation", fontsize=text_size)
+            if ylabel: _ax.set_ylabel("Fitness", fontsize=text_size)
+            if legend: _ax.legend(fontsize=text_size)
 
-        fig = plt.figure(figsize=(6 * column_num, 4 * row_num))
+        fig = plt.figure(figsize=(height * 1.5 * column_num, height * row_num))
         axs = []
         for i, name in enumerate(plots):
             ax = fig.add_subplot(row_num, column_num, i + 1,
@@ -264,14 +267,14 @@ class Visualizer:
             else:
                 ax.plot(pop["gen"], pop["len"], "o-C4", label="#violations")
                 ax.plot(pop["gen"], pop["sim"], "x-C5", label="#simulations")
-                ax.set_title("#violations & #simulations", fontsize=20)
-                ax.set_ylabel("Num", fontsize=15)
-                ax.tick_params(labelsize=13)
+                ax.set_title("#violations & #simulations", fontsize=title_size)
+                ax.set_ylabel("Num", fontsize=text_size)
+                ax.tick_params(labelsize=tick_size)
                 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
                 ax.yaxis.set_major_locator(MaxNLocator(integer=True))
-                ax.legend(fontsize=15)
+                ax.legend(fontsize=text_size)
 
-        fig.supxlabel("Generation", fontsize=15)
+        fig.supxlabel("Generation", fontsize=text_size)
         fig.tight_layout()
         fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"{file_name}.png"))
         if show: plt.show()
@@ -280,7 +283,7 @@ class Visualizer:
     def visualize_comparison(files: Dict[str, List[str]], max_percentile=0.75,
                              box=True, interval=15, avg_line=False,
                              trend_line=True, regression_degree=3, all_lines=False,
-                             plot_nan=True, show=False):
+                             plot_nan=True, verbose=False, show=False):
         """Plot comparisons among different algorithms.
 
         @param files: Statistics data files of different algorithms.
@@ -292,6 +295,7 @@ class Visualizer:
         @param regression_degree: Degree of regression.
         @param all_lines: Show original lines.
         @param plot_nan: Plot NaN values.
+        @param verbose: Show more plots.
         @param show: A boolean to determine whether to show the plots or not.
         """
         data = {}
@@ -333,15 +337,26 @@ class Visualizer:
                 agg[pop_name] = df
             data[name] = (full, merged, agg)
 
-        fig = plt.figure(figsize=(20, 15))
-        ax1 = fig.add_subplot(3, 1, 1)
-        ax2 = fig.add_subplot(3, 1, 2, sharex=ax1)
-        ax3 = fig.add_subplot(3, 1, 3, sharex=ax1)
+        height = 4
+        title_size, text_size, tick_size = height * 5, height * 4, height * 3
+        row_num = 5 if verbose else 2
+        fig = plt.figure(figsize=(height * 4, height * row_num))
+        ax1 = fig.add_subplot(row_num, 1, 1)
+        ax2 = fig.add_subplot(row_num, 1, 2, sharex=ax1)
+        plots = [(ax1, "len", "archive", "#violations"),
+                 (ax2, "max", "solution",
+                  f"Max fitness{f' (percentile: {max_percentile})' if max_percentile > 0 else ''}")]
+        if verbose:
+            ax3 = fig.add_subplot(row_num, 1, 3, sharex=ax1)
+            ax4 = fig.add_subplot(row_num, 1, 4, sharex=ax1, sharey=ax2)
+            ax5 = fig.add_subplot(row_num, 1, 5, sharex=ax1, sharey=ax3)
+            plots += [(ax3, "avg", "solution", "Average fitness"),
+                      (ax4, "max", "archive",
+                       f"Max fitness of archives{f' (percentile: {max_percentile})' if max_percentile > 0 else ''}"),
+                      (ax5, "avg", "archive", "Average fitness of archives")]
         legend_elements = {}
-        for ax, metric, pop_name, title in ((ax1, "len", "archive", "#violations"),
-                                            (ax2, "max", "solution",
-                                             f"Max fitness{f' (percentile: {max_percentile})' if max_percentile > 0 else ''} "),
-                                            (ax3, "avg", "solution", "Average fitness")):
+
+        for ax, metric, pop_name, title in plots:
             for (name, (full, merged, agg)), color in zip(data.items(), ("C1", "C2", "C0", "C4")):
                 full, merged, agg = full[pop_name], merged[pop_name], agg[pop_name]
                 if box:
@@ -358,21 +373,21 @@ class Visualizer:
                 if name not in legend_elements:
                     legend_elements[name] = Line2D([0], [0], linestyle="-", marker="o",
                                                    color=color, lw=2, label=verbose_map[name])
-            ax.set_title(title, fontsize=20)
-            ax.tick_params(labelsize=13)
+            ax.set_title(title, fontsize=title_size)
+            ax.tick_params(labelsize=tick_size)
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-            ax.set_ylabel("#violations" if ax == ax1 else "Fitness", fontsize=15)
+            ax.set_ylabel("#violations" if ax == ax1 else "Fitness", fontsize=text_size)
             ax.grid()
 
         ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
-        ax1.legend(handles=legend_elements.values(), fontsize=15)
-        fig.supxlabel("#simulations", fontsize=15)
+        ax1.legend(handles=legend_elements.values(), fontsize=text_size)
+        fig.supxlabel("#simulations", fontsize=text_size)
         fig.tight_layout()
         fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], "comparison.png"))
         if show: plt.show()
 
     @staticmethod
-    def visualize_violation(source, follow_up, mr_set, offset=3, show=False):
+    def visualize_violation(source, follow_up, mr_set, offset=3, verbose=False, show=False):
         """Plot the extent of violation between the source results
         and follow-up results based on the given metamorphic relations.
 
@@ -380,6 +395,7 @@ class Visualizer:
         @param follow_up: The follow-up results.
         @param mr_set: The given metamorphic relations.
         @param offset: The offset between the source and follow-up curves.
+        @param verbose: Plot the DTW path and matches of positions.
         @param show: A boolean to determine whether to show the plots or not.
         """
         labels = Relation.convert_labels(mr_set.labels)
@@ -389,26 +405,64 @@ class Visualizer:
         else:
             pair_df = origin_df.reset_index()
 
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8), sharey="all")
-        for ax, df, title in zip((ax1, ax2), (origin_df, pair_df), ("Matches", "Difference")):
+        row_num = 7 if verbose and CONFIG["violation"]["dtw"] else 4
+        column_num, height = 6, 3
+        title_size, text_size, tick_size = height * 7, height * 5, height * 4
+        fig = plt.figure(figsize=(height * column_num, height * row_num))
+        gs = GridSpec(row_num, column_num, figure=fig)
+        ax1 = fig.add_subplot(gs[0:2, :])
+        ax2 = fig.add_subplot(gs[2:4, :], sharey=ax1)
+
+        for ax, df, title in zip((ax1, ax2), (origin_df, pair_df), (f"Matches of {mr_set.field}", "Difference")):
             ax.plot(df.index.values, df[Relation._s], "-C0", label="source")
             ax.plot(df.index.values, df[Relation._f] + (offset if ax is ax1 else 0), "-C1", label="follow-up")
             ax.plot(df.index.values, df.apply(mr_set.relation._extent_func, axis=1, result_type="reduce"),
                     "o:C2", label="difference")
-            ax.set_title(title, fontsize=20)
-            ax.tick_params(labelsize=13)
-            ax.set_xlabel("Tick" if ax == ax1 else "Match", fontsize=15)
+            ax.set_title(title, fontsize=title_size)
+            ax.tick_params(labelsize=tick_size)
+            ax.set_xlabel("Tick" if ax == ax1 else "Match", fontsize=text_size)
+            ax.set_ylabel(mr_set.field.capitalize(), fontsize=text_size)
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-        ax1.legend(fontsize=15)
+        ax1.legend(fontsize=text_size)
 
         for x, y in matches:
-            ax1.plot((x, y), (source.loc[x, mr_set.field], follow_up.loc[y, mr_set.field] + offset), "--", color="gray")
+            ax1.plot((x, y), (source.loc[x, mr_set.field], follow_up.loc[y, mr_set.field] + offset),
+                     "--", color="gray", zorder=1)
 
         critical_intervals = Relation.critical_intervals(pair_df, labels)
-        for points in np.split(critical_intervals, np.where(np.diff(critical_intervals) != 1)[0] + 1):
-            ax2.axvspan(points[0] - 0.5, points[-1] + 0.5, color="red", alpha=0.1)
+        if len(critical_intervals) > 0:
+            for points in np.split(critical_intervals, np.where(np.diff(critical_intervals) != 1)[0] + 1):
+                ax2.axvspan(points[0] - 0.5, points[-1] + 0.5, color="red", alpha=0.1)
 
-        fig.supylabel(mr_set.field.capitalize(), fontsize=15)
+        if verbose and CONFIG["violation"]["dtw"]:
+            ax3 = fig.add_subplot(gs[4:, :3])
+            ax3.plot(*list(zip(*matches)), "-C3", label="DTW path")
+            ax3.set_title("DTW path", fontsize=title_size)
+            ax3.tick_params(labelsize=tick_size)
+            ax3.set_xlabel("Tick", fontsize=text_size)
+            ax3.set_ylabel("Tick", fontsize=text_size)
+            ax3.xaxis.set_major_locator(MaxNLocator(integer=True))
+            ax3.yaxis.set_major_locator(MaxNLocator(integer=True))
+            ax3.legend(fontsize=text_size)
+
+            if CONFIG["violation"]["strategy"] == "position":
+                ax4 = fig.add_subplot(gs[4:, 3:])
+                for df, color, shift in zip((source, follow_up), ("C0", "C1"), (0, offset)):
+                    x, y = (df["position_x"] - shift).to_numpy(), (df["position_y"] - shift).to_numpy()
+                    ax4.quiver(x[:-1], y[:-1], np.diff(x), np.diff(y), angles="xy", scale_units="xy", scale=1,
+                               units="dots", width=3, color=color)
+                ax4.set_title("Matches of positions", fontsize=title_size)
+                ax4.tick_params(labelsize=tick_size)
+                ax4.set_xlabel("x", fontsize=text_size)
+                ax4.set_ylabel("y", fontsize=text_size)
+                ax4.xaxis.set_major_locator(MaxNLocator(integer=True))
+                ax4.yaxis.set_major_locator(MaxNLocator(integer=True))
+
+                for x, y in matches:
+                    ax4.plot((source.loc[x, "position_x"], follow_up.loc[y, "position_x"] - offset),
+                             (source.loc[x, "position_y"], follow_up.loc[y, "position_y"] - offset),
+                             "--", color="gray", zorder=1)
+
         fig.tight_layout()
         fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], "violation.png"))
         if show: plt.show()

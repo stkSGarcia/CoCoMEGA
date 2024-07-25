@@ -77,7 +77,7 @@ perturbation:
   overproduction: 10
 
 violation:
-  strategy: simulation  # Options: curve, simulation
+  strategy: position  # Options: curve, position
   threshold:
     velocity: 1.0
     steer: 0.1
