@@ -1,6 +1,7 @@
 import math
-
+import numpy as np
 from deap import creator, base, tools
+from copy import deepcopy
 
 from impl.algorithm.base import Budget
 from impl.config import CONFIG
@@ -66,6 +67,7 @@ def _evaluate_solutions(solutions):
     @return: A list of complete solutions evaluated and the number of simulations.
     """
     scenarios = []
+    reeval = []
     for solution in solutions:
         scenarios.append(solution[0])
         follow_up = toolbox.clone(solution[0])
@@ -81,12 +83,75 @@ def _evaluate_solutions(solutions):
             solution.is_violated, extent = _fitness(source, follow_up)
             if extent:
                 solution.fitness.values = extent
+                if extent[0] >= CONFIG["violation"]["reevaluation"]["threshold"]:
+                    solution.reeval = True
+                    reeval.append(solution)
+                else:
+                    solution.reeval = False
             else:
                 del solution.fitness.values
+    else:
+        solution.is_violated = False
+        del solution.fitness.values
+
+    reeval_sim_num = _reevaluate(reeval) if len(reeval) > 0 else 0
+
+    return solutions, sim_num + reeval_sim_num
+
+
+def _reevaluate(solutions):
+    repeat = CONFIG["violation"]["reevaluation"]["repeat"]
+    aggregation = CONFIG["violation"]["reevaluation"]["aggregation"]
+    scenarios = []
+    for solution in solutions:
+        solution.eval_history = [{
+            'source': solution.source.copy(),
+            'follow_up': solution.follow_up.copy(),
+            'is_violated': solution.is_violated,
+            'fitness': deepcopy(solution.fitness),
+        }]
+        solution.aggregation = aggregation
+        for repetition in range(1, repeat):
+            scenarios.append(solution[0])
+            follow_up = toolbox.clone(solution[0])
+            follow_up.assign_new_id()
+            solution[1].perturb(follow_up)
+            scenarios.append(follow_up)
+    assert len(scenarios) == len(solutions) * 2 * (repeat - 1)
+    results, sim_num = run_scenarios(scenarios, rerun=True)
+
+    for i, source, follow_up in zip(range(len(solutions) * (repeat - 1)), results[::2], results[1::2]):
+        solution = solutions[int(i / (repeat - 1))]
+        fitness = deepcopy(solution.fitness)
+        if source is not None and follow_up is not None:
+            is_violated, extent = _fitness(source, follow_up)
+            if extent:
+                fitness.values = extent
+            else:
+                del fitness.values
         else:
-            solution.is_violated = False
-            del solution.fitness.values
-    return solutions, sim_num
+            is_violated = False
+            del fitness.values
+
+        solution.eval_history.append({
+            'source': source,
+            'follow_up': follow_up,
+            'is_violated': is_violated,
+            'fitness': fitness,
+        })
+
+    for solution in solutions:
+        fitnesses = [ev['fitness'].values[0] for ev in solution.eval_history]
+        aggregate_value = getattr(np, aggregation)(fitnesses)
+        aggregation_arg = np.abs([f - aggregate_value for f in fitnesses]).argmin()
+        selected_candidate = solution.eval_history[aggregation_arg]
+
+        solution.fitness.values = (aggregate_value,)
+        solution.source = selected_candidate['source']
+        solution.follow_up = selected_candidate['follow_up']
+        solution.is_violated = selected_candidate['is_violated']
+
+    return sim_num
 
 
 def _evaluate_individual(individual, complete_solutions):

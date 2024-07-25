@@ -83,6 +83,10 @@ violation:
     steer: 0.1
     max_ego_distance: 5 # Maximum distance in meters between ego-vehicle and closest object in simulation-based strategy
   dtw: true
+  reevaluation:
+    threshold: 0.2
+    repeat: 3
+    aggregation: median # Options: mean, median
 
 opt:
   niching:
