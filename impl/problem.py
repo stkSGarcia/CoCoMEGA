@@ -1,7 +1,8 @@
 import math
+from copy import deepcopy
+
 import numpy as np
 from deap import creator, base, tools
-from copy import deepcopy
 
 from impl.algorithm.base import Budget
 from impl.config import CONFIG
@@ -90,9 +91,9 @@ def _evaluate_solutions(solutions):
                     solution.reeval = False
             else:
                 del solution.fitness.values
-    else:
-        solution.is_violated = False
-        del solution.fitness.values
+        else:
+            solution.is_violated = False
+            del solution.fitness.values
 
     reeval_sim_num = _reevaluate(reeval) if len(reeval) > 0 else 0
 
