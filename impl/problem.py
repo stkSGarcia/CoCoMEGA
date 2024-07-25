@@ -112,7 +112,9 @@ def _reevaluate(solutions):
         }]
         solution.aggregation = aggregation
         for repetition in range(1, repeat):
-            scenarios.append(solution[0])
+            source = toolbox.clone(solution[0])
+            source.assign_new_id()
+            scenarios.append(source)
             follow_up = toolbox.clone(solution[0])
             follow_up.assign_new_id()
             solution[1].perturb(follow_up)
