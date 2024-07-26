@@ -13,6 +13,8 @@ import plotly.graph_objects as go
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
 from matplotlib.ticker import MaxNLocator
+from scipy.spatial.distance import squareform, pdist
+from sklearn.manifold import MDS
 
 from impl.config import CONFIG
 from impl.mr.mr import Relation
@@ -465,6 +467,30 @@ class Visualizer:
 
         fig.tight_layout()
         fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], "violation.png"))
+        if show: plt.show()
+
+    @staticmethod
+    def visualize_diversity(file, show=False):
+        with open(file, "rb") as f:
+            solutions = pickle.load(f)
+        if len(solutions) < 2:
+            logger.warning("No solutions or only one solution found.")
+            return
+
+        dist = lambda x, y: np.sqrt((x[0].dist(y[0])) ** 2 + (x[1].dist(y[1])) ** 2)
+        from impl.algorithm.base import BaseAlgorithm
+        diversity = BaseAlgorithm.population_diversity(solutions, dist)
+        logger.info(f"Population diversity: {diversity}, size: {len(solutions)}.")
+
+        dist_matrix = squareform(pdist(np.array(solutions, dtype=object).reshape((len(solutions), -1)), dist))
+        out = MDS(n_components=3, dissimilarity="precomputed").fit(dist_matrix).embedding_
+        fig, ax = plt.subplots(figsize=(10, 8))
+        ax = plt.axes(projection="3d")
+        ax.scatter3D(out[:, 0], out[:, 1], out[:, 2])
+        ax.view_init(azim=-5, elev=145)
+        ax.set_box_aspect((np.ptp(out[:, 0]), np.ptp(out[:, 1]), np.ptp(out[:, 2])))
+        fig.tight_layout()
+        fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"{Path(file).stem}-diversity.png"))
         if show: plt.show()
 
     @staticmethod

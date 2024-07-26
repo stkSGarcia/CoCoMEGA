@@ -162,13 +162,13 @@ class BaseAlgorithm:
                         else:
                             del individuals[j].fitness.values
 
-    def population_diversity(self, population):
+    @staticmethod
+    def population_diversity(population, dist=lambda x, y: x[0].dist(y[0])):
         """Calculate the Pure Diversity (PD) of the given population."""
         if len(population) == 0: return 0.0
         n = len(population)
         connected = np.eye(n, dtype=bool)
-        dist_matrix = squareform(pdist(np.array(population, dtype=object).reshape((len(population), -1)),
-                                       lambda x, y: x[0].dist(y[0])))
+        dist_matrix = squareform(pdist(np.array(population, dtype=object).reshape((len(population), -1)), dist))
         np.fill_diagonal(dist_matrix, np.inf)
         pd = 0.0
         for _ in range(n - 1):
