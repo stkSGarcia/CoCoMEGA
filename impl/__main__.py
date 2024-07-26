@@ -39,14 +39,18 @@ def simulate(num: int, file: str):
         run_scenarios([ScenarioDefinition.generate_random_or_leaderboard() for _ in range(num)])
 
 
-def visualize(files, mode: str):
-    if mode == "concise" or mode == "full":
+def visualize(files, mode: str, verbose: bool):
+    if mode == "stat":
         for file in files:
-            logger.info(f"Plotting statistics data from file: {file}.")
-            Visualizer.visualize_in_one(file, verbose=True if mode == "full" else False)
+            logger.info(f"Plotting statistics from file: {file}.")
+            Visualizer.visualize_in_one(file, verbose=verbose)
     elif mode == "compare":
         logger.info(f"Plotting comparisons.")
-        Visualizer.visualize_comparison(files)
+        Visualizer.visualize_comparison(files, verbose=verbose)
+    elif mode == "diversity":
+        for file in files:
+            logger.info(f"Plotting diversity from file: {file}.")
+            Visualizer.visualize_diversity(files)
     else:
         raise ValueError(f"Unsupported mode: {mode}.")
 
@@ -98,9 +102,10 @@ if __name__ == "__main__":
     parser_viz = subparsers.add_parser("visualize", aliases=["viz"], help="visualize the results")
     parser_viz.add_argument("-f", "--file", nargs="+", required=True, action=StoreDictKeyPair,
                             metavar="(VAL|KEY=VAL,VAL,...)", help="statistics files")
-    parser_viz.add_argument("-m", "--mode", choices=("concise", "full", "compare"),
-                            default="concise", help="visualization mode")
-    parser_viz.set_defaults(func=lambda args: visualize(args.file, args.mode))
+    parser_viz.add_argument("-m", "--mode", choices=("stat", "compare", "diversity"),
+                            default="stat", help="visualization mode")
+    parser_viz.add_argument("-v", "--verbose", action="store_true", help="verbose mode")
+    parser_viz.set_defaults(func=lambda args: visualize(args.file, args.mode, args.verbose))
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
