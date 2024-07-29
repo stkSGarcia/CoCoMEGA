@@ -146,15 +146,24 @@ def _reevaluate(solutions):
         })
 
     for solution in solutions:
-        fitnesses = [ev['fitness'].values[0] for ev in solution.eval_history]
-        aggregate_value = getattr(np, aggregation)(fitnesses)
-        aggregation_arg = np.abs([f - aggregate_value for f in fitnesses]).argmin()
-        selected_candidate = solution.eval_history[aggregation_arg]
+        fitnesses = [(ev['fitness'].values[0] if
+                      (hasattr(ev['fitness'], 'values') and len(ev['fitness'].values) > 0) else np.nan)
+                     for ev in solution.eval_history]
+        num_nan_fitnesses = len([f for f in fitnesses if np.isnan(f)])
+        if num_nan_fitnesses > float(repeat) / 2:
+            del solution.fitness.values
+            solution.source = None
+            solution.follow_up = None
+            solution.is_violated = False
+        else:
+            aggregate_value = getattr(np, f'nan{aggregation}')(fitnesses)
+            aggregation_arg = np.nanargmin(np.abs([f - aggregate_value for f in fitnesses]))
+            selected_candidate = solution.eval_history[aggregation_arg]
 
-        solution.fitness.values = (aggregate_value,)
-        solution.source = selected_candidate['source']
-        solution.follow_up = selected_candidate['follow_up']
-        solution.is_violated = selected_candidate['is_violated']
+            solution.fitness.values = (aggregate_value,)
+            solution.source = selected_candidate['source']
+            solution.follow_up = selected_candidate['follow_up']
+            solution.is_violated = selected_candidate['is_violated']
 
     return sim_num
 
