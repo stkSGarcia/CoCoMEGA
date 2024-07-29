@@ -95,12 +95,14 @@ def _evaluate_solutions(solutions):
             solution.is_violated = False
             del solution.fitness.values
 
-    reeval_sim_num = _reevaluate(reeval) if len(reeval) > 0 else 0
+    reeval_sim_num = _reevaluate(reeval)
 
     return solutions, sim_num + reeval_sim_num
 
 
 def _reevaluate(solutions):
+    if len(solutions) == 0:
+        return 0
     repeat = CONFIG["violation"]["reevaluation"]["repeat"]
     aggregation = CONFIG["violation"]["reevaluation"]["aggregation"]
     scenarios = []
