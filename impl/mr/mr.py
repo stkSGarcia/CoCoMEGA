@@ -9,7 +9,7 @@ from typing import List
 import numpy as np
 import pandas as pd
 from deap import tools
-from tslearn.metrics import dtw_path, ctw_path
+from tslearn.metrics import dtw_path
 
 from impl.config import CONFIG
 from impl.scenario import scenario_definition
@@ -105,7 +105,8 @@ class Perturbations(list):
             perturbation.perturb(scenario)
 
     def dist(self, other, scaling=CONFIG["perturbation"]["dist_scaling"]):
-        if not isinstance(other, self.__class__):
+        # if not isinstance(other, self.__class__):
+        if str(type(other)) != str(type(self)):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         dist = 0.0
         for this, that in zip(self, other):
@@ -221,7 +222,7 @@ class Relation(ABC):
         @return: A tuple of the DTW path and the generated `DataFrame`.
         """
         if CONFIG["violation"]["strategy"] == "position":
-            func, columns = partial(ctw_path), ["position_x", "position_y"]
+            func, columns = partial(dtw_path), ["position_x", "position_y"]
         else:
             func, columns = partial(dtw_path, global_constraint="sakoe_chiba", sakoe_chiba_radius=5), field
         matches = [(source.index.values[i], follow_up.index.values[j])

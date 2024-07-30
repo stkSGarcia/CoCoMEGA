@@ -146,9 +146,7 @@ def _reevaluate(solutions):
         })
 
     for solution in solutions:
-        fitnesses = [(ev['fitness'].values[0] if
-                      (hasattr(ev['fitness'], 'values') and len(ev['fitness'].values) > 0) else np.nan)
-                     for ev in solution.eval_history]
+        fitnesses = [(ev['fitness'].values[0] if ev['fitness'].valid else np.nan) for ev in solution.eval_history]
         num_nan_fitnesses = len([f for f in fitnesses if np.isnan(f)])
         if num_nan_fitnesses > float(repeat) / 2:
             del solution.fitness.values

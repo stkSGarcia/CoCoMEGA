@@ -15,9 +15,9 @@ from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
 from impl.config import CONFIG
 from impl.scenario.LeaderboardFactory import LeaderBoardFactory
-from impl.utils.carla_utils import get_junction_topology, filter_junction_wp_direction, transform_to_dict, \
-    get_closest_wp, initialize_carla, load_world
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
+from impl.utils.carla_utils import get_junction_topology, filter_junction_wp_direction, transform_to_dict, \
+    get_closest_wp, load_world
 from impl.utils.trajectory import rotate_vector, single_trajectory_score
 
 logger = logging.getLogger(__name__)
@@ -295,7 +295,8 @@ class ScenarioDefinition:
         return sorted(candidates, key=lambda x: x[1].radius)[0][0] if candidates else -1
 
     def dist(self, other, scaling=CONFIG["scenario"]["dist_scaling"]):
-        if not isinstance(other, self.__class__):
+        # if not isinstance(other, self.__class__):
+        if str(type(other)) != str(type(self)):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         dist = _dist_attrs(self, other, ScenarioDefinition.ATTRIBUTES, ScenarioDefinition._BOUNDARY, scaling=scaling)
         for actors, other_actors in zip([self.vehicles, self.walkers, self.statics],

@@ -329,6 +329,7 @@ class Visualizer:
                     first_row, last_row = df.iloc[0].copy(), df.iloc[-1].copy()
                     first_row["sim"], last_row["sim"] = low, high
                     df = pd.concat([pd.DataFrame([first_row]), df, pd.DataFrame([last_row])], ignore_index=True)
+                    df = df.groupby("sim", as_index=False).mean()
                     agg_df = pd.merge(df, helper, on="sim", how="outer").sort_values("sim", ascending=True)
                     for metric in ("len", "std", "min", "avg", "max"):
                         agg_df[metric].interpolate("linear", inplace=True)
