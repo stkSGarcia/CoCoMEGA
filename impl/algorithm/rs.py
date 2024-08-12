@@ -84,4 +84,4 @@ class RandomSearch(BaseAlgorithm):
 
         logger.info(f"Terminate due to reaching the threshold.")
         # Store the complete solutions.
-        self.dump_results(archive_solution, "rs")
+        self.dump_results(archive_solution, evaluated_solutions, "rs")
