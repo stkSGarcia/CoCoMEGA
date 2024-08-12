@@ -99,7 +99,7 @@ class CCEA(BaseAlgorithm):
 
         logger.info(f"Terminate due to reaching the threshold.")
         # Store the complete solutions.
-        self.dump_results(archive_solution, "ccea")
+        self.dump_results(archive_solution, evaluated_solutions, "ccea")
 
     def _evaluate(self, pop_scenario, archive_scenario, pop_perturbation, archive_perturbation, evaluated_solutions):
         """Form complete solutions and evaluate their joint fitness as well as the individual fitness values.
