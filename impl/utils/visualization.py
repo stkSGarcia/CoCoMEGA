@@ -427,12 +427,12 @@ class Visualizer:
             ax.set_ylabel(mr_set.field.capitalize(), fontsize=text_size)
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         ax1.legend(fontsize=text_size)
-
-        for x, y in matches:
-            ax1.plot((x, y), (source.loc[x, mr_set.field], follow_up.loc[y, mr_set.field] + offset),
-                     "--", color="gray", zorder=1)
-
         critical_intervals = Relation.critical_intervals(pair_df, labels)
+        for i, (x, y) in enumerate(matches):
+            color = "gray" if i not in critical_intervals else "crimson"
+            ax1.plot((x, y), (source.loc[x, mr_set.field], follow_up.loc[y, mr_set.field] + offset),
+                     "--", color=color, zorder=1)
+
         if len(critical_intervals) > 0:
             for points in np.split(critical_intervals, np.where(np.diff(critical_intervals) != 1)[0] + 1):
                 ax2.axvspan(points[0] - 0.5, points[-1] + 0.5, color="red", alpha=0.1)
@@ -461,10 +461,11 @@ class Visualizer:
                 ax4.xaxis.set_major_locator(MaxNLocator(integer=True))
                 ax4.yaxis.set_major_locator(MaxNLocator(integer=True))
 
-                for x, y in matches:
+                for i, (x, y) in enumerate(matches):
+                    color = "gray" if i not in critical_intervals else "crimson"
                     ax4.plot((source.loc[x, "position_x"], follow_up.loc[y, "position_x"] - offset),
                              (source.loc[x, "position_y"], follow_up.loc[y, "position_y"] - offset),
-                             "--", color="gray", zorder=1)
+                             "--", color=color, zorder=1)
 
         fig.tight_layout()
         fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], "violation.png"))
