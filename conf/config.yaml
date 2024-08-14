@@ -154,7 +154,8 @@ boundary:
     yaw: *yaw
     model: [ 0, 87 ]
   env:
-    weather: [ 0, 14 ]
+    weather: [ 0, 11 ]
+    brightness: [ 0, 8 ]
 
 blueprint:
   vehicle:
@@ -291,18 +292,132 @@ blueprint:
       - "static.prop.wateringcan"
   scenario:
     weather:
-      - "ClearNoon"
-      - "ClearSunset"
-      - "CloudyNoon"
-      - "CloudySunset"
-      - "Default"
-      - "HardRainNoon"
-      - "HardRainSunset"
-      - "MidRainSunset"
-      - "MidRainyNoon"
-      - "SoftRainNoon"
-      - "SoftRainSunset"
-      - "WetCloudyNoon"
-      - "WetCloudySunset"
-      - "WetNoon"
-      - "WetSunset"
+      # Carla Weather Parameters
+      # - cloudiness: [0, 100]
+      # - precipitation: [0, 100]
+      # - precipitation_deposits: [0, 100]
+      # - wind_intensity: [0, 100]
+      # - sun_azimuth_angle: [0, 360]
+      # - sun_altitude_angle: [-90, 90]
+      # - fog_density: [0, 100]
+      # - fog_distance: [0, inf]
+      # - wetness: [0, 100]
+      # - fog_falloff: [0, inf]
+      - cloudiness: 15.00 # Clear
+        precipitation: 0.00
+        precipitation_deposits: 0.00
+        wind_intensity: 0.35
+        sun_azimuth_angle: 0.00
+        fog_density: 0.00
+        fog_distance: 0.00
+        fog_falloff: 0.00
+        wetness: 0.00
+      - cloudiness: 80.00 # Cloudy
+        precipitation: 0.00
+        precipitation_deposits: 0.00
+        wind_intensity: 0.35
+        sun_azimuth_angle: 0.00
+        fog_density: 0.00
+        fog_distance: 0.00
+        fog_falloff: 0.00
+        wetness: 0.00
+      - cloudiness: 80.00 # Wet cloudy
+        precipitation: 0.00
+        precipitation_deposits: 50.00
+        wind_intensity: 0.35
+        sun_azimuth_angle: 0.00
+        fog_density: 0.00
+        fog_distance: 0.00
+        fog_falloff: 0.00
+        wetness: 0.00
+      - cloudiness: 20.00 # Wet
+        precipitation: 0.00
+        precipitation_deposits: 50.00
+        wind_intensity: 0.35
+        sun_azimuth_angle: 0.00
+        fog_density: 0.00
+        fog_distance: 0.00
+        fog_falloff: 0.00
+        wetness: 0.00
+      - cloudiness: 90.00 # Hard rain
+        precipitation: 60.00
+        precipitation_deposits: 100.00
+        wind_intensity: 1.00
+        sun_azimuth_angle: 0.00
+        fog_density: 0.00
+        fog_distance: 0.00
+        fog_falloff: 0.00
+        wetness: 0.00
+      - cloudiness: 80.00 # Mid rain
+        precipitation: 30.00
+        precipitation_deposits: 50.00
+        wind_intensity: 0.40
+        sun_azimuth_angle: 0.00
+        fog_density: 0.00
+        fog_distance: 0.00
+        fog_falloff: 0.00
+        wetness: 0.00
+      - cloudiness: 70.00 # Soft rain
+        precipitation: 15.00
+        precipitation_deposits: 50.00
+        wind_intensity: 0.35
+        sun_azimuth_angle: 0.00
+        fog_density: 0.00
+        fog_distance: 0.00
+        fog_falloff: 0.00
+        wetness: 0.00
+      - cloudiness: 90.00 # Extra strong fog
+        precipitation: 0.00
+        precipitation_deposits: 0.00
+        wind_intensity: 0.35
+        sun_azimuth_angle: 0.00
+        fog_density: 100.00
+        fog_distance: 0.00
+        fog_falloff: 0.00
+        wetness: 0.00
+      - cloudiness: 80.00 # Strong fog
+        precipitation: 0.00
+        precipitation_deposits: 0.00
+        wind_intensity: 0.35
+        sun_azimuth_angle: 0.00
+        fog_density: 75.00
+        fog_distance: 10.00
+        fog_falloff: 0.00
+        wetness: 0.00
+      - cloudiness: 70.00 # Dense fog
+        precipitation: 0.00
+        precipitation_deposits: 0.00
+        wind_intensity: 0.35
+        sun_azimuth_angle: 0.00
+        fog_density: 50.00
+        fog_distance: 20.00
+        fog_falloff: 0.00
+        wetness: 0.00
+      - cloudiness: 60.00 # Heavy fog
+        precipitation: 0.00
+        precipitation_deposits: 0.00
+        wind_intensity: 0.35
+        sun_azimuth_angle: 0.00
+        fog_density: 35.00
+        fog_distance: 20.00
+        fog_falloff: 0.00
+        wetness: 0.00
+      - cloudiness: 50.00 # Light fog
+        precipitation: 0.00
+        precipitation_deposits: 0.00
+        wind_intensity: 0.35
+        sun_azimuth_angle: 0.00
+        fog_density: 20.00
+        fog_distance: 30.00
+        fog_falloff: 0.00
+        wetness: 0.00
+    brightness:
+      - -80.00
+      - -10.00
+      - -5.00
+      - -1.00
+      - 0.00
+      - 1.00
+      - 10.00
+      - 45.00
+      - 80.00

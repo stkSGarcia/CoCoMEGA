@@ -145,7 +145,7 @@ class Perturbations(list):
 
 
 class PerturbationFactory:
-    def __init__(self, category: str, boundary, operation: Operation = None, mark=False):
+    def __init__(self, category: str, boundary, operation: Operation = Operation.REPLACE, mark=False):
         self.category = category
         self.boundary = boundary
         self.operation = operation

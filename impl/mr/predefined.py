@@ -1,23 +1,32 @@
 from impl.mr.mr import Decreasing, Invariance, MR, MRSet, PerturbationFactory, Operation
 from impl.scenario.scenario_definition import Boundary
 
-__all__ = ["mr_set1"]
+__all__ = ["mr_set1", "mr_set2"]
 
-relation_slow = Decreasing("velocity")
-relation_slow_30 = Decreasing("velocity", threshold=0.3)
-relation_steer = Invariance("steering")
+slow = Decreasing("velocity", threshold=0.2)
+slow_30 = Decreasing("velocity", threshold=0.3)
+steer_keep = Invariance("steering")
 
-vehicle_pert_factory = PerturbationFactory("vehicle", None, Operation.ADD)
+vehicle_add_left = PerturbationFactory("vehicle", Boundary.Region.LEFT, Operation.ADD, mark=True)
+vehicle_add_focus = PerturbationFactory("vehicle", Boundary.Region.FOCUS, Operation.ADD, mark=True)
+vehicle_add_right = PerturbationFactory("vehicle", Boundary.Region.RIGHT, Operation.ADD, mark=True)
 
-walker_pert_factory = PerturbationFactory("walker", Boundary.Region.FOCUS, Operation.ADD, mark=True)
+walker_add_left = PerturbationFactory("walker", Boundary.Region.LEFT, Operation.ADD, mark=True)
+walker_add_focus = PerturbationFactory("walker", Boundary.Region.FOCUS, Operation.ADD, mark=True)
+walker_add_right = PerturbationFactory("walker", Boundary.Region.RIGHT, Operation.ADD, mark=True)
 
-static_pert_factory = PerturbationFactory("static", Boundary.Region.RIGHT, Operation.ADD)
+weather_fog = PerturbationFactory("weather", Boundary({"weather": [7, 11]}))
+weather_rain = PerturbationFactory("weather", Boundary({"weather": [4, 6]}))
+brightness_night = PerturbationFactory("brightness", Boundary({"brightness": [0, 2]}))
 
-mr1 = MR([walker_pert_factory], relation_slow)
-mr2 = MR([static_pert_factory], relation_slow)
-mr3 = MR([walker_pert_factory], relation_slow_30)
-mr7 = MR([PerturbationFactory("weather", Boundary({"weather": [1, 3]}))], relation_slow)
-mr8 = MR([PerturbationFactory("weather", Boundary({"weather": [0, 14]}))], relation_steer)
+mr1 = MR([walker_add_left, walker_add_right], slow)
+mr2 = MR([walker_add_left, walker_add_right], slow_30)
+mr4 = MR([brightness_night], slow)
+mr5 = MR([weather_fog], steer_keep)
+mr6 = MR([weather_rain], steer_keep)
+mr7 = MR([vehicle_add_focus], slow)
+mr9 = MR([walker_add_focus], slow)
+mr11 = MR([weather_rain], slow)
 
-# mr_set1 = MRSet([mr1, mr2, mr7])
-mr_set1 = MRSet([mr1])
+mr_set1 = MRSet([mr1, mr4, mr7, mr9, mr11])
+mr_set2 = MRSet([mr5, mr6])

@@ -147,7 +147,7 @@ def _mutate_attrs(this, attrs, boundary: Boundary, mutpb, eta, std):
 
 
 class ScenarioDefinition:
-    ATTRIBUTES = ["weather"]
+    ATTRIBUTES = ["weather", "brightness"]
     DYNAMIC = ["vehicle", "walker", "static"]
     _BLUEPRINTS = CONFIG["blueprint"]["scenario"]
     _BOUNDARY = Boundary(CONFIG["boundary"]["env"])
@@ -164,6 +164,7 @@ class ScenarioDefinition:
         self.walkers = []
         self.statics = []
         self.weather = None
+        self.brightness = None
         return self
 
     def assign_new_id(self):
@@ -251,6 +252,11 @@ class ScenarioDefinition:
 
     def get_other_actors(self):
         return [actor.get_config() for actor in self.vehicles + self.walkers + self.statics]
+
+    def get_weather(self):
+        weather_parameters = ScenarioDefinition._BLUEPRINTS["weather"][self.weather]
+        weather_parameters["sun_altitude_angle"] = ScenarioDefinition._BLUEPRINTS["brightness"][self.brightness]
+        return weather_parameters
 
     def add_actor(self, category: str, new_actor, mark=False, tilt_dir=None):
         actors = getattr(self, f"{category}s")
@@ -397,6 +403,7 @@ class ScenarioDefinition:
                 self.ego_vehicle == other.ego_vehicle and
                 self.trajectory == other.trajectory and
                 self.weather == other.weather and
+                self.brightness == other.brightness and
                 self._list_eq(self.vehicles, other.vehicles) and
                 self._list_eq(self.walkers, other.walkers) and
                 self._list_eq(self.statics, other.statics))
@@ -409,7 +416,8 @@ class ScenarioDefinition:
                 f"vehicles={self.vehicles}, "
                 f"walkers={self.walkers}, "
                 f"statics={self.statics}, "
-                f"weather={self.weather})")
+                f"weather={self.weather}, "
+                f"brightness={self.brightness})")
 
 
 class Actor(ABC):

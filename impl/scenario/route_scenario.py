@@ -201,8 +201,7 @@ class RouteScenario(BasicScenario):
         self.timeout = CONFIG['simulation']['scenario_duration']
         self._update_route()
         self._vehicle_lights = carla.VehicleLightState.Position | carla.VehicleLightState.LowBeam
-        self.weather_preset, self.weather_preset_name = \
-            CarlaDataProvider.find_weather_presets()[self.scenario_definition.weather]
+        self.weather = carla.WeatherParameters(**self.scenario_definition.get_weather())
         ego_vehicle = self._update_ego_vehicle()
         scenario_config = self._build_scenario_configuration(scenario_definition, ego_vehicle, agent_instance)
 
@@ -286,7 +285,7 @@ class RouteScenario(BasicScenario):
             spectator.set_transform(carla.Transform(ego_trans.location + carla.Location(z=50),
                                                     carla.Rotation(pitch=-90)))
 
-        if self.weather_preset.sun_altitude_angle < 0.0:
+        if self.weather.sun_altitude_angle < 0.0:
             ego_vehicle.set_light_state(carla.VehicleLightState(self._vehicle_lights))
 
         return ego_vehicle
@@ -445,7 +444,7 @@ class RouteScenario(BasicScenario):
         scenario_config.agent = agent_instance
 
         # Set weather
-        scenario_config.weather = self.weather_preset
+        scenario_config.weather = self.weather
 
         return scenario_config
 
