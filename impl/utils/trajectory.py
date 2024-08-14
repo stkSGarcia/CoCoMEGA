@@ -1,7 +1,7 @@
+import importlib
 import math
 
 from impl.config import CONFIG
-from impl.scenario.scenario_definition import ScenarioDefinition
 
 
 class TrajectorySolver:
@@ -78,7 +78,7 @@ class TrajectorySolver:
 def trajectory_score(pert, pop_scen):
     total_score = 0
     for p_element in pert:
-        if p_element.category in ScenarioDefinition.ATTRIBUTES: continue
+        if p_element.category in importlib.import_module("scenario_definition").ScenarioDefinition.ATTRIBUTES: continue
         for scenario in pop_scen:
             pert_route = scenario.build_actor_trajectory(p_element.value)
             total_score += single_trajectory_score([t[0] for t in scenario.trajectory["route"]], pert_route)
