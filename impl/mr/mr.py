@@ -25,8 +25,9 @@ class Operation(Enum):
 
 
 class Perturbation:
-    def __init__(self, category: str, operation: Operation, value, mark, enabled=True):
+    def __init__(self, category: str, boundary, operation: Operation, value, mark, enabled=True):
         self.category = category
+        self.boundary = boundary
         self.operation = operation
         self.value = value
         self.mark = mark
@@ -68,20 +69,32 @@ class Perturbation:
         if self.category != other.category or self.operation != other.operation: return
         if random.random() < cxpb:
             self.enabled, other.enabled = other.enabled, self.enabled
-        if self.operation == Operation.ADD:
-            self.value.mate(other.value, cxpb=cxpb)
-        elif self.operation == Operation.REPLACE:
-            self.value[1].mate(other.value[1], cxpb=cxpb)
+        if self.category in ScenarioDefinition.DYNAMIC:
+            if self.operation == Operation.ADD:
+                self.value.mate(other.value, cxpb=cxpb)
+            elif self.operation == Operation.REPLACE:
+                self.value[1].mate(other.value[1], cxpb=cxpb)
+        elif self.category in ScenarioDefinition.ATTRIBUTES:
+            if random.random() < cxpb:
+                self.value, other.value = other.value, self.value
+        else:
+            raise ValueError(f"Unsupported category: {self.category}.")
 
     def mutate(self, mutpb=CONFIG["perturbation"]["mutpb"],
                eta=CONFIG["perturbation"]["mut_eta"],
                std=CONFIG["perturbation"]["mut_std"]):
         if random.random() < mutpb:
             self.enabled = not self.enabled
-        if self.operation == Operation.ADD:
-            self.value.mutate(mutpb=mutpb, eta=eta, std=std)
-        elif self.operation == Operation.REPLACE:
-            self.value[1].mutate(mutpb=mutpb, eta=eta, std=std)
+        if self.category in ScenarioDefinition.DYNAMIC:
+            if self.operation == Operation.ADD:
+                self.value.mutate(mutpb=mutpb, eta=eta, std=std)
+            elif self.operation == Operation.REPLACE:
+                self.value[1].mutate(mutpb=mutpb, eta=eta, std=std)
+        elif self.category in ScenarioDefinition.ATTRIBUTES:
+            if random.random() < mutpb:
+                self.value = self.boundary.random(self.category)
+        else:
+            raise ValueError(f"Unsupported category: {self.category}.")
 
     def __eq__(self, other):
         return (isinstance(other, self.__class__) and
@@ -167,7 +180,7 @@ class PerturbationFactory:
             raise ValueError(f"Unsupported perturbation category: {category}.")
 
     def spawn(self) -> Perturbation:
-        return Perturbation(self.category, self.operation, self._spawn_func(), mark=self.mark)
+        return Perturbation(self.category, self.boundary, self.operation, self._spawn_func(), mark=self.mark)
 
     def get_label(self):
         if self.category in ScenarioDefinition.DYNAMIC and self.boundary:
