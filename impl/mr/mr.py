@@ -55,13 +55,16 @@ class Perturbation:
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         if self.enabled == other.enabled and self.category == other.category and self.operation == other.operation:
-            if self.operation == Operation.ADD:
-                return self.value.dist(other.value)
-            if self.operation == Operation.REMOVE:
+            if self.category in ScenarioDefinition.DYNAMIC:
+                if self.operation == Operation.ADD:
+                    return self.value.dist(other.value)
+                if self.operation == Operation.REMOVE:
+                    return 0 if self.value == other.value else pow(scaling, 2)
+                elif self.operation == Operation.REPLACE:
+                    return self.value[1].dist(other.value[1])
+            elif self.category in ScenarioDefinition.ATTRIBUTES:
                 return 0 if self.value == other.value else pow(scaling, 2)
-            elif self.operation == Operation.REPLACE:
-                return self.value[1].dist(other.value[1])
-        return pow(scaling, 2)
+        return pow(1.0, 2)
 
     def mate(self, other, cxpb=CONFIG["perturbation"]["cxpb"]):
         if not isinstance(other, self.__class__):
