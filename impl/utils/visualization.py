@@ -483,7 +483,7 @@ class Visualizer:
         for population in zip(*solutions):
             matrix = squareform(pdist(np.array(population, dtype=object).reshape((len(population), -1)),
                                       lambda x, y: x[0].dist(y[0])))
-            matrix = (matrix - matrix.min()) / np.ptp(matrix)
+            matrix = (matrix - matrix.mean()) / matrix.std()
             dist_matrix += np.power(matrix, 2)
         dist_matrix = np.sqrt(dist_matrix)
 
