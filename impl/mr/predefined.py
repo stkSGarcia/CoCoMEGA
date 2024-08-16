@@ -5,7 +5,7 @@ __all__ = ["mr_set1", "mr_set2"]
 
 slow = Decreasing("velocity", threshold=0.2)
 slow_30 = Decreasing("velocity", threshold=0.3)
-steer_keep = Invariance("steering")
+steer_keep = Invariance("steer")
 
 vehicle_add_left = PerturbationFactory("vehicle", Boundary.Region.LEFT, Operation.ADD, mark=True)
 vehicle_add_focus = PerturbationFactory("vehicle", Boundary.Region.FOCUS, Operation.ADD, mark=True)

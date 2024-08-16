@@ -479,12 +479,18 @@ class Visualizer:
             logger.warning("No solutions or only one solution found.")
             return
 
-        dist = lambda x, y: np.sqrt((x[0].dist(y[0])) ** 2 + (x[1].dist(y[1])) ** 2)
+        dist_matrix = np.zeros((len(solutions), len(solutions)))
+        for population in zip(*solutions):
+            matrix = squareform(pdist(np.array(population, dtype=object).reshape((len(population), -1)),
+                                      lambda x, y: x[0].dist(y[0])))
+            matrix = (matrix - matrix.min()) / np.ptp(matrix)
+            dist_matrix += np.power(matrix, 2)
+        dist_matrix = np.sqrt(dist_matrix)
+
         from impl.algorithm.base import BaseAlgorithm
-        diversity = BaseAlgorithm.population_diversity(solutions, dist)
+        diversity = BaseAlgorithm.population_diversity(dist_matrix)
         logger.info(f"Population diversity: {diversity}, size: {len(solutions)}.")
 
-        dist_matrix = squareform(pdist(np.array(solutions, dtype=object).reshape((len(solutions), -1)), dist))
         out = MDS(n_components=3, dissimilarity="precomputed").fit(dist_matrix).embedding_
         fig, ax = plt.subplots(figsize=(10, 8))
         ax = plt.axes(projection="3d")
