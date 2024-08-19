@@ -48,9 +48,13 @@ def visualize(files, mode: str, verbose: bool):
         logger.info(f"Plotting comparisons.")
         Visualizer.visualize_comparison(files, verbose=verbose)
     elif mode == "diversity":
-        for file in files:
-            logger.info(f"Plotting diversity from file: {file}.")
+        if isinstance(files, dict):
+            logger.info(f"Plotting diversity comparisons.")
             Visualizer.visualize_diversity(files)
+        else:
+            for file in files:
+                logger.info(f"Plotting diversity from file: {file}.")
+                Visualizer.visualize_diversity_distribution(file)
     else:
         raise ValueError(f"Unsupported mode: {mode}.")
 

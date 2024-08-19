@@ -472,30 +472,72 @@ class Visualizer:
         if show: plt.show()
 
     @staticmethod
-    def visualize_diversity(file, show=False):
+    def visualize_diversity(files: Dict[str, List[str]], show=False):
+        """Plot the solution diversity among different algorithms.
+
+        @param files: Solution data files of different algorithms.
+        @param show: A boolean to determine whether to show the plots or not.
+        """
+        data = (defaultdict(list), defaultdict(list))
+        for name, file_list in files.items():
+            for file in file_list:
+                with open(file, "rb") as f:
+                    solutions = pickle.load(f)
+                if len(solutions) < 2:
+                    logger.warning(f"No solutions or only one solution found in {file}.")
+                    continue
+
+                follow_ups = []
+                for scenario, perturbation in solutions:
+                    perturbation.perturb(scenario)
+                    follow_ups.append(scenario)
+
+                dist = pdist(np.array(follow_ups, dtype=object).reshape((len(follow_ups), -1)),
+                             lambda x, y: x[0].dist(y[0]))
+                average_pairwise_dist = np.sum(dist) / len(dist)
+                data[0][name].append(average_pairwise_dist)
+
+                from impl.algorithm.base import BaseAlgorithm
+                pd_dist = BaseAlgorithm.population_diversity(squareform(dist))
+                data[1][name].append(pd_dist)
+
+        height = 4
+        title_size, text_size, tick_size = height * 5, height * 4, height * 3
+        fig, axs = plt.subplots(1, 2, figsize=(3 * height, height))
+        for ax, diversities, title in zip(axs, data, ("Average pairwise distance", "Pure diversity")):
+            bplot = ax.boxplot(diversities.values(), labels=[l.upper() for l in diversities.keys()],
+                               patch_artist=True, whis=(0, 100))
+            for patch, color in zip(bplot["boxes"], ("C1", "C2", "C0")):
+                patch.set_facecolor(color)
+                patch.set_alpha(0.6)
+            ax.set_title(title, fontsize=title_size)
+            ax.tick_params(labelsize=tick_size)
+            ax.set_ylabel("Distance", fontsize=text_size)
+            ax.grid()
+
+        fig.tight_layout()
+        fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"diversity.png"))
+        if show: plt.show()
+
+    @staticmethod
+    def visualize_diversity_distribution(file, show=False):
         with open(file, "rb") as f:
             solutions = pickle.load(f)
         if len(solutions) < 2:
             logger.warning("No solutions or only one solution found.")
             return
 
-        dist_matrix = np.zeros((len(solutions), len(solutions)))
-        for population in zip(*solutions):
-            matrix = squareform(pdist(np.array(population, dtype=object).reshape((len(population), -1)),
-                                      lambda x, y: x[0].dist(y[0])))
-            matrix = (matrix - matrix.mean()) / matrix.std()
-            dist_matrix += np.power(matrix, 2)
-        dist_matrix = np.sqrt(dist_matrix)
+        follow_ups = []
+        for scenario, perturbation in solutions:
+            perturbation.perturb(scenario)
+            follow_ups.append(scenario)
 
-        from impl.algorithm.base import BaseAlgorithm
-        diversity = BaseAlgorithm.population_diversity(dist_matrix)
-        logger.info(f"Population diversity: {diversity}, size: {len(solutions)}.")
-
+        dist_matrix = squareform(pdist(np.array(follow_ups, dtype=object).reshape((len(follow_ups), -1)),
+                                       lambda x, y: x[0].dist(y[0])))
         out = MDS(n_components=3, dissimilarity="precomputed").fit(dist_matrix).embedding_
         fig, ax = plt.subplots(figsize=(10, 8))
         ax = plt.axes(projection="3d")
         ax.scatter3D(out[:, 0], out[:, 1], out[:, 2])
-        ax.view_init(azim=-5, elev=145)
         ax.set_box_aspect((np.ptp(out[:, 0]), np.ptp(out[:, 1]), np.ptp(out[:, 2])))
         fig.tight_layout()
         fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"{Path(file).stem}-diversity.png"))
