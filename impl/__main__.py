@@ -11,7 +11,6 @@ from impl.algorithm.rs import RandomSearch
 from impl.scenario.scenario_definition import ScenarioDefinition
 from impl.scenario.simulation_runner import run_scenarios, run_solutions
 from impl.utils.docker_utils import cleanup_containers
-from impl.utils.visualization import Visualizer
 
 logger = logging.getLogger("impl")
 
@@ -37,26 +36,6 @@ def simulate(num: int, file: str):
     else:
         logger.info(f"Running random scenarios.")
         run_scenarios([ScenarioDefinition.generate_random_or_leaderboard() for _ in range(num)])
-
-
-def visualize(files, mode: str, verbose: bool):
-    if mode == "stat":
-        for file in files:
-            logger.info(f"Plotting statistics from file: {file}.")
-            Visualizer.visualize_in_one(file, verbose=verbose)
-    elif mode == "compare":
-        logger.info(f"Plotting comparisons.")
-        Visualizer.visualize_comparison(files, verbose=verbose)
-    elif mode == "diversity":
-        if isinstance(files, dict):
-            logger.info(f"Plotting diversity comparisons.")
-            Visualizer.visualize_diversity(files)
-        else:
-            for file in files:
-                logger.info(f"Plotting diversity from file: {file}.")
-                Visualizer.visualize_diversity_distribution(file)
-    else:
-        raise ValueError(f"Unsupported mode: {mode}.")
 
 
 class StoreDictKeyPair(argparse.Action):
@@ -102,14 +81,6 @@ if __name__ == "__main__":
     parser_sim.add_argument("-n", "--number", type=int, default=1, help="number of simulations to run")
     parser_sim.add_argument("-f", "--file", default=None, help="solution file")
     parser_sim.set_defaults(func=lambda args: simulate(args.number, args.file))
-
-    parser_viz = subparsers.add_parser("visualize", aliases=["viz"], help="visualize the results")
-    parser_viz.add_argument("-f", "--file", nargs="+", required=True, action=StoreDictKeyPair,
-                            metavar="(VAL|KEY=VAL,VAL,...)", help="statistics files")
-    parser_viz.add_argument("-m", "--mode", choices=("stat", "compare", "diversity"),
-                            default="stat", help="visualization mode")
-    parser_viz.add_argument("-v", "--verbose", action="store_true", help="verbose mode")
-    parser_viz.set_defaults(func=lambda args: visualize(args.file, args.mode, args.verbose))
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)

@@ -3,10 +3,12 @@ import os
 import pickle
 import time
 from collections import defaultdict
+from itertools import product
 from pathlib import Path
 from typing import Dict, List
 
 import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -22,17 +24,17 @@ from impl.mr.mr import Relation
 logger = logging.getLogger(__name__)
 
 verbose_map = {
-    'pop': 'Population',
-    'pop_scen': 'Population—Scenario',
-    'pop_pert': 'Population—Perturbation',
-    'solution': 'Complete Solutions',
-    'archive': 'Archive',
-    'arc_scen': 'Archive—Scenario',
-    'arc_pert': 'Archive—Perturbation',
-    'ccea': 'CCEA',
-    'rs': 'Random Search',
-    'ga': 'Standard Genetic Algorithm',
-    'gawa': 'SGA with Archives',
+    "pop": "Population",
+    "pop_scen": "Population—Scenario",
+    "pop_pert": "Population—Perturbation",
+    "solution": "Complete Solutions",
+    "archive": "Archive",
+    "arc_scen": "Archive—Scenario",
+    "arc_pert": "Archive—Perturbation",
+    "ccea": "CCEA",
+    "rs": "Random Search",
+    "ga": "Standard Genetic Algorithm",
+    "gawa": "SGA with Archives",
 }
 
 
@@ -237,7 +239,24 @@ class Visualizer:
 
         groups = stats.groupby("pop")
         assert "solution" in groups.groups
-        Visualizer._log_statistics(groups)
+        # Log statistics.
+        if "archive" not in groups.groups:
+            logger.warning("Cannot find statistics of archives.")
+            return
+        pop = groups.get_group("archive").sort_values("gen", ascending=True).fillna(0)
+        logger.info(f"#violations of the last archive: {pop['len'].iloc[-1]}.")
+        logger.info(f"Max fitness of the last archive: {pop['max'].iloc[-1]}.")
+        logger.info(f"Average fitness of the last archive: {pop['avg'].iloc[-1]}.")
+        if len(pop["gen"]) > 1:
+            logger.info("Growth rate of average fitness over generations: "
+                        f"{np.polyfit(pop['gen'], pop['avg'], 1)[0]}.")
+            logger.info("Growth rate of max fitness over generations: "
+                        f"{np.polyfit(pop['gen'], pop['max'], 1)[0]}.")
+            logger.info("Growth rate of average fitness over simulations: " +
+                        f"{np.polyfit(pop['sim'], pop['avg'], 1)[0]}.")
+            logger.info("Growth rate of max fitness over simulations: " +
+                        f"{np.polyfit(pop['sim'], pop['max'], 1)[0]}.")
+
         core_plots = [name for name in ("solution", "solution", "archive") if name in groups.groups]
         addition_plots = [name for name in ("pop_scen", "arc_scen", "pop_pert", "arc_pert") if name in groups.groups]
         plots = core_plots + addition_plots if verbose else core_plots
@@ -478,7 +497,7 @@ class Visualizer:
         @param files: Solution data files of different algorithms.
         @param show: A boolean to determine whether to show the plots or not.
         """
-        data = (defaultdict(list), defaultdict(list))
+        data = (defaultdict(list), defaultdict(list), defaultdict(list))
         for name, file_list in files.items():
             for file in file_list:
                 with open(file, "rb") as f:
@@ -487,24 +506,25 @@ class Visualizer:
                     logger.warning(f"No solutions or only one solution found in {file}.")
                     continue
 
-                follow_ups = []
-                for scenario, perturbation in solutions:
-                    perturbation.perturb(scenario)
-                    follow_ups.append(scenario)
-
-                dist = pdist(np.array(follow_ups, dtype=object).reshape((len(follow_ups), -1)),
-                             lambda x, y: x[0].dist(y[0]))
+                dist = Visualizer._pairwise_distance(solutions)
+                # Average pairwise distance.
                 average_pairwise_dist = np.sum(dist) / len(dist)
                 data[0][name].append(average_pairwise_dist)
-
+                # Pure diversity.
+                dist_matrix = squareform(dist)
                 from impl.algorithm.base import BaseAlgorithm
-                pd_dist = BaseAlgorithm.population_diversity(squareform(dist))
+                pd_dist = BaseAlgorithm.population_diversity(dist_matrix)
                 data[1][name].append(pd_dist)
+                # Average nearest neighbor distance.
+                np.fill_diagonal(dist_matrix, np.inf)
+                data[2][name].append(np.mean(np.min(dist_matrix, axis=0)))
 
         height = 4
-        title_size, text_size, tick_size = height * 5, height * 4, height * 3
-        fig, axs = plt.subplots(1, 2, figsize=(3 * height, height))
-        for ax, diversities, title in zip(axs, data, ("Average pairwise distance", "Pure diversity")):
+        title_size, text_size, tick_size = height * 4, height * 4, height * 3
+        fig, axs = plt.subplots(1, 3, figsize=(3 * height, height))
+        for ax, diversities, title in zip(axs, data, ("Average pairwise distance",
+                                                      "Pure diversity",
+                                                      "Average nearest\nneighbor distance")):
             bplot = ax.boxplot(diversities.values(), labels=[l.upper() for l in diversities.keys()],
                                patch_artist=True, whis=(0, 100))
             for patch, color in zip(bplot["boxes"], ("C1", "C2", "C0")):
@@ -527,13 +547,7 @@ class Visualizer:
             logger.warning("No solutions or only one solution found.")
             return
 
-        follow_ups = []
-        for scenario, perturbation in solutions:
-            perturbation.perturb(scenario)
-            follow_ups.append(scenario)
-
-        dist_matrix = squareform(pdist(np.array(follow_ups, dtype=object).reshape((len(follow_ups), -1)),
-                                       lambda x, y: x[0].dist(y[0])))
+        dist_matrix = squareform(Visualizer._pairwise_distance(solutions))
         out = MDS(n_components=3, dissimilarity="precomputed").fit(dist_matrix).embedding_
         fig, ax = plt.subplots(figsize=(10, 8))
         ax = plt.axes(projection="3d")
@@ -544,20 +558,172 @@ class Visualizer:
         if show: plt.show()
 
     @staticmethod
-    def _log_statistics(groups):
-        if "archive" not in groups.groups:
-            logger.warning("Cannot find statistics of archives.")
-            return
-        pop = groups.get_group("archive").sort_values("gen", ascending=True).fillna(0)
-        logger.info(f"#violations of the last archive: {pop['len'].iloc[-1]}.")
-        logger.info(f"Max fitness of the last archive: {pop['max'].iloc[-1]}.")
-        logger.info(f"Average fitness of the last archive: {pop['avg'].iloc[-1]}.")
-        if len(pop["gen"]) > 1:
-            logger.info("Growth rate of average fitness over generations: "
-                        f"{np.polyfit(pop['gen'], pop['avg'], 1)[0]}.")
-            logger.info("Growth rate of max fitness over generations: "
-                        f"{np.polyfit(pop['gen'], pop['max'], 1)[0]}.")
-            logger.info("Growth rate of average fitness over simulations: " +
-                        f"{np.polyfit(pop['sim'], pop['avg'], 1)[0]}.")
-            logger.info("Growth rate of max fitness over simulations: " +
-                        f"{np.polyfit(pop['sim'], pop['max'], 1)[0]}.")
+    def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_thresholds: List[float],
+                                              distance_thresholds: List[float], box=False, show=False):
+        """Plot the number of distinct solutions from final archived solutions by applying fitness and distance thresholds.
+
+        @param files: Solution data files of different algorithms. Dict[name_of_algorithm, List[solution_file]].
+        @param fitness_thresholds: A list of fitness thresholds.
+        @param distance_thresholds: A list of distance thresholds.
+        @param box: Show box plots.
+        @param show: A boolean to determine whether to show the plots or not.
+        """
+        height = 4
+        title_size, text_size, tick_size = height * 4, height * 4, height * 3
+        col_num = 3
+        if len(fitness_thresholds) < col_num: col_num = len(fitness_thresholds)
+        row_num = int(np.ceil(len(fitness_thresholds) / col_num))
+        fig, axes = plt.subplots(row_num, col_num, figsize=(col_num * height * 1.2, row_num * height))
+        ax_map = {gp_name: ax for ax, gp_name in zip(axes.reshape(-1), fitness_thresholds)}
+
+        for (name, file_list), color in zip(files.items(), ("C1", "C2", "C0", "C4")):
+            df = pd.DataFrame()
+            for file in file_list:
+                with open(file, "rb") as f:
+                    solutions = pickle.load(f)
+                solution_df = Visualizer._filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds)
+                df = (pd.concat([df, solution_df], ignore_index=True))
+
+            groups = df.groupby("fitness")
+            for gp_name, group in groups:
+                group = group.groupby("distance").agg(list)
+                ax = ax_map[gp_name]
+                if box: ax.boxplot(group["num"], positions=group.index.values, widths=0.05, patch_artist=True,
+                                   manage_ticks=False, whis=(0, 100), boxprops=dict(facecolor=color, alpha=0.4))
+                ax.plot(distance_thresholds, group["num"].apply(np.mean), "o-", color=color, label=verbose_map[name])
+                ax.set_title(f"Fitness threshold ={gp_name}", fontsize=title_size)
+                ax.tick_params(labelsize=tick_size)
+                ax.set_xlabel("Distance threshold", fontsize=text_size)
+                ax.set_ylabel("#distinct solutions", fontsize=text_size)
+                ax.yaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=1))
+                ax.legend()
+                ax.grid()
+
+        fig.tight_layout()
+        fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"archived_distinct_solutions.png"))
+        if show: plt.show()
+
+    @staticmethod
+    def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str, List[List[str]]],
+                                                     fitness_thresholds: List[float], distance_thresholds: List[float],
+                                                     interval=15, show=False):
+        """Plot the number of distinct solutions over simulations by applying fitness and distance thresholds.
+
+        @param directory: The directory of checkpoint files.
+        @param files: Checkpoint files. Dict[name_of_algorithm, List[Tuple(start_checkpoint, end_checkpoint)]].
+        @param fitness_thresholds: A list of fitness thresholds.
+        @param distance_thresholds: A list of distance thresholds.
+        @param interval: Width of intervals for aggregation.
+        @param show: A boolean to determine whether to show the plots or not.
+        """
+        height = 4
+        title_size, text_size, tick_size = height * 4, height * 4, height * 3
+        col_num = 3
+        total_size = len(fitness_thresholds) * len(distance_thresholds)
+        if total_size < col_num: col_num = total_size
+        row_num = int(np.ceil(total_size / col_num))
+        fig, axes = plt.subplots(row_num, col_num, figsize=(col_num * height * 1.2, row_num * height))
+        ax_map = {gp_name: ax for ax, gp_name in
+                  zip(axes.reshape(-1), product(fitness_thresholds, distance_thresholds))}
+
+        ckps = sorted(os.listdir(directory))
+        skip = {"ccea": 5, "ga": 2, "rs": 1}
+        for (name, ckp_list), color in zip(files.items(), ("C1", "C2", "C0", "C4")):
+            ckp_df_list = []
+            low, high = float("inf"), float("-inf")
+            for start, end in ckp_list:
+                file_list = [os.path.join(directory, f) for f in ckps if start <= f <= end]
+                df = pd.DataFrame()
+                for file in file_list:
+                    with open(file, "rb") as f:
+                        for _ in range(skip[name]): pickle.load(f)
+                        solutions = pickle.load(f)
+                        for _ in range(2): pickle.load(f)
+                        budget = pickle.load(f)
+                    ckp_df = Visualizer._filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds)
+                    ckp_df["sim"] = budget.sim_num
+                    low = min(low, int(np.ceil(budget.sim_num / interval)) * interval)
+                    high = max(high, int(np.floor(budget.sim_num / interval)) * interval)
+                    df = (pd.concat([df, ckp_df], ignore_index=True))
+                ckp_df_list.append(df)
+
+            helper = pd.DataFrame({"sim": range(low, high + 1, interval)})
+            agg_df_list = defaultdict(list)
+            for ckp_df in ckp_df_list:
+                groups = ckp_df.groupby(["fitness", "distance"])
+                for gp_name, group in groups:
+                    group = group.sort_values("sim", ascending=True)
+                    if group.iloc[0]["sim"] > low:
+                        first_row = group.iloc[0].copy()
+                        first_row["sim"] = low
+                        group = pd.concat([pd.DataFrame([first_row]), group], ignore_index=True)
+                    if group.iloc[-1]["sim"] < high:
+                        last_row = group.iloc[-1].copy()
+                        last_row["sim"] = high
+                        group = pd.concat([group, pd.DataFrame([last_row])], ignore_index=True)
+                    agg_df = pd.merge(group, helper, on="sim", how="outer").sort_values("sim", ascending=True)
+                    agg_df["num"].interpolate("linear", inplace=True)
+                    agg_df = agg_df[agg_df["sim"] % interval == 0]
+                    agg_df_list[gp_name].append(agg_df)
+
+            for gp_name, agg_dfs in agg_df_list.items():
+                agg_df = pd.concat(agg_dfs).groupby("sim").agg(list)
+                ax = ax_map[gp_name]
+                ax.plot(agg_df.index.values, agg_df["num"].apply(np.mean), "o-", color=color, label=verbose_map[name])
+                ax.set_title(f"Fitness threshold ={gp_name[0]},\nDistance threshold ={gp_name[1]}", fontsize=title_size)
+                ax.tick_params(labelsize=tick_size)
+                ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+                ax.set_xlabel("#simulations", fontsize=text_size)
+                ax.set_ylabel("#distinct solutions", fontsize=text_size)
+                ax.legend()
+                ax.grid()
+
+        fig.tight_layout()
+        fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"distinct_solutions_over_simulations.png"))
+        if show: plt.show()
+
+    @staticmethod
+    def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_thresholds: List[float]):
+        column_names = ("fitness", "distance", "num")
+        if len(solutions) == 0:
+            return pd.DataFrame([[fitness_threshold, distance_threshold, 0]
+                                 for fitness_threshold in fitness_thresholds
+                                 for distance_threshold in distance_thresholds], columns=column_names)
+
+        indices_to_remove = [[i for i, solution in enumerate(solutions) if solution.fitness.values[0] < threshold]
+                             for threshold in fitness_thresholds]
+        dist_matrix = squareform(Visualizer._pairwise_distance(solutions))
+
+        results = []
+        for idx, indices in enumerate(indices_to_remove):
+            dist = np.delete(dist_matrix, indices, axis=0)
+            dist = np.delete(dist, indices, axis=1)
+            n = len(dist)
+            if n < 2:
+                results += [[fitness_thresholds[idx], threshold, n] for threshold in distance_thresholds]
+                continue
+
+            for threshold in distance_thresholds:
+                graph = nx.Graph()
+                graph.add_nodes_from(range(n))
+                for i in range(n):  # Add edges between points that are closer than the threshold distance.
+                    for j in range(i + 1, n):
+                        if dist[i, j] < threshold:
+                            graph.add_edge(i, j)
+
+                # Find a maximal independent set as an approximation to maximum independent set.
+                independent_set = nx.algorithms.approximation.maximum_independent_set(graph)
+                # The points to keep are in the independent set.
+                points_to_keep = set(independent_set)
+                # The points to remove are the complement of the independent set.
+                # points_to_remove = set(range(n)) - points_to_keep
+                results.append([fitness_thresholds[idx], threshold, len(points_to_keep)])
+        return pd.DataFrame(results, columns=column_names)
+
+    @staticmethod
+    def _pairwise_distance(solutions):
+        follow_ups = []
+        for scenario, perturbation in solutions:
+            perturbation.perturb(scenario)
+            follow_ups.append(scenario)
+        return pdist(np.array(follow_ups, dtype=object).reshape((len(follow_ups), -1)), lambda x, y: x[0].dist(y[0]))
