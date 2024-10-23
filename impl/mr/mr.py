@@ -194,9 +194,10 @@ class PerturbationFactory:
 class Relation(ABC):
     _s, _f, _d = "source", "follow-up", "fov-nearest-distance"
 
-    def __init__(self, field, threshold):
+    def __init__(self, field, threshold, percentage: bool):
         self.field = field
         self.threshold = threshold
+        self.percentage = percentage
         self._extent_func = None
 
     def is_violated(self, source, follow_up, labels=None) -> (bool, float):
@@ -288,21 +289,30 @@ class Relation(ABC):
 
 
 class Invariance(Relation):
-    def __init__(self, field, threshold=0.01):
-        super().__init__(field, threshold)
-        self._extent_func = lambda row: abs(row[Relation._f] - row[Relation._s]) - row[Relation._s] * self.threshold
+    def __init__(self, field, threshold=0.01, percentage: bool = True):
+        super().__init__(field, threshold, percentage)
+        if percentage:
+            self._extent_func = lambda row: abs(row[Relation._f] - row[Relation._s]) - row[Relation._s] * self.threshold
+        else:
+            self._extent_func = lambda row: abs(row[Relation._f] - row[Relation._s]) - self.threshold
 
 
 class Decreasing(Relation):
-    def __init__(self, field, threshold=0.1):
-        super().__init__(field, threshold)
-        self._extent_func = lambda row: row[Relation._f] - row[Relation._s] * (1.0 - self.threshold)
+    def __init__(self, field, threshold=0.1, percentage: bool = True):
+        super().__init__(field, threshold, percentage)
+        if percentage:
+            self._extent_func = lambda row: row[Relation._f] - row[Relation._s] * (1.0 - self.threshold)
+        else:
+            self._extent_func = lambda row: row[Relation._f] - row[Relation._s] + self.threshold
 
 
 class Increasing(Relation):
-    def __init__(self, field, threshold=0.1):
-        super().__init__(field, threshold)
-        self._extent_func = lambda row: row[Relation._s] * (1.0 + self.threshold) - row[Relation._f]
+    def __init__(self, field, threshold=0.1, percentage: bool = True):
+        super().__init__(field, threshold, percentage)
+        if percentage:
+            self._extent_func = lambda row: row[Relation._s] * (1.0 + self.threshold) - row[Relation._f]
+        else:
+            self._extent_func = lambda row: row[Relation._s] + self.threshold - row[Relation._f]
 
 
 class MR:
