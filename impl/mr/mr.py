@@ -190,6 +190,15 @@ class PerturbationFactory:
             return f"{self.boundary.name.lower()}{'-mark' if self.mark else ''}"
         return None
 
+    def has(self, perturbations: Perturbations):
+        for perturbation in perturbations:
+            if (perturbation.enabled and
+                    perturbation.category == self.category and
+                    perturbation.boundary == self.boundary and
+                    perturbation.operation == self.operation):
+                return True
+        return False
+
 
 class Relation(ABC):
     _s, _f, _d = "source", "follow-up", "fov-nearest-distance"
@@ -285,7 +294,8 @@ class Relation(ABC):
     def __eq__(self, other):
         return (isinstance(other, self.__class__) and
                 self.field == other.field and
-                self.threshold == other.threshold)
+                self.threshold == other.threshold and
+                self.percentage == other.percentage)
 
 
 class Invariance(Relation):
@@ -328,6 +338,12 @@ class MR:
             perturbations[0].enabled = True
         return perturbations
 
+    def has(self, perturbations: Perturbations) -> bool:
+        for perturbation_factory in self.perturbation_factories:
+            if perturbation_factory.has(perturbations):
+                return True
+        return False
+
 
 class MRSet:
     def __init__(self, mrs: List[MR]):
@@ -351,3 +367,7 @@ class MRSet:
 
     def is_violated(self, source, follow_up) -> (bool, float):
         return self.relation.is_violated(source, follow_up, self.labels)
+
+    def violated_mrs(self, perturbations_list: List[Perturbations]) -> List[List[int]]:
+        return [[i for i, mr in enumerate(self.mrs) if mr.has(perturbations)]
+                for perturbations in perturbations_list]
