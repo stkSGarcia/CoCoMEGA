@@ -2,6 +2,7 @@ import logging
 import os
 import pickle
 import time
+from bisect import bisect_left
 from collections import defaultdict
 from itertools import product
 from pathlib import Path
@@ -16,6 +17,7 @@ from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
 from matplotlib.ticker import MaxNLocator
 from scipy.spatial.distance import squareform, pdist
+from scipy.stats import rankdata
 from sklearn.manifold import MDS
 
 from impl.config import CONFIG
@@ -31,10 +33,16 @@ verbose_map = {
     "archive": "Archive",
     "arc_scen": "Archive—Scenario",
     "arc_pert": "Archive—Perturbation",
-    "ccea": "CCEA",
-    "rs": "Random Search",
-    "ga": "Standard Genetic Algorithm",
+    "ccea": "CoCoMEGA",
+    "rs": "RS",
+    "ga": "SGA",
     "gawa": "SGA with Archives",
+}
+
+style_map = {
+    "ccea": {"color": "C1", "marker": "o"},
+    "ga": {"color": "C2", "marker": "*"},
+    "rs": {"color": "C0", "marker": "x"}
 }
 
 
@@ -379,22 +387,20 @@ class Visualizer:
         legend_elements = {}
 
         for ax, metric, pop_name, title in plots:
-            for (name, (full, merged, agg)), color in zip(data.items(), ("C1", "C2", "C0", "C4")):
+            for name, (full, merged, agg) in data.items():
                 full, merged, agg = full[pop_name], merged[pop_name], agg[pop_name]
                 if box:
                     ax.boxplot(agg[metric], positions=agg.index.values, widths=2, patch_artist=True, manage_ticks=False,
-                               whis=(0, 100), boxprops=dict(facecolor=color, alpha=0.4))
-                if avg_line:
-                    ax.plot(agg.index.values, agg[metric].apply(np.nanmean), "o-", color=color)
+                               whis=(0, 100), boxprops=dict(facecolor=style_map[name]["color"], alpha=0.4))
+                if avg_line: ax.plot(agg.index.values, agg[metric].apply(np.nanmean), **style_map[name])
                 if trend_line:
                     f = np.poly1d(np.polyfit(merged["sim"], merged[metric], regression_degree))
-                    ax.plot(merged["sim"], f(merged["sim"]), "-", lw=2, color=color)
+                    ax.plot(merged["sim"], f(merged["sim"]), lw=2, color=style_map[name]["color"])
                 if all_lines:
                     for line in full:
-                        ax.plot(line["sim"], line[metric], "x--", lw=1, color=color, alpha=0.6)
+                        ax.plot(line["sim"], line[metric], "--", lw=1, **style_map[name], alpha=0.6)
                 if name not in legend_elements:
-                    legend_elements[name] = Line2D([0], [0], linestyle="-", marker="o",
-                                                   color=color, lw=2, label=verbose_map[name])
+                    legend_elements[name] = Line2D([0], [0], **style_map[name], label=verbose_map[name])
             ax.set_title(title, fontsize=title_size)
             ax.tick_params(labelsize=tick_size)
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -525,10 +531,10 @@ class Visualizer:
         for ax, diversities, title in zip(axs, data, ("Average pairwise distance",
                                                       "Pure diversity",
                                                       "Average nearest\nneighbor distance")):
-            bplot = ax.boxplot(diversities.values(), labels=[l.upper() for l in diversities.keys()],
+            bplot = ax.boxplot(diversities.values(), labels=[verbose_map[l] for l in diversities.keys()],
                                patch_artist=True, whis=(0, 100))
-            for patch, color in zip(bplot["boxes"], ("C1", "C2", "C0")):
-                patch.set_facecolor(color)
+            for patch, name in zip(bplot["boxes"], diversities.keys()):
+                patch.set_facecolor(style_map[name]["color"])
                 patch.set_alpha(0.6)
             ax.set_title(title, fontsize=title_size)
             ax.tick_params(labelsize=tick_size)
@@ -559,13 +565,14 @@ class Visualizer:
 
     @staticmethod
     def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_thresholds: List[float],
-                                              distance_thresholds: List[float], box=False, show=False):
+                                              distance_thresholds: List[float], box=False, mr=False, show=False):
         """Plot the number of distinct solutions from final archived solutions by applying fitness and distance thresholds.
 
         @param files: Solution data files of different algorithms. Dict[name_of_algorithm, List[solution_file]].
         @param fitness_thresholds: A list of fitness thresholds.
         @param distance_thresholds: A list of distance thresholds.
         @param box: Show box plots.
+        @param mr: Show the number of MRs violated.
         @param show: A boolean to determine whether to show the plots or not.
         """
         height = 4
@@ -576,7 +583,8 @@ class Visualizer:
         fig, axes = plt.subplots(row_num, col_num, figsize=(col_num * height * 1.2, row_num * height))
         ax_map = {gp_name: ax for ax, gp_name in zip(axes.reshape(-1), fitness_thresholds)}
 
-        for (name, file_list), color in zip(files.items(), ("C1", "C2", "C0", "C4")):
+        # vda = defaultdict(lambda: dict())
+        for name, file_list in files.items():
             df = pd.DataFrame()
             for file in file_list:
                 with open(file, "rb") as f:
@@ -584,20 +592,31 @@ class Visualizer:
                 solution_df = Visualizer._filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds)
                 df = (pd.concat([df, solution_df], ignore_index=True))
 
-            groups = df.groupby("fitness")
+            groups = df.groupby("fitness_threshold")
             for gp_name, group in groups:
-                group = group.groupby("distance").agg(list)
+                group = group.groupby("distance_threshold").agg(list)
+                metric_name = "violated_mr_num" if mr else "distinct_solution_num"
                 ax = ax_map[gp_name]
-                if box: ax.boxplot(group["num"], positions=group.index.values, widths=0.05, patch_artist=True,
-                                   manage_ticks=False, whis=(0, 100), boxprops=dict(facecolor=color, alpha=0.4))
-                ax.plot(distance_thresholds, group["num"].apply(np.mean), "o-", color=color, label=verbose_map[name])
-                ax.set_title(f"Fitness threshold ={gp_name}", fontsize=title_size)
+                # vda[gp_name][name] = list(group["distinct_solution_num"])
+                if box: ax.boxplot(group[metric_name], positions=group.index.values, widths=0.05,
+                                   patch_artist=True, manage_ticks=False, whis=(0, 100),
+                                   boxprops=dict(facecolor=style_map[name]["color"], alpha=0.4))
+                ax.plot(distance_thresholds, group[metric_name].apply(np.mean), **style_map[name],
+                        label=verbose_map[name])
+                ax.set_title(f"Fitness threshold ($\\theta_f={gp_name}$)", fontsize=title_size)
                 ax.tick_params(labelsize=tick_size)
-                ax.set_xlabel("Distance threshold", fontsize=text_size)
-                ax.set_ylabel("#distinct solutions", fontsize=text_size)
+                ax.set_xlabel("Distance threshold ($\\theta_d$)", fontsize=text_size)
+                ax.set_ylabel("#MRs violated" if mr else "$DS$", fontsize=text_size)
                 ax.yaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=1))
                 ax.legend()
                 ax.grid()
+
+        # for fitness, d in vda.items():
+        #     for alg1, alg2 in (("ccea", "ga"), ("ccea", "rs"), ("ga", "rs")):
+        #         treatment, control = d[alg1], d[alg2]
+        #         for i, (num1, num2) in enumerate(zip(treatment, control)):
+        #             estimate, magnitude = Visualizer._vda(num1, num2)
+        #             print(f"{fitness}-{distance_thresholds[i]}: {alg1}-{alg2}: {magnitude}-{estimate}.")
 
         fig.tight_layout()
         fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"archived_distinct_solutions.png"))
@@ -606,7 +625,7 @@ class Visualizer:
     @staticmethod
     def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str, List[List[str]]],
                                                      fitness_thresholds: List[float], distance_thresholds: List[float],
-                                                     interval=15, show=False):
+                                                     interval=15, mr=False, show=False):
         """Plot the number of distinct solutions over simulations by applying fitness and distance thresholds.
 
         @param directory: The directory of checkpoint files.
@@ -614,6 +633,7 @@ class Visualizer:
         @param fitness_thresholds: A list of fitness thresholds.
         @param distance_thresholds: A list of distance thresholds.
         @param interval: Width of intervals for aggregation.
+        @param mr: Show the number of MRs violated.
         @param show: A boolean to determine whether to show the plots or not.
         """
         height = 4
@@ -628,7 +648,7 @@ class Visualizer:
 
         ckps = sorted(os.listdir(directory))
         skip = {"ccea": 5, "ga": 2, "rs": 1}
-        for (name, ckp_list), color in zip(files.items(), ("C1", "C2", "C0", "C4")):
+        for name, ckp_list in files.items():
             ckp_df_list = []
             low, high = float("inf"), float("-inf")
             for start, end in ckp_list:
@@ -641,40 +661,46 @@ class Visualizer:
                         for _ in range(2): pickle.load(f)
                         budget = pickle.load(f)
                     ckp_df = Visualizer._filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds)
-                    ckp_df["sim"] = budget.sim_num
+                    ckp_df["simulation_num"] = budget.sim_num
                     low = min(low, int(np.ceil(budget.sim_num / interval)) * interval)
                     high = max(high, int(np.floor(budget.sim_num / interval)) * interval)
                     df = (pd.concat([df, ckp_df], ignore_index=True))
                 ckp_df_list.append(df)
 
-            helper = pd.DataFrame({"sim": range(low, high + 1, interval)})
+            helper = pd.DataFrame({"simulation_num": range(low, high + 1, interval)})
             agg_df_list = defaultdict(list)
             for ckp_df in ckp_df_list:
-                groups = ckp_df.groupby(["fitness", "distance"])
+                groups = ckp_df.groupby(["fitness_threshold", "distance_threshold"])
                 for gp_name, group in groups:
-                    group = group.sort_values("sim", ascending=True)
-                    if group.iloc[0]["sim"] > low:
+                    group = group.sort_values("simulation_num", ascending=True)
+                    if group.iloc[0]["simulation_num"] > low:
                         first_row = group.iloc[0].copy()
-                        first_row["sim"] = low
+                        first_row["simulation_num"] = low
                         group = pd.concat([pd.DataFrame([first_row]), group], ignore_index=True)
-                    if group.iloc[-1]["sim"] < high:
+                    if group.iloc[-1]["simulation_num"] < high:
                         last_row = group.iloc[-1].copy()
-                        last_row["sim"] = high
+                        last_row["simulation_num"] = high
                         group = pd.concat([group, pd.DataFrame([last_row])], ignore_index=True)
-                    agg_df = pd.merge(group, helper, on="sim", how="outer").sort_values("sim", ascending=True)
-                    agg_df["num"].interpolate("linear", inplace=True)
-                    agg_df = agg_df[agg_df["sim"] % interval == 0]
+                    agg_df = (pd.merge(group, helper, on="simulation_num", how="outer")
+                              .sort_values("simulation_num", ascending=True))
+                    agg_df["distinct_solution_num"].interpolate("linear", inplace=True)
+                    agg_df["violated_mr_num"].interpolate("linear", inplace=True)
+                    agg_df = agg_df[agg_df["simulation_num"] % interval == 0]
                     agg_df_list[gp_name].append(agg_df)
 
             for gp_name, agg_dfs in agg_df_list.items():
-                agg_df = pd.concat(agg_dfs).groupby("sim").agg(list)
+                agg_df = pd.concat(agg_dfs).groupby("simulation_num").agg(list)
+                metric_name = "violated_mr_num" if mr else "distinct_solution_num"
                 ax = ax_map[gp_name]
-                ax.plot(agg_df.index.values, agg_df["num"].apply(np.mean), "o-", color=color, label=verbose_map[name])
-                ax.set_title(f"Fitness threshold ={gp_name[0]},\nDistance threshold ={gp_name[1]}", fontsize=title_size)
+                ax.plot(agg_df.index.values, agg_df[metric_name].apply(np.mean), **style_map[name],
+                        label=verbose_map[name])
+                ax.set_title(
+                    f"Fitness threshold ($\\theta_f={gp_name[0]}$),\nDistance threshold ($\\theta_d={gp_name[1]}$)",
+                    fontsize=title_size)
                 ax.tick_params(labelsize=tick_size)
                 ax.yaxis.set_major_locator(MaxNLocator(integer=True))
                 ax.set_xlabel("#simulations", fontsize=text_size)
-                ax.set_ylabel("#distinct solutions", fontsize=text_size)
+                ax.set_ylabel("#MRs violated" if mr else "$DS$", fontsize=text_size)
                 ax.legend()
                 ax.grid()
 
@@ -684,23 +710,28 @@ class Visualizer:
 
     @staticmethod
     def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_thresholds: List[float]):
-        column_names = ("fitness", "distance", "num")
+        column_names = ("fitness_threshold", "distance_threshold",
+                        "distinct_solution_num", "violated_mr_num", "distinct_mr_num")
         if len(solutions) == 0:
-            return pd.DataFrame([[fitness_threshold, distance_threshold, 0]
+            return pd.DataFrame([[fitness_threshold, distance_threshold, 0, 0, 0]
                                  for fitness_threshold in fitness_thresholds
                                  for distance_threshold in distance_thresholds], columns=column_names)
 
         indices_to_remove = [[i for i, solution in enumerate(solutions) if solution.fitness.values[0] < threshold]
                              for threshold in fitness_thresholds]
+        from impl.problem import mr_set
+        indices_of_violated_mrs = np.array(mr_set.violated_mrs([perturbations for _, perturbations in solutions]))
         dist_matrix = squareform(Visualizer._pairwise_distance(solutions))
 
         results = []
         for idx, indices in enumerate(indices_to_remove):
             dist = np.delete(dist_matrix, indices, axis=0)
             dist = np.delete(dist, indices, axis=1)
+            violated_mrs = np.delete(indices_of_violated_mrs, indices, axis=0)
+            assert len(violated_mrs) == len(dist)
             n = len(dist)
             if n < 2:
-                results += [[fitness_thresholds[idx], threshold, n] for threshold in distance_thresholds]
+                results += [[fitness_thresholds[idx], threshold, n, n, n] for threshold in distance_thresholds]
                 continue
 
             for threshold in distance_thresholds:
@@ -717,7 +748,11 @@ class Visualizer:
                 points_to_keep = set(independent_set)
                 # The points to remove are the complement of the independent set.
                 # points_to_remove = set(range(n)) - points_to_keep
-                results.append([fitness_thresholds[idx], threshold, len(points_to_keep)])
+                mr_indices = list(map(tuple, violated_mrs[list(points_to_keep)]))
+                violated_mr_num = len(set(np.hstack(mr_indices)))
+                distinct_mr_num = len(set(mr_indices))
+                results.append([fitness_thresholds[idx], threshold, len(points_to_keep),
+                                violated_mr_num, distinct_mr_num])
         return pd.DataFrame(results, columns=column_names)
 
     @staticmethod
@@ -727,3 +762,22 @@ class Visualizer:
             perturbation.perturb(scenario)
             follow_ups.append(scenario)
         return pdist(np.array(follow_ups, dtype=object).reshape((len(follow_ups), -1)), lambda x, y: x[0].dist(y[0]))
+
+    @staticmethod
+    def _vda(treatment: List[int], control: List[int]):
+        m = len(treatment)
+        n = len(control)
+        if m != n: raise ValueError("Data d and f must have the same length")
+
+        r = rankdata(treatment + control)
+        r1 = sum(r[0:m])
+
+        # Compute the measure.
+        # A = (r1/m - (m+1)/2)/n # Formula (14) in Vargha and Delaney, 2000.
+        a = (2 * r1 - m * (m + 1)) / (2 * n * m)  # Equivalent formula to avoid accuracy errors.
+
+        levels = [0.147, 0.33, 0.474]  # Effect sizes from Hess and Kromrey, 2004.
+        magnitude = ["negligible", "small", "medium", "large"]
+        scaled_a = (a - 0.5) * 2
+        return a, magnitude[bisect_left(levels, abs(scaled_a))]
+
