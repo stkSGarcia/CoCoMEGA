@@ -604,7 +604,7 @@ def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_t
             ax.set_title(f"Fitness threshold ($\\theta_f={gp_name}$)", fontsize=title_size)
             ax.tick_params(labelsize=tick_size)
             ax.set_xlabel("Distance threshold ($\\theta_d$)", fontsize=text_size)
-            ax.set_ylabel("$DS$", fontsize=text_size)
+            ax.set_ylabel("Average $DS$", fontsize=text_size)
             ax.xaxis.set_major_locator(MultipleLocator(0.2))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=1))
             ax.legend()
@@ -625,7 +625,7 @@ def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_t
 
 def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str, List[List[str]]],
                                                  fitness_thresholds: List[float], distance_thresholds: List[float],
-                                                 max_sim_num: int, interval=10, mr=False, show=False):
+                                                 max_sim_num: int, interval=10, mrc=False, show=False):
     """Plot the number of distinct solutions over simulations by applying fitness and distance thresholds.
 
     @param directory: The directory of checkpoint files.
@@ -634,7 +634,7 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
     @param distance_thresholds: A list of distance thresholds.
     @param max_sim_num: The maximum number of simulations.
     @param interval: Width of intervals for aggregation (percentage).
-    @param mr: Show the number of MRs violated.
+    @param mrc: Show the MR coverage.
     @param show: A boolean to determine whether to show the plots or not.
     """
     percent_ranges = np.arange(interval, 101, interval)
@@ -676,10 +676,12 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
                 temp = agg_df.loc[ranges]
                 agg_df_list[gp_name].append(temp)
 
+        from impl.problem import mr_set
         for gp_name, agg_dfs in agg_df_list.items():
             agg_df = pd.concat(agg_dfs).groupby("simulation_num").agg(list)
             ax = ax_map[gp_name]
-            ax.plot(percent_ranges, agg_df["violated_mr_num" if mr else "distinct_solution_num"].apply(np.mean),
+            ax.plot(percent_ranges,
+                    agg_df["violated_mr_num" if mrc else "distinct_solution_num"].apply(np.mean) * 100 / len(mr_set.mrs),
                     **style_map[name], label=verbose_map[name])
             ax.set_title(
                 f"Fitness threshold ($\\theta_f={gp_name[0]}$),\nDistance threshold ($\\theta_d={gp_name[1]}$)",
@@ -688,7 +690,7 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
             ax.xaxis.set_major_locator(MultipleLocator(interval))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=1))
             ax.set_xlabel("Simulation budget (%)", fontsize=text_size)
-            ax.set_ylabel("$MRC$" if mr else "$DS$", fontsize=text_size)
+            ax.set_ylabel("Average $MRC$ (%)" if mrc else "Average $DS$", fontsize=text_size)
             ax.legend()
             ax.grid()
 
