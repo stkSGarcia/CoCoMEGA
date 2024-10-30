@@ -625,7 +625,7 @@ def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_t
 
 def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str, List[List[str]]],
                                                  fitness_thresholds: List[float], distance_thresholds: List[float],
-                                                 max_sim_num, interval=10, mr=False, show=False):
+                                                 max_sim_num: int, interval=10, mr=False, show=False):
     """Plot the number of distinct solutions over simulations by applying fitness and distance thresholds.
 
     @param directory: The directory of checkpoint files.
