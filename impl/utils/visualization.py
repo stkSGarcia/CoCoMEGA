@@ -22,6 +22,7 @@ from sklearn.manifold import MDS
 
 from impl.config import CONFIG
 from impl.mr.mr import Relation
+from impl.utils.metrics import metrics, pairwise_distance
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,10 @@ verbose_map = {
     "rs": "RS",
     "ga": "SGA",
     "gawa": "SGA with Archives",
+    "distinct_solution_num": "Average $DS$",
+    "avg_fit": "Average Fitness",
+    "avg_pw": "Average Pairwise Distance",
+    "pure_div": "Pure Diversity",
 }
 
 style_map = {
@@ -509,7 +514,7 @@ def visualize_diversity(files: Dict[str, List[str]], show=False):
                 logger.warning(f"No solutions or only one solution found in {file}.")
                 continue
 
-            dist = _pairwise_distance(solutions)
+            dist = pairwise_distance(solutions)
             # Average pairwise distance.
             average_pairwise_dist = np.sum(dist) / len(dist)
             data[0][name].append(average_pairwise_dist)
@@ -550,7 +555,7 @@ def visualize_diversity_distribution(file, show=False):
         logger.warning("No solutions or only one solution found.")
         return
 
-    dist_matrix = squareform(_pairwise_distance(solutions))
+    dist_matrix = squareform(pairwise_distance(solutions))
     out = MDS(n_components=3, dissimilarity="precomputed").fit(dist_matrix).embedding_
     fig, ax = plt.subplots(figsize=(10, 8))
     ax = plt.axes(projection="3d")
@@ -585,7 +590,8 @@ def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_t
         for file in file_list:
             with open(file, "rb") as f:
                 solutions = pickle.load(f)
-            solution_df = _filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds)
+            solution_df = _filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds,
+                                                additional_metrics=['distinct_solution_num'])
             df = (pd.concat([df, solution_df], ignore_index=True))
 
         data[name] = df
@@ -681,7 +687,8 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
             agg_df = pd.concat(agg_dfs).groupby("simulation_num").agg(list)
             ax = ax_map[gp_name]
             ax.plot(percent_ranges,
-                    agg_df["violated_mr_num" if mrc else "distinct_solution_num"].apply(np.mean) * 100 / len(mr_set.mrs),
+                    agg_df["violated_mr_num" if mrc else "distinct_solution_num"].apply(np.mean) * 100 / len(
+                        mr_set.mrs),
                     **style_map[name], label=verbose_map[name])
             ax.set_title(
                 f"Fitness threshold ($\\theta_f={gp_name[0]}$),\nDistance threshold ($\\theta_d={gp_name[1]}$)",
@@ -699,11 +706,113 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
     if show: plt.show()
 
 
-def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_thresholds: List[float]):
-    column_names = ("fitness_threshold", "distance_threshold",
-                    "distinct_solution_num", "violated_mr_num", "distinct_mr_num")
+def visualize_archived_solutions_by_gen(checkpoints: Dict[str, List[List[str]]], generation_num, metric_name,
+                                        fitness_thresholds: List[float],
+                                        distance_thresholds: List[float], box=False, show=False,
+                                        legend_loc='upper right'):
+    """Plot the number of distinct solutions from final archived solutions by applying fitness and distance thresholds.
+
+    @param checkpoints: Checkpoint data files of different runs of different algorithms. Dict[name_of_algorithm, List[list[checkpoint_file]].
+    @param generation_num: Generation Number. If set to K, plot the solutions found after K generations.
+    @param metric_name: The metric used for comparison. Options are
+        "ds" (Distinct Solutions)
+        "avg_pw" (Average Pairwise Distance)
+        "pure_div" (Pure Diversity)
+        "avg_fitness" (Average Fitness)
+    @param fitness_thresholds: A list of fitness thresholds.
+    @param distance_thresholds: A list of distance thresholds.
+    @param box: Show box plots.
+    @param show: A boolean to determine whether to show the plots or not.
+    @param legend_loc: Specifies the location of the legend in the plots
+    """
+    col_num, height = 3, 4
+    title_size, text_size, tick_size = height * 4, height * 4, height * 3
+    if len(fitness_thresholds) < col_num: col_num = len(fitness_thresholds)
+    row_num = int(np.ceil(len(fitness_thresholds) / col_num))
+    fig, axes = plt.subplots(row_num, col_num, figsize=(col_num * height * 1.2, row_num * height))
+    ax_map = {gp_name: ax for ax, gp_name in zip(axes.reshape(-1), fitness_thresholds)}
+
+    data = {}
+    for alg, runs in checkpoints.items():
+        df = pd.DataFrame()
+        for i, run in enumerate(runs):
+            if len(run) < generation_num:
+                cp = run[-1]
+            else:
+                cp = run[generation_num - 1]
+            with open(cp, "rb") as f:
+                if alg.lower() in ['ccea', 'cocomega']:
+                    _ = pickle.load(f)
+                    _ = pickle.load(f)
+                    _ = pickle.load(f)
+                    _ = pickle.load(f)
+                    _ = pickle.load(f)
+                    solutions = pickle.load(f)
+                elif alg.lower() == 'ga':
+                    _ = pickle.load(f)
+                    _ = pickle.load(f)
+                    solutions = pickle.load(f)
+                elif alg.lower() == 'rs':
+                    _ = pickle.load(f)
+                    solutions = pickle.load(f)
+                else:
+                    logging.warning(f'Unsupported Algorithm: {alg}')
+                    continue
+
+            solution_df = _filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds,
+                                                additional_metrics=([metric_name]))
+
+            df = (pd.concat([df, solution_df], ignore_index=True))
+
+        data[alg] = df
+        groups = df.groupby("fitness_threshold")
+        for gp_name, group in groups:
+            group = group.groupby("distance_threshold").agg(list)
+            values = group[metric_name]
+
+            ax = ax_map[gp_name]
+            ax.errorbar(distance_thresholds, values.apply(np.nanmean),
+                        yerr=values.apply(
+                            lambda row: 0.95 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row)))),
+                        **style_map[alg], capsize=2, label=verbose_map[alg])
+
+            y_max = max(
+                [np.nanmean(row) + 0.95 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row))) for row in values])
+            y_min = min(
+                [np.nanmean(row) - 0.95 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row))) for row in values])
+            if box: ax.boxplot(group["distinct_solution_num"], positions=group.index.values, widths=0.05,
+                               patch_artist=True, manage_ticks=False, whis=(0, 100),
+                               boxprops=dict(facecolor=style_map[alg]["color"], alpha=0.4))
+            ax.set_title(f"Fitness threshold ($\\theta_f={gp_name}$)", fontsize=title_size)
+            ax.tick_params(labelsize=tick_size)
+            ax.set_xlabel("Distance threshold ($\\theta_d$)", fontsize=text_size)
+            ax.set_ylabel(verbose_map[metric_name], fontsize=text_size)
+            curr_y_min, curr_y_max = ax.get_ylim()
+            legend_buffer = 1
+            lower_offset = 0.3
+            if y_max + legend_buffer > curr_y_max:
+                ax.set_ylim(top=y_max + legend_buffer)
+            if y_min - lower_offset < curr_y_min:
+                ax.set_ylim(bottom=y_min - lower_offset)
+            ax.xaxis.set_major_locator(MultipleLocator(0.2))
+            ax.yaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=1))
+            ax.legend(loc=legend_loc)
+            ax.grid()
+
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(CONFIG["workspace"]["visualization"], f"archived_{metric_name}_by_gen{generation_num}.png"))
+    if show: plt.show()
+    return data
+
+
+def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_thresholds: List[float],
+                          additional_metrics: List[str] = []):
+    column_names = (
+        "fitness_threshold", "distance_threshold", "violated_mr_num", "distinct_mr_num", *additional_metrics)
     if len(solutions) == 0:
-        return pd.DataFrame([[fitness_threshold, distance_threshold, 0, 0, 0]
+        return pd.DataFrame([[fitness_threshold, distance_threshold, 0, 0,
+                              *[metrics[metric](solutions) for metric in additional_metrics]]
                              for fitness_threshold in fitness_thresholds
                              for distance_threshold in distance_thresholds], columns=column_names)
 
@@ -711,17 +820,22 @@ def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_t
                          for threshold in fitness_thresholds]
     from impl.problem import mr_set
     indices_of_violated_mrs = np.array(mr_set.violated_mrs([perturbations for _, perturbations in solutions]))
-    dist_matrix = squareform(_pairwise_distance(solutions))
+    dist_matrix = squareform(pairwise_distance(solutions)) if len(solutions) > 1 else np.array([[0]])
 
     results = []
     for idx, indices in enumerate(indices_to_remove):
         dist = np.delete(dist_matrix, indices, axis=0)
         dist = np.delete(dist, indices, axis=1)
         violated_mrs = np.delete(indices_of_violated_mrs, indices, axis=0)
+        selected_solutions = [sol for i, sol in enumerate(solutions) if i not in indices]
         assert len(violated_mrs) == len(dist)
+        assert len(selected_solutions) == len(dist)
         n = len(dist)
+
         if n < 2:
-            results += [[fitness_thresholds[idx], threshold, n, n, n] for threshold in distance_thresholds]
+            results += [[fitness_thresholds[idx], threshold, n, n,
+                         *[metrics[metric](selected_solutions) for metric in additional_metrics]] for threshold in
+                        distance_thresholds]
             continue
 
         for threshold in distance_thresholds:
@@ -741,17 +855,10 @@ def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_t
             mr_indices = list(map(tuple, violated_mrs[list(points_to_keep)]))
             violated_mr_num = len(set(np.hstack(mr_indices)))
             distinct_mr_num = len(set(mr_indices))
-            results.append([fitness_thresholds[idx], threshold, len(points_to_keep),
-                            violated_mr_num, distinct_mr_num])
+            final_solutions = [sol for i, sol in enumerate(selected_solutions) if i in points_to_keep]
+            results.append([fitness_thresholds[idx], threshold, violated_mr_num, distinct_mr_num,
+                            *[metrics[metric](final_solutions) for metric in additional_metrics]])
     return pd.DataFrame(results, columns=column_names)
-
-
-def _pairwise_distance(solutions):
-    follow_ups = []
-    for scenario, perturbation in solutions:
-        perturbation.perturb(scenario)
-        follow_ups.append(scenario)
-    return pdist(np.array(follow_ups, dtype=object).reshape((len(follow_ups), -1)), lambda x, y: x[0].dist(y[0]))
 
 
 def _vda(treatment: List[int], control: List[int]):
