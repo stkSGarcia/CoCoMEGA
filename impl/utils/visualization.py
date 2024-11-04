@@ -667,7 +667,8 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
                     solutions = pickle.load(f)
                     for _ in range(2): pickle.load(f)
                     budget = pickle.load(f)
-                ckp_df = _filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds)
+                ckp_df = _filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds,
+                                               additional_metrics=['distinct_solution_num'])
                 ckp_df["simulation_num"] = budget.sim_num
                 df = (pd.concat([df, ckp_df], ignore_index=True))
 
