@@ -741,24 +741,11 @@ def visualize_archived_solutions_by_gen(checkpoints: Dict[str, List[List[str]]],
                 cp = run[-1]
             else:
                 cp = run[generation_num - 1]
+
+            skip = {"ccea": 5, "ga": 2, "rs": 1}
             with open(cp, "rb") as f:
-                if alg.lower() in ['ccea', 'cocomega']:
-                    _ = pickle.load(f)
-                    _ = pickle.load(f)
-                    _ = pickle.load(f)
-                    _ = pickle.load(f)
-                    _ = pickle.load(f)
-                    solutions = pickle.load(f)
-                elif alg.lower() == 'ga':
-                    _ = pickle.load(f)
-                    _ = pickle.load(f)
-                    solutions = pickle.load(f)
-                elif alg.lower() == 'rs':
-                    _ = pickle.load(f)
-                    solutions = pickle.load(f)
-                else:
-                    logging.warning(f'Unsupported Algorithm: {alg}')
-                    continue
+                for _ in range(skip[alg]): pickle.load(f)
+                solutions = pickle.load(f)
 
             solution_df = _filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds,
                                                 additional_metrics=([metric_name]))
@@ -806,6 +793,86 @@ def visualize_archived_solutions_by_gen(checkpoints: Dict[str, List[List[str]]],
     if show: plt.show()
     return data
 
+
+def visualize_archive_solution_over_generations(directory: str, files: Dict[str, List[List[str]]], metric_name,
+                                                fitness_thresholds: List[float], distance_thresholds: List[float],
+                                                max_gen: int, show=False, legend_loc='upper right'):
+    """Plot the metrics over generations by applying fitness and distance thresholds.
+
+    @param directory: The directory of checkpoint files.
+    @param files: Checkpoint files. Dict[name_of_algorithm, List[Tuple(start_checkpoint, end_checkpoint)]].
+    @param metric_name: The metric used for comparison. Options are
+        "ds" (Distinct Solutions)
+        "avg_pw" (Average Pairwise Distance)
+        "pure_div" (Pure Diversity)
+        "avg_fitness" (Average Fitness)
+    @param fitness_thresholds: A list of fitness thresholds.
+    @param distance_thresholds: A list of distance thresholds.
+    @param max_gen: The maximum number of generations.
+    @param show: A boolean to determine whether to show the plots or not.
+    @oaram legend_loc: Location of the legend in the plots.
+    """
+    col_num, height = 3, 4
+    title_size, text_size, tick_size = height * 4, height * 4, height * 3
+    total_size = len(fitness_thresholds) * len(distance_thresholds)
+    if total_size < col_num: col_num = total_size
+    row_num = int(np.ceil(total_size / col_num))
+    fig, axes = plt.subplots(row_num, col_num, figsize=(col_num * height * 1.2, row_num * height))
+    ax_map = {gp_name: ax for ax, gp_name in zip(axes.reshape(-1), product(fitness_thresholds, distance_thresholds))}
+
+    checkpoint_files = sorted(os.listdir(directory))
+    skip = {"ccea": 5, "ga": 2, "rs": 1}
+    data = {}
+    for alg, ckp_list in files.items():
+        df = pd.DataFrame()
+        for run_counter, (start, end) in enumerate(ckp_list):
+            file_list = [os.path.join(directory, f) for f in checkpoint_files if start <= f <= end]
+            for i, file in enumerate(file_list):
+                if i == max_gen: break
+                with open(file, "rb") as f:
+                    for _ in range(skip[alg]): pickle.load(f)
+                    solutions = pickle.load(f)
+                ckp_df = _filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds,
+                                               additional_metrics=[metric_name])
+                ckp_df["alg"] = alg
+                ckp_df["run"] = run_counter
+                ckp_df["gen"] = i + 1
+                df = (pd.concat([df, ckp_df], ignore_index=True))
+
+        data[alg] = df
+        groups = df.groupby(["fitness_threshold", "distance_threshold"])
+        for gp_name, group in groups:
+            group = group.groupby("gen").agg({metric_name: list}).reset_index().sort_values("gen")
+            ax = ax_map[gp_name]
+            y_max = group[metric_name].apply(np.nanmean).fillna(0).max()
+            y_min = group[metric_name].apply(np.nanmean).fillna(0).min()
+
+            ax.plot(group["gen"],
+                    group[metric_name].apply(np.nanmean).fillna(0),
+                    **style_map[alg], label=verbose_map[alg])
+            ax.set_title(
+                f"Fitness threshold ($\\theta_f={gp_name[0]}$),\nDistance threshold ($\\theta_d={gp_name[1]}$)",
+                fontsize=title_size)
+            ax.tick_params(labelsize=tick_size)
+            # ax.xaxis.set_major_locator(MultipleLocator(interval))
+            ax.yaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=1))
+            ax.set_xlabel("Generation", fontsize=text_size)
+            ax.set_ylabel(verbose_map[metric_name], fontsize=text_size)
+            curr_y_min, curr_y_max = ax.get_ylim()
+            legend_buffer = 1.2
+            lower_offset = 0.3
+            if y_max + legend_buffer > curr_y_max:
+                ax.set_ylim(top=y_max + legend_buffer)
+            if y_min - lower_offset < curr_y_min:
+                ax.set_ylim(bottom=y_min - lower_offset)
+
+            ax.legend(loc=legend_loc)
+            ax.grid()
+
+    fig.tight_layout()
+    fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"archived_{metric_name}_over_generetations.png"))
+    if show: plt.show()
+    return data
 
 def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_thresholds: List[float],
                           additional_metrics: List[str] = []):
