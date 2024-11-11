@@ -710,7 +710,7 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
 def visualize_archived_solutions_by_gen(checkpoints: Dict[str, List[List[str]]], generation_num, metric_name,
                                         fitness_thresholds: List[float],
                                         distance_thresholds: List[float], box=False, show=False,
-                                        legend_loc='upper right'):
+                                        legend_loc='upper right', padding={'top': 1.1, 'bottom': 0.3}):
     """Plot the number of distinct solutions from final archived solutions by applying fitness and distance thresholds.
 
     @param checkpoints: Checkpoint data files of different runs of different algorithms. Dict[name_of_algorithm, List[list[checkpoint_file]].
@@ -725,13 +725,14 @@ def visualize_archived_solutions_by_gen(checkpoints: Dict[str, List[List[str]]],
     @param box: Show box plots.
     @param show: A boolean to determine whether to show the plots or not.
     @param legend_loc: Specifies the location of the legend in the plots
+    @oaram padding: Paddings between the extreme chart points and the axis range.
     """
     col_num, height = 3, 4
     title_size, text_size, tick_size = height * 4, height * 4, height * 3
-    if len(fitness_thresholds) < col_num: col_num = len(fitness_thresholds)
-    row_num = int(np.ceil(len(fitness_thresholds) / col_num))
+    if len(distance_thresholds) < col_num: col_num = len(distance_thresholds)
+    row_num = int(np.ceil(len(distance_thresholds) / col_num))
     fig, axes = plt.subplots(row_num, col_num, figsize=(col_num * height * 1.2, row_num * height))
-    ax_map = {gp_name: ax for ax, gp_name in zip(axes.reshape(-1), fitness_thresholds)}
+    ax_map = {gp_name: ax for ax, gp_name in zip(axes.reshape(-1), distance_thresholds)}
 
     data = {}
     for alg, runs in checkpoints.items():
@@ -753,35 +754,40 @@ def visualize_archived_solutions_by_gen(checkpoints: Dict[str, List[List[str]]],
             df = (pd.concat([df, solution_df], ignore_index=True))
 
         data[alg] = df
-        groups = df.groupby("fitness_threshold")
+        groups = df.groupby("distance_threshold")
+        y_max, y_min = None, None
         for gp_name, group in groups:
-            group = group.groupby("distance_threshold").agg(list)
+            group = group.groupby("fitness_threshold").agg(list)
             values = group[metric_name]
 
+            chart_y_max = max(
+                [np.nanmean(row) + 0.95 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row))) for row in values])
+            chart_y_min = min(
+                [np.nanmean(row) - 0.95 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row))) for row in values])
+
+            if not y_max or y_max < chart_y_max: y_max = chart_y_max
+            if not y_min or y_min > chart_y_min: y_min = chart_y_min
+
             ax = ax_map[gp_name]
-            ax.errorbar(distance_thresholds, values.apply(np.nanmean),
+            ax.errorbar(fitness_thresholds, values.apply(np.nanmean),
                         yerr=values.apply(
                             lambda row: 0.95 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row)))),
                         **style_map[alg], capsize=2, label=verbose_map[alg])
 
-            y_max = max(
-                [np.nanmean(row) + 0.95 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row))) for row in values])
-            y_min = min(
-                [np.nanmean(row) - 0.95 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row))) for row in values])
             if box: ax.boxplot(group["distinct_solution_num"], positions=group.index.values, widths=0.05,
                                patch_artist=True, manage_ticks=False, whis=(0, 100),
                                boxprops=dict(facecolor=style_map[alg]["color"], alpha=0.4))
-            ax.set_title(f"Fitness threshold ($\\theta_f={gp_name}$)", fontsize=title_size)
+            ax.set_title(f"Distance threshold ($\\theta_d={gp_name}$)", fontsize=title_size)
             ax.tick_params(labelsize=tick_size)
-            ax.set_xlabel("Distance threshold ($\\theta_d$)", fontsize=text_size)
+            ax.set_xlabel("Fitness threshold ($\\theta_f$)", fontsize=text_size)
             ax.set_ylabel(verbose_map[metric_name], fontsize=text_size)
+
             curr_y_min, curr_y_max = ax.get_ylim()
-            legend_buffer = 1
-            lower_offset = 0.3
-            if y_max + legend_buffer > curr_y_max:
-                ax.set_ylim(top=y_max + legend_buffer)
-            if y_min - lower_offset < curr_y_min:
-                ax.set_ylim(bottom=y_min - lower_offset)
+
+            if y_max + padding['top'] > curr_y_max:
+                ax.set_ylim(top=y_max + padding['top'])
+            if y_min - padding['bottom'] < curr_y_min:
+                ax.set_ylim(bottom=y_min - padding['bottom'])
             ax.xaxis.set_major_locator(MultipleLocator(0.2))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=1))
             ax.legend(loc=legend_loc)
@@ -796,7 +802,8 @@ def visualize_archived_solutions_by_gen(checkpoints: Dict[str, List[List[str]]],
 
 def visualize_archive_solution_over_generations(directory: str, files: Dict[str, List[List[str]]], metric_name,
                                                 fitness_thresholds: List[float], distance_thresholds: List[float],
-                                                max_gen: int, show=False, legend_loc='upper right'):
+                                                max_gen: int, show=False, legend_loc='upper right',
+                                                padding={'top': 0.6, 'bottom': 0.3}):
     """Plot the metrics over generations by applying fitness and distance thresholds.
 
     @param directory: The directory of checkpoint files.
@@ -811,6 +818,7 @@ def visualize_archive_solution_over_generations(directory: str, files: Dict[str,
     @param max_gen: The maximum number of generations.
     @param show: A boolean to determine whether to show the plots or not.
     @oaram legend_loc: Location of the legend in the plots.
+    @oaram padding: Paddings between the extreme chart points and the axis range.
     """
     col_num, height = 3, 4
     title_size, text_size, tick_size = height * 4, height * 4, height * 3
@@ -838,17 +846,25 @@ def visualize_archive_solution_over_generations(directory: str, files: Dict[str,
                 ckp_df["run"] = run_counter
                 ckp_df["gen"] = i + 1
                 df = (pd.concat([df, ckp_df], ignore_index=True))
-
         data[alg] = df
         groups = df.groupby(["fitness_threshold", "distance_threshold"])
+        y_max, y_min = None, None
+
         for gp_name, group in groups:
             group = group.groupby("gen").agg({metric_name: list}).reset_index().sort_values("gen")
             ax = ax_map[gp_name]
-            y_max = group[metric_name].apply(np.nanmean).fillna(0).max()
-            y_min = group[metric_name].apply(np.nanmean).fillna(0).min()
+
+            chart_y_max = np.nanmax(group[metric_name].apply(np.nanmean))
+            chart_y_min = np.nanmin(group[metric_name].apply(np.nanmean))
+
+            if not y_max or y_max < chart_y_max: y_max = chart_y_max
+            if not y_min or y_min > chart_y_min: y_min = chart_y_min
+
+            group[f'{metric_name}_mean'] = group[metric_name].apply(np.nanmean)
+            group = group[group[f'{metric_name}_mean'].notna()].sort_values('gen')
 
             ax.plot(group["gen"],
-                    group[metric_name].apply(np.nanmean).fillna(0),
+                    group[f'{metric_name}_mean'],
                     **style_map[alg], label=verbose_map[alg])
             ax.set_title(
                 f"Fitness threshold ($\\theta_f={gp_name[0]}$),\nDistance threshold ($\\theta_d={gp_name[1]}$)",
@@ -859,12 +875,10 @@ def visualize_archive_solution_over_generations(directory: str, files: Dict[str,
             ax.set_xlabel("Generation", fontsize=text_size)
             ax.set_ylabel(verbose_map[metric_name], fontsize=text_size)
             curr_y_min, curr_y_max = ax.get_ylim()
-            legend_buffer = 1.2
-            lower_offset = 0.3
-            if y_max + legend_buffer > curr_y_max:
-                ax.set_ylim(top=y_max + legend_buffer)
-            if y_min - lower_offset < curr_y_min:
-                ax.set_ylim(bottom=y_min - lower_offset)
+            if y_max + padding['top'] > curr_y_max:
+                ax.set_ylim(top=y_max + padding['top'])
+            if y_min - padding['bottom'] < curr_y_min:
+                ax.set_ylim(bottom=y_min - padding['bottom'])
 
             ax.legend(loc=legend_loc)
             ax.grid()
@@ -873,6 +887,7 @@ def visualize_archive_solution_over_generations(directory: str, files: Dict[str,
     fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"archived_{metric_name}_over_generetations.png"))
     if show: plt.show()
     return data
+
 
 def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_thresholds: List[float],
                           additional_metrics: List[str] = []):
