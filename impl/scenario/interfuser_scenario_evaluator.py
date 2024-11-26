@@ -74,11 +74,9 @@ class ScenarioEvaluator(object):
         Setup ScenarioManager
         """
         self.scenario_definition = scenario_definition
-        # self.statistics_manager = statistics_manager
 
         self.sensors = None
         self.sensor_icons = []
-        # self._vehicle_lights = carla.VehicleLightState.Position | carla.VehicleLightState.LowBeam
 
         # First of all, we need to create the client that will send the requests
         # to the simulator. Here we'll assume the simulator is accepting
@@ -113,15 +111,6 @@ class ScenarioEvaluator(object):
         self._agent_watchdog = Watchdog(int(float(args.timeout)))
         signal.signal(signal.SIGINT, self._signal_handler)
 
-        # self.weather_preset, self.weather_preset_name = \
-        #     CarlaDataProvider.find_weather_presets()[self.scenario_definition.weather]
-
-        # self.weather_preset.sun_altitude_angle = -30
-
-        # self.weather_preset, self.weather_preset_name = \
-        # CarlaDataProvider.find_weather_presets()[1]
-
-        # print(self.weather_preset_name)
 
     def _signal_handler(self, signum, frame):
         """
@@ -478,7 +467,6 @@ def main():
 
     arguments = parser.parse_args()
 
-    # statistics_manager = StatisticsManager()
     scenario_definition = ScenarioDefinition.generate_random()
 
     try:

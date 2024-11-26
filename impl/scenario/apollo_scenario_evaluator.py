@@ -20,8 +20,6 @@ CARLA_HOME = f'/home/{USER}/carla0.9.15/CARLA_0.9.15'
 class ScenarioRunner:
     def __init__(self, scenario):
         self.scenario = scenario
-        # self.carla_client = carla.Client('localhost', 2000)
-        # self.world = self.carla_client.get_world()
         self.docker_client = docker.from_env()
         self.apollo_container = self._get_container(APOLLO_CONTAINER)
         self.bridge_container = self._get_container(BRIDGE_CONTAINER)
@@ -38,10 +36,6 @@ class ScenarioRunner:
         file_name = self.generate_object_json()
         self.spawn_objects(file_name)
         self.activate_apollo_modules(apollo_modules)
-        # self.send_routing_request()
-        # while True:
-        #     # TODO keep track of time, apply controls to Actors after freeze time, and measure throttle, break, steering angle of ego_vehicle
-        #     self.world.tick()
 
     def setup_env(self):
         """
@@ -67,7 +61,6 @@ class ScenarioRunner:
         settings.synchronous_mode = False
         settings.fixed_delta_seconds = 0.05
         self.world.apply_settings(settings)
-        # self.carla_client.reload_world(False)
 
     def generate_object_json(self):
         """

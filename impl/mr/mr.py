@@ -129,17 +129,6 @@ class Perturbations(list):
             dist += this.dist(that, scaling=scaling)
         return math.sqrt(dist)
 
-        # if len(self) == 0 or len(other) == 0: return 0.0
-        # dp = [np.inf] * (len(other) + 1)
-        # prev = 0.0
-        # for p in self:
-        #     for i in range(1, len(other) + 1):
-        #         temp = dp[i]
-        #         dp[i] = min(min(prev, temp), dp[i - 1]) + p.dist(other[i - 1])
-        #         prev = temp
-        #     prev = np.inf
-        # return math.sqrt(dp[-1])
-
     @staticmethod
     def select(population, k=2):
         return tools.selTournament(population, k=k, tournsize=CONFIG["perturbation"]["tournament"])
