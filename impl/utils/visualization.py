@@ -780,7 +780,7 @@ def visualize_archived_solutions_by_gen(checkpoints: Dict[str, List[List[str]]],
             ax.set_title(f"Distance threshold ($\\theta_d={gp_name}$)", fontsize=title_size)
             ax.tick_params(labelsize=tick_size)
             ax.set_xlabel("Fitness threshold ($\\theta_f$)", fontsize=text_size)
-            ax.set_ylabel(verbose_map[metric_name], fontsize=text_size)
+            ax.set_ylabel(f'${verbose_map[metric_name]}$', fontsize=text_size)
 
             curr_y_min, curr_y_max = ax.get_ylim()
 
@@ -873,7 +873,7 @@ def visualize_archive_solution_over_generations(directory: str, files: Dict[str,
             # ax.xaxis.set_major_locator(MultipleLocator(interval))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=1))
             ax.set_xlabel("Generation", fontsize=text_size)
-            ax.set_ylabel(verbose_map[metric_name], fontsize=text_size)
+            ax.set_ylabel(f'${verbose_map[metric_name]}$', fontsize=text_size)
             curr_y_min, curr_y_max = ax.get_ylim()
             if y_max + padding['top'] > curr_y_max:
                 ax.set_ylim(top=y_max + padding['top'])
