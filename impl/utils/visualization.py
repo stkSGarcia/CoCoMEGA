@@ -40,7 +40,7 @@ verbose_map = {
     "gawa": "SGA with Archives",
     "distinct_solution_num": "Average $DS$",
     "avg_fit": "Average Fitness",
-    "avg_pw": "Average Pairwise Distance",
+    "avg_pw": "APD",
     "pure_div": "Pure Diversity",
 }
 
