@@ -9,7 +9,7 @@ Test Cases for Autonomous Driving Systems* by Hossein Yousefizadeh, Shenghui Gu,
 2. Installation and usage guidelines.
 3. Metamorphic relations involved.
 4. The postprocess script used to answer RQ1 and RQ2, provided in `test/postprocess.ipynb`.
-5. A copy of the evaluation results provided in `results.zip`.
+5. A copy of the evaluation results provided in `results.tar.gz`.
 
 ## Installation
 
