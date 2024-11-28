@@ -707,13 +707,15 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
     if show: plt.show()
 
 
-def visualize_archived_solutions_by_gen(checkpoints: Dict[str, List[List[str]]], generation_num, metric_name,
+def visualize_archived_solutions_by_gen(directory: str, checkpoints: Dict[str, List[List[str]]], generation_num,
+                                        metric_name,
                                         fitness_thresholds: List[float],
                                         distance_thresholds: List[float], box=False, show=False,
                                         legend_loc='upper right', padding={'top': 1.1, 'bottom': 0.3}):
     """Plot the number of distinct solutions from final archived solutions by applying fitness and distance thresholds.
 
-    @param checkpoints: Checkpoint data files of different runs of different algorithms. Dict[name_of_algorithm, List[list[checkpoint_file]].
+    @param directory: The directory of checkpoint files.
+    @param checkpoints: Checkpoint files Dict[name_of_algorithm, List[list[checkpoint_file]].
     @param generation_num: Generation Number. If set to K, plot the solutions found after K generations.
     @param metric_name: The metric used for comparison. Options are
         "ds" (Distinct Solutions)
@@ -733,11 +735,12 @@ def visualize_archived_solutions_by_gen(checkpoints: Dict[str, List[List[str]]],
     row_num = int(np.ceil(len(distance_thresholds) / col_num))
     fig, axes = plt.subplots(row_num, col_num, figsize=(col_num * height * 1.2, row_num * height))
     ax_map = {gp_name: ax for ax, gp_name in zip(axes.reshape(-1), distance_thresholds)}
-
+    checkpoint_files = sorted(os.listdir(directory))
     data = {}
     for alg, runs in checkpoints.items():
         df = pd.DataFrame()
-        for i, run in enumerate(runs):
+        for i, (start, end) in enumerate(runs):
+            run = [os.path.join(directory, f) for f in checkpoint_files if start <= f <= end]
             if len(run) < generation_num:
                 cp = run[-1]
             else:
@@ -797,7 +800,6 @@ def visualize_archived_solutions_by_gen(checkpoints: Dict[str, List[List[str]]],
     fig.savefig(
         os.path.join(CONFIG["workspace"]["visualization"], f"archived_{metric_name}_by_gen{generation_num}.png"))
     if show: plt.show()
-    return data
 
 
 def visualize_archive_solution_over_generations(directory: str, files: Dict[str, List[List[str]]], metric_name,
@@ -807,7 +809,7 @@ def visualize_archive_solution_over_generations(directory: str, files: Dict[str,
     """Plot the metrics over generations by applying fitness and distance thresholds.
 
     @param directory: The directory of checkpoint files.
-    @param files: Checkpoint files. Dict[name_of_algorithm, List[Tuple(start_checkpoint, end_checkpoint)]].
+    @param checkpoints: Checkpoint files Dict[name_of_algorithm, List[list[checkpoint_file]].
     @param metric_name: The metric used for comparison. Options are
         "ds" (Distinct Solutions)
         "avg_pw" (Average Pairwise Distance)
@@ -886,7 +888,6 @@ def visualize_archive_solution_over_generations(directory: str, files: Dict[str,
     fig.tight_layout()
     fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"archived_{metric_name}_over_generetations.png"))
     if show: plt.show()
-    return data
 
 
 def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_thresholds: List[float],
