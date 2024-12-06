@@ -10,8 +10,15 @@ workspace:
   sim_result: results
   sim_save: results/eval
 
-simulation:
+agent:
   repo: "../InterFuser"
+  versions:
+    - name: "v1"
+      config: "impl/scenario/interfuser_config_v1.py"
+    - name: "v2"
+      config: "impl/scenario/interfuser_config_v2.py"
+
+simulation:
   parallel: true
   retry_times: 1
   display_agent: false

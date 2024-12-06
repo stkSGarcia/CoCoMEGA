@@ -75,4 +75,4 @@ def init_config():
         "leaderboard/team_code",
         "scenario_runner",
     ]:
-        sys.path.append(os.path.join(CONFIG["simulation"]["repo"], path))
+        sys.path.append(os.path.join(CONFIG["agent"]["repo"], path))
