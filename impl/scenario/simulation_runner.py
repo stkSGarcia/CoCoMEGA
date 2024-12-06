@@ -19,14 +19,14 @@ from impl.utils.process_utils import run_silently
 
 arguments = [
     ("SCENARIOS", "scenarios",
-     os.path.join(CONFIG["simulation"]["repo"], "leaderboard/data/scenarios/town05_all_scenarios.json")),
+     os.path.join(CONFIG["agent"]["repo"], "leaderboard/data/scenarios/town05_all_scenarios.json")),
     ("ROUTES", "routes",
-     os.path.join(CONFIG["simulation"]["repo"], "leaderboard/data/training_routes/routes_town05_long.xml")),
+     os.path.join(CONFIG["agent"]["repo"], "leaderboard/data/training_routes/routes_town05_long.xml")),
     ("REPETITIONS", "repetitions", 1),
     ("CHALLENGE_TRACK_CODENAME", "track", "SENSORS"),
     ("CHECKPOINT_ENDPOINT", "checkpoint", os.path.join(CONFIG["workspace"]["sim_result"], "checkpoint.json")),
     ("TEAM_AGENT", "agent", "impl/scenario/interfuser_agent.py"),
-    ("TEAM_CONFIG", "agent_config", "impl/scenario/interfuser_config.py"),
+    ("TEAM_CONFIG", "agent_config", "impl/scenario/interfuser_config_v1.py"),
     ("DEBUG_CHALLENGE", "debug", 0),
     ("RESUME", "resume", False),
     ("SAVE_PATH", None, CONFIG["workspace"]["sim_save"]),
@@ -44,7 +44,7 @@ from impl.scenario.interfuser_scenario_evaluator import ScenarioEvaluator
 
 logger = logging.getLogger(__name__)
 config = type("", (object,), {arg: value for _, arg, value in arguments})()
-evaluated_scenarios = Manager().list()
+evaluated_scenarios = Manager().dict()
 carla_host = carla_port = tm_port = cuda_device = None
 
 
@@ -56,7 +56,7 @@ def _init_carla(instance_configs):
     initialize_carla(carla_host, carla_port, tm_port)
 
 
-def run_scenario(scenario: ScenarioDefinition, rerun=False):
+def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False):
     """Run a scenario defined in ScenarioDefinition.
 
     @return: The simulation result and whether the scenario was actually executed.
@@ -64,10 +64,16 @@ def run_scenario(scenario: ScenarioDefinition, rerun=False):
     global carla_host, carla_port, tm_port, cuda_device
     assert carla_host is not None and carla_port is not None and tm_port is not None and cuda_device is not None
 
-    if not rerun:
-        for evaluated_scenario, evaluated_result in evaluated_scenarios:
+    agent_config = [conf["config"] for conf in CONFIG["agent"]["versions"] if conf["name"] == agent_name]
+    if len(agent_config) == 0:
+        raise ValueError(f"Agent not defined: \"{agent_name}\".")
+    agent_config = agent_config[0]
+    setattr(config, "agent_config", agent_config)
+
+    if not rerun and agent_name in evaluated_scenarios:
+        for evaluated_scenario, evaluated_result in evaluated_scenarios[agent_name]:
             if scenario == evaluated_scenario:
-                logger.debug(f"Scenario evaluated: {evaluated_scenario}.")
+                logger.debug(f"Scenario evaluated for agent {agent_name}: {evaluated_scenario}.")
                 return evaluated_result, False
 
     setattr(config, "host", carla_host)
@@ -107,11 +113,13 @@ def run_scenario(scenario: ScenarioDefinition, rerun=False):
 
     result = pd.read_csv(result_path)
     result.set_index(result.columns[0], inplace=True)
-    evaluated_scenarios.append((scenario, result))
+    if agent_name not in evaluated_scenarios:
+        evaluated_scenarios[agent_name] = []
+    evaluated_scenarios[agent_name].append((scenario, result))
     return result, True
 
 
-def run_scenarios(scenarios, rerun=False):
+def run_scenarios(scenarios, agent_name="v1", rerun=False):
     """Run scenarios.
 
     @return: A list of simulation results and the number of simulations.
@@ -127,19 +135,21 @@ def run_scenarios(scenarios, rerun=False):
         # https://github.com/carla-simulator/carla/issues/2781
         with ProcessPoolExecutor(max_workers=len(CONFIG["simulation"]["docker"]["instances"]),
                                  initializer=_init_carla, initargs=(process_configs,)) as executor:
-            results = executor.map(run_scenario, scenarios, itertools.repeat(rerun, len(scenarios)))
+            results = executor.map(run_scenario, scenarios, itertools.repeat(agent_name, len(scenarios)),
+                                   itertools.repeat(rerun, len(scenarios)))
     else:
         global carla_host, carla_port, tm_port, cuda_device
         instance = CONFIG["simulation"]["docker"]["instances"][0]
         carla_host, carla_port, tm_port, cuda_device = (instance["host"], instance["port"],
                                                         instance["tm_port"], instance["gpu_device"])
-        results = map(run_scenario, scenarios, itertools.repeat(rerun, len(scenarios)))
+        results = map(run_scenario, scenarios, itertools.repeat(agent_name, len(scenarios)),
+                      itertools.repeat(rerun, len(scenarios)))
 
     results, is_executed = zip(*results)
     return results, is_executed.count(True)
 
 
-def run_solutions(file: str, top: int = 1, verbose=True):
+def run_solutions(file: str, top: int = 1, verbose=True, agent_name="v1"):
     """Run scenarios from a solution file.
 
     @param file: The solution file.
@@ -154,8 +164,8 @@ def run_solutions(file: str, top: int = 1, verbose=True):
         follow_up.id_ = f"top{i + 1}_follow-up"
         perturbations.perturb(follow_up)
         if verbose:
-            run_process = Process(target=run_scenarios, args=([source, follow_up], True))
+            run_process = Process(target=run_scenarios, args=([source, follow_up], agent_name, True))
         else:
-            run_process = Process(target=run_silently, args=(run_scenarios, [source, follow_up], True))
+            run_process = Process(target=run_silently, args=(run_scenarios, [source, follow_up], agent_name, True))
         run_process.start()
         run_process.join()

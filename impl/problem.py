@@ -1,7 +1,9 @@
 import math
 from copy import deepcopy
+from types import SimpleNamespace
 
 import numpy as np
+
 from deap import creator, base, tools
 
 from impl.algorithm.base import Budget
@@ -13,6 +15,12 @@ from impl.scenario.simulation_runner import run_scenarios
 
 # Define the metamorphic relation set.
 mr_set = mr_set1
+
+# Define differential testing configurations
+
+diff_testing = True
+reference_version = "v1"
+test_version = "v2"
 
 # Define the budget.
 budget = Budget(max_sim=CONFIG["budget"]["max_sim"],
@@ -69,6 +77,7 @@ def _evaluate_solutions(solutions):
     """
     scenarios = []
     reeval = []
+    agent_name = CONFIG["agent"]["versions"][0]["name"]
     for solution in solutions:
         scenarios.append(solution[0])
         follow_up = toolbox.clone(solution[0])
@@ -76,7 +85,7 @@ def _evaluate_solutions(solutions):
         solution[1].perturb(follow_up)
         scenarios.append(follow_up)
     assert len(scenarios) == len(solutions) * 2
-    results, sim_num = run_scenarios(scenarios)
+    results, sim_num = run_scenarios(scenarios, agent_name=agent_name)
     for solution, source, follow_up in zip(solutions, results[::2], results[1::2]):
         if source is not None and follow_up is not None:
             solution.source = source
@@ -98,6 +107,64 @@ def _evaluate_solutions(solutions):
     reeval_sim_num = _reevaluate(reeval)
 
     return solutions, sim_num + reeval_sim_num
+
+
+def _evaluate_solutions_dt(solutions):
+    """Evaluate the complete solutions (Differential Testing approach).
+
+        @return: A list of complete solutions evaluated and the number of simulations.
+        """
+    scenarios = []
+    for solution in solutions:
+        scenarios.append(solution[0])
+        follow_up = toolbox.clone(solution[0])
+        follow_up.assign_new_id()
+        solution[1].perturb(follow_up)
+        scenarios.append(follow_up)
+    assert len(scenarios) == len(solutions) * 2
+
+    rv_solutions, rv_sim_num = _perform_evaluation(solutions, scenarios, agent_name=reference_version)
+    tv_solutions, tv_sim_num = _perform_evaluation(rv_solutions, scenarios, agent_name=test_version)
+    for solution in solutions:
+        rv_fitness = getattr(solution, reference_version).fitness
+        tv_fitness = getattr(solution, test_version).fitness
+        if rv_fitness and tv_fitness:
+            solution.fitness.values = np.abs(rv_fitness.values[0] - tv_fitness.values[0])
+            solution.fitness_type = reference_version if rv_fitness.values[0] > tv_fitness.values[0] else test_version
+            solution.is_violated = True # TODO define violation criteria
+        else:
+            del solution.fitness.values
+            solution.is_violated = False
+            solution.fitness_type = None
+
+    return tv_solutions, rv_sim_num + tv_sim_num
+
+def _perform_evaluation(solutions, scenarios, agent_name):
+    reeval = []
+    results, sim_num = run_scenarios(scenarios, agent_name=agent_name)
+    for solution, source, follow_up in zip(solutions, results[::2], results[1::2]):
+        eval_data = SimpleNamespace()
+        if source is not None and follow_up is not None:
+            eval_data.source = source
+            eval_data.follow_up = follow_up
+            eval_data.is_violated, extent = _fitness(source, follow_up)
+            if extent:
+                eval_data.fitness = extent
+                if extent[0] >= CONFIG["violation"]["reevaluation"]["threshold"]:
+                    eval_data.reeval = True
+                    reeval.append(solution)
+                else:
+                    eval_data.reeval = False
+            else:
+                eval_data.fitness = None
+        else:
+            eval_data.is_violated = False
+            eval_data.fitness = None
+        setattr(solution, agent_name, eval_data)
+
+    # reeval_sim_num = _reevaluate(reeval)
+
+    return solutions, sim_num # + reeval_sim_num
 
 
 def _reevaluate(solutions):
@@ -185,5 +252,9 @@ def _evaluate_individual(individual, complete_solutions):
     return individual
 
 
-toolbox.register("evaluate_solutions", _evaluate_solutions)
+if diff_testing:
+    toolbox.register("evaluate_solutions", _evaluate_solutions_dt)
+else:
+    toolbox.register("evaluate_solutions", _evaluate_solutions)
+
 toolbox.register("evaluate_individual", _evaluate_individual)
