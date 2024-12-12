@@ -16,10 +16,10 @@ logger = logging.getLogger(__name__)
 
 
 class CCEA(BaseAlgorithm):
-    def solve(self, resume=False):
-        logger.info("CCEA started.")
-        logger.info(self.budget.print_budget())
+    _name = "CCEA"
 
+    def solve(self, resume=False):
+        super().solve()
         # Initialize the population or resume from the latest checkpoint.
         if resume:
             files = sorted(os.listdir(CONFIG["workspace"]["checkpoint"]), reverse=True)
@@ -130,10 +130,7 @@ class CCEA(BaseAlgorithm):
         #         [ind for ind in pop_perturbation if ind not in archive_perturbation]]
 
         # Remove repetitive complete solutions.
-        unique_solutions = []
-        for ind in complete_solutions:
-            if ind not in unique_solutions:
-                unique_solutions.append(ind)
+        unique_solutions = self.remove_duplicates(complete_solutions)
 
         # Evaluate joint fitness.
         candidates = [ind for ind in unique_solutions if ind not in evaluated_solutions]
@@ -211,7 +208,7 @@ class CCEA(BaseAlgorithm):
 
         @param population: The individuals to be bred.
         @param size: The size of the offsprings.
-        @param overproduction_factor: Overproduction factor
+        @param overproduction_factor: Overproduction factor.
         @return: A list of offsprings.
         """
         assert len(population) > 0

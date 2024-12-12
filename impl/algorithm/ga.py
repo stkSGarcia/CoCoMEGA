@@ -14,14 +14,14 @@ logger = logging.getLogger(__name__)
 
 
 class GeneticAlgorithm(BaseAlgorithm):
+    _name = "GA"
+
     def __init__(self, toolbox, budget, seed=None, keep_best=False):
         super().__init__(toolbox, budget, seed)
         self.keep_best = keep_best
 
     def solve(self, resume=False):
-        logger.info("Genetic algorithm started.")
-        logger.info(self.budget.print_budget())
-
+        super().solve()
         # Initialize the population or resume from the latest checkpoint.
         if resume:
             files = sorted(os.listdir(CONFIG["workspace"]["checkpoint"]), reverse=True)
@@ -45,10 +45,7 @@ class GeneticAlgorithm(BaseAlgorithm):
 
         while not self.budget.is_reached():
             # Remove repetitive complete solutions.
-            unique_solutions = []
-            for ind in complete_solutions:
-                if ind not in unique_solutions:
-                    unique_solutions.append(ind)
+            unique_solutions = self.remove_duplicates(complete_solutions)
 
             # Evaluate joint fitness.
             candidates = [ind for ind in unique_solutions if ind not in evaluated_solutions]

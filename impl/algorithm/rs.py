@@ -12,10 +12,10 @@ logger = logging.getLogger(__name__)
 
 
 class RandomSearch(BaseAlgorithm):
-    def solve(self, resume=False):
-        logger.info("Random search started.")
-        logger.info(self.budget.print_budget())
+    _name = "RS"
 
+    def solve(self, resume=False):
+        super().solve()
         # Initialize the population or resume from the latest checkpoint.
         if resume:
             files = sorted(os.listdir(CONFIG["workspace"]["checkpoint"]), reverse=True)
@@ -40,10 +40,7 @@ class RandomSearch(BaseAlgorithm):
                                   for _ in range(CONFIG["scenario"]["pop_size"])]
 
             # Remove repetitive complete solutions.
-            unique_solutions = []
-            for ind in complete_solutions:
-                if ind not in unique_solutions:
-                    unique_solutions.append(ind)
+            unique_solutions = self.remove_duplicates(complete_solutions)
 
             # Evaluate joint fitness.
             candidates = [ind for ind in unique_solutions if ind not in evaluated_solutions]
