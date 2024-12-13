@@ -1,12 +1,12 @@
-import math
 from copy import deepcopy
+from math import factorial, sqrt
 from types import SimpleNamespace
 
 import numpy as np
-
 from deap import creator, base, tools
 
 from impl.algorithm.base import Budget
+from impl.algorithm.rnsga3 import selRNSGA3WithMemory
 from impl.config import CONFIG
 from impl.mr.mr import Perturbations
 from impl.mr.predefined import *
@@ -16,11 +16,18 @@ from impl.scenario.simulation_runner import run_scenarios
 # Define the metamorphic relation set.
 mr_set = mr_set1
 
-# Define differential testing configurations
-
+# Define differential testing configurations.
 diff_testing = True
 reference_version = "v1"
 test_version = "v2"
+
+# Define the multi-objective configurations.
+moo = True
+ref_points = np.array([[0.1, 0.5], [0.05, 0.6]])
+n_obj = 2
+P = 5
+H = factorial(n_obj + P - 1) / (factorial(P) * factorial(n_obj - 1))
+pop_size = int(ref_points.shape[0] * H + n_obj)
 
 # Define the budget.
 budget = Budget(max_sim=CONFIG["budget"]["max_sim"],
@@ -28,7 +35,7 @@ budget = Budget(max_sim=CONFIG["budget"]["max_sim"],
                 max_gen=CONFIG["budget"]["max_gen"])
 
 # Define individuals.
-creator.create("Fitness", base.Fitness, weights=(1.0,))
+creator.create("Fitness", base.Fitness, weights=(1.0, -1.0,) if moo else (1.0,))
 creator.create("Solution", tuple, fitness=creator.Fitness, is_violated=False)
 creator.create("Scenario", ScenarioDefinition, fitness=creator.Fitness)
 creator.create("Perturbation", Perturbations, fitness=creator.Fitness)
@@ -52,6 +59,8 @@ toolbox.register("pop_perturbation", tools.initRepeat, list, toolbox.perturbatio
 
 # Create a complete solution from two individuals.
 toolbox.register("collaborate", lambda scenario, perturbation: creator.Solution((scenario, perturbation)))
+if moo:
+    toolbox.register("select", selRNSGA3WithMemory(ref_points=ref_points, p=P, mu=0.1))
 
 
 # Define genetic operators.
@@ -63,7 +72,7 @@ def _fitness(source, follow_up, mr_set=mr_set):
     @return: A tuple containing a bool value indicating whether it violates the relation and the fitness value.
     """
     if mr_set.field == "velocity":
-        func = lambda row: math.sqrt(row.velocity_x ** 2 + row.velocity_y ** 2)
+        func = lambda row: sqrt(row.velocity_x ** 2 + row.velocity_y ** 2)
         source[mr_set.field] = source.apply(func, axis=1, result_type="reduce")
         follow_up[mr_set.field] = follow_up.apply(func, axis=1, result_type="reduce")
     is_violated, extent = mr_set.is_violated(source, follow_up)
@@ -131,13 +140,14 @@ def _evaluate_solutions_dt(solutions):
         if rv_fitness and tv_fitness:
             solution.fitness.values = np.abs(rv_fitness.values[0] - tv_fitness.values[0])
             solution.fitness_type = reference_version if rv_fitness.values[0] > tv_fitness.values[0] else test_version
-            solution.is_violated = True # TODO define violation criteria
+            solution.is_violated = True  # TODO define violation criteria
         else:
             del solution.fitness.values
             solution.is_violated = False
             solution.fitness_type = None
 
     return tv_solutions, rv_sim_num + tv_sim_num
+
 
 def _perform_evaluation(solutions, scenarios, agent_name):
     reeval = []
@@ -164,7 +174,7 @@ def _perform_evaluation(solutions, scenarios, agent_name):
 
     # reeval_sim_num = _reevaluate(reeval)
 
-    return solutions, sim_num # + reeval_sim_num
+    return solutions, sim_num  # + reeval_sim_num
 
 
 def _reevaluate(solutions):
@@ -244,7 +254,7 @@ def _evaluate_individual(individual, complete_solutions):
     involved = []
     for solution in complete_solutions:
         if solution[index] == individual:
-            involved.append(solution.fitness.values[0])
+            involved.append(solution.fitness.values[0])  # FIXME: multi-objective.
     if len(involved) > 0:
         individual.fitness.values = max(involved),
     else:
@@ -252,9 +262,5 @@ def _evaluate_individual(individual, complete_solutions):
     return individual
 
 
-if diff_testing:
-    toolbox.register("evaluate_solutions", _evaluate_solutions_dt)
-else:
-    toolbox.register("evaluate_solutions", _evaluate_solutions)
-
+toolbox.register("evaluate_solutions", _evaluate_solutions_dt if diff_testing else _evaluate_solutions)
 toolbox.register("evaluate_individual", _evaluate_individual)
