@@ -9,7 +9,7 @@ from impl.algorithm.ccea import CCEA
 from impl.algorithm.ga import GeneticAlgorithm
 from impl.algorithm.rs import RandomSearch
 from impl.scenario.scenario_definition import ScenarioDefinition
-from impl.scenario.simulation_runner import run_scenarios, run_solutions
+from impl.scenario.simulation_runner import run_scenarios, run_solutions, run_free_environments
 from impl.utils.docker_utils import cleanup_containers
 
 logger = logging.getLogger("impl")
@@ -37,6 +37,9 @@ def simulate(num: int, file: str):
         logger.info(f"Running random scenarios.")
         run_scenarios([ScenarioDefinition.generate_random_or_leaderboard() for _ in range(num)])
 
+def run_free_env(agent: str):
+    logger.info(f"Running free simulation environment for agent {agent}.")
+    run_free_environments(agent)
 
 class StoreDictKeyPair(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
@@ -81,6 +84,10 @@ if __name__ == "__main__":
     parser_sim.add_argument("-n", "--number", type=int, default=1, help="number of simulations to run")
     parser_sim.add_argument("-f", "--file", default=None, help="solution file")
     parser_sim.set_defaults(func=lambda args: simulate(args.number, args.file))
+
+    parser_sim = subparsers.add_parser("run", help="Execute free runtime environment")
+    parser_sim.add_argument("-a", "--agent", type=str, default="v1", help="Agent version or name")
+    parser_sim.set_defaults(func=lambda args: run_free_env(args.agent))
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)

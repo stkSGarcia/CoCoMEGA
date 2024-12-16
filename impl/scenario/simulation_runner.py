@@ -1,10 +1,12 @@
 import itertools
 import logging
 import os
+import sys
 import pickle
 import traceback
 from concurrent.futures import ProcessPoolExecutor
 from copy import deepcopy
+import subprocess
 from multiprocessing import Manager, Process
 
 import pandas as pd
@@ -16,6 +18,7 @@ from impl.scenario.exceptions import InvalidScenarioDefinitionError
 from impl.scenario.scenario_definition import ScenarioDefinition
 from impl.utils.carla_utils import initialize_carla
 from impl.utils.process_utils import run_silently
+from impl.utils.leaderboad_utils import get_enviroment_confs
 
 arguments = [
     ("SCENARIOS", "scenarios",
@@ -45,15 +48,105 @@ from impl.scenario.interfuser_scenario_evaluator import ScenarioEvaluator
 logger = logging.getLogger(__name__)
 config = type("", (object,), {arg: value for _, arg, value in arguments})()
 evaluated_scenarios = Manager().dict()
-carla_host = carla_port = tm_port = cuda_device = None
+carla_host = carla_port = tm_port = gpu_device = None
 
 
 def _init_carla(instance_configs):
-    global carla_host, carla_port, tm_port, cuda_device
-    carla_host, carla_port, tm_port, cuda_device = instance_configs.get(timeout=10)
-    os.environ['CUDA_VISIBLE_DEVICES'] = str(cuda_device)
+    global carla_host, carla_port, tm_port, gpu_device
+    carla_host, carla_port, tm_port, gpu_device = instance_configs.get(timeout=10)
+    os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_device)
     CarlaDataProvider.cleanup()
-    initialize_carla(carla_host, carla_port, tm_port)
+    initialize_carla(carla_host, carla_port, tm_port, gpu_device)
+
+
+def run_free_environments(agent):
+    environment_confs = get_enviroment_confs()
+    for conf in environment_confs:
+        conf["agent"] = agent
+
+    if CONFIG["runtime"]["parallel"]:
+        process_configs = Manager().Queue()
+        for instance in CONFIG["runtime"]["instances"]:
+            process_configs.put((instance["host"], instance["port"], instance["tm_port"], instance["gpu_device"]))
+        with ProcessPoolExecutor(max_workers=len(CONFIG["runtime"]["instances"]),
+                                 initializer=_init_carla, initargs=(process_configs,)) as executor:
+            results = executor.map(run_environment, environment_confs)
+    else:
+        global carla_host, carla_port, tm_port, gpu_device
+        instance = CONFIG["runtime"]["instances"][0]
+        carla_host, carla_port, tm_port, gpu_device = (instance["host"], instance["port"],
+                                                       instance["tm_port"], instance["gpu_device"])
+        os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_device)
+        CarlaDataProvider.cleanup()
+        initialize_carla(carla_host, carla_port, tm_port, gpu_device)
+        results = map(run_environment, environment_confs)
+        results = zip(*results)
+    return results
+
+
+def run_environment(conf):
+    global carla_host, carla_port, tm_port
+    agent_conf = [_c for _c in CONFIG["agent"]["versions"] if _c["name"] == conf["agent"]][0]
+
+    cp_path = os.path.join(CONFIG["workspace"]["runtime_checkpoint"], f"weather-{conf['weather']}", f"{conf['route_name']}.json")
+    output_path = os.path.join(CONFIG["workspace"]["runtime_data"], f"weather-{conf['weather']}")
+    os.makedirs(os.path.dirname(cp_path), exist_ok=True)
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    scenarios = os.path.join(CONFIG["agent"]["repo"], "leaderboard", "data", conf["scenario"])
+    routes = os.path.join(CONFIG["agent"]["repo"], "leaderboard", "data", conf["route"])
+    agent_path = os.path.join("impl", "scenario", "interfuser_agent.py")
+
+    child_env = os.environ.copy()
+
+    # Set environment variables as in the bash script
+    child_env.update({
+        "DATA_ROOT": CONFIG["workspace"]["runtime_data"],
+        "CARLA_ROOT": os.path.join(CONFIG["agent"]["repo"], "carla"),
+        "CARLA_SERVER": os.path.join(CONFIG["agent"]["repo"], "carla", "CarlaUE4.sh"),
+        "CARLA_WEATHER": str(conf["weather"]),
+        "LEADERBOARD_ROOT": os.path.join(CONFIG["agent"]["repo"], "leaderboard"),
+        "CHECKPOINT_ENDPOINT": cp_path,
+        "SAVE_PATH": output_path,
+        "TRAFFIC_SEED": "2000",
+        "CARLA_SEED": "2000",
+        "SCENARIOS": scenarios,
+        "ROUTES": routes,
+        "TM_PORT": str(tm_port),
+        "PORT": str(carla_port),
+        "HOST": carla_host,
+        "CHALLENGE_TRACK_CODENAME": "SENSORS",
+        "DEBUG_CHALLENGE": "0",
+        "REPETITIONS": "1",
+        "TEAM_AGENT": agent_path,
+        "RESUME": "True",
+        # Add RECORD_PATH if needed
+        # "RECORD_PATH": "path/to/record",
+    })
+
+    child_env["PYTHONPATH"] = os.pathsep.join(sys.path)
+
+    command = (
+        f"{sys.executable} {os.path.join(CONFIG['agent']['repo'], 'leaderboard/leaderboard/leaderboard_evaluator.py')}"
+        f" --scenarios {scenarios}"
+        f" --routes {routes}"
+        f" --repetitions 1"
+        f" --track SENSORS"
+        f" --checkpoint {cp_path}"
+        f" --agent impl/scenario/interfuser_agent.py"
+        f" --agent-config {agent_conf['config']}"
+        f" --debug 1"
+        f" --resume 0"
+        f" --port {carla_port}"
+        f" --host {carla_host}"
+        f" --trafficManagerPort {tm_port}"
+        f" --carlaProviderSeed 2000"
+        f" --trafficManagerSeed 2000"
+    )
+
+    process = subprocess.run(command, env=child_env, check=True, shell=True, text=True, stdout=None, stderr=None)
+
+    return process.returncode
 
 
 def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False):
@@ -61,8 +154,8 @@ def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False):
 
     @return: The simulation result and whether the scenario was actually executed.
     """
-    global carla_host, carla_port, tm_port, cuda_device
-    assert carla_host is not None and carla_port is not None and tm_port is not None and cuda_device is not None
+    global carla_host, carla_port, tm_port, gpu_device
+    assert carla_host is not None and carla_port is not None and tm_port is not None and gpu_device is not None
 
     agent_config = [conf["config"] for conf in CONFIG["agent"]["versions"] if conf["name"] == agent_name]
     if len(agent_config) == 0:
@@ -79,9 +172,9 @@ def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False):
     setattr(config, "host", carla_host)
     setattr(config, "port", carla_port)
     setattr(config, "trafficManagerPort", tm_port)
-    setattr(config, "cuda_device", cuda_device)
+    setattr(config, "gpu_device", gpu_device)
     logger.debug(f"Starting simulation, scenario id: {scenario.id_}, carla instance: {config.host}:{config.port}, "
-                 f"traffic manager port: {config.trafficManagerPort} on cuda device {config.cuda_device}.")
+                 f"traffic manager port: {config.trafficManagerPort} on cuda device {config.gpu_device}.")
     logger.debug(scenario)
 
     is_successful = False
@@ -126,22 +219,22 @@ def run_scenarios(scenarios, agent_name="v1", rerun=False):
     """
     if CONFIG["simulation"]["parallel"]:
         process_configs = Manager().Queue()
-        for instance in CONFIG["simulation"]["docker"]["instances"]:
+        for instance in CONFIG["simulation"]["instances"]:
             process_configs.put((instance["host"], instance["port"], instance["tm_port"], instance["gpu_device"]))
         # FIXME: Traffic manager may cause memory leak.
         # https://github.com/carla-simulator/carla/issues/3584
         # https://github.com/carla-simulator/carla/issues/3540
         # https://github.com/carla-simulator/leaderboard/issues/81
         # https://github.com/carla-simulator/carla/issues/2781
-        with ProcessPoolExecutor(max_workers=len(CONFIG["simulation"]["docker"]["instances"]),
+        with ProcessPoolExecutor(max_workers=len(CONFIG["simulation"]["instances"]),
                                  initializer=_init_carla, initargs=(process_configs,)) as executor:
             results = executor.map(run_scenario, scenarios, itertools.repeat(agent_name, len(scenarios)),
                                    itertools.repeat(rerun, len(scenarios)))
     else:
-        global carla_host, carla_port, tm_port, cuda_device
-        instance = CONFIG["simulation"]["docker"]["instances"][0]
-        carla_host, carla_port, tm_port, cuda_device = (instance["host"], instance["port"],
-                                                        instance["tm_port"], instance["gpu_device"])
+        global carla_host, carla_port, tm_port, gpu_device
+        instance = CONFIG["simulation"]["instances"][0]
+        carla_host, carla_port, tm_port, gpu_device = (instance["host"], instance["port"],
+                                                       instance["tm_port"], instance["gpu_device"])
         results = map(run_scenario, scenarios, itertools.repeat(agent_name, len(scenarios)),
                       itertools.repeat(rerun, len(scenarios)))
 

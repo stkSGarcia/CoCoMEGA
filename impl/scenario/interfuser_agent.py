@@ -3,10 +3,12 @@ import json
 import datetime
 import pathlib
 import time
+import pickle
 import imp
 import uuid
 import cv2
 import carla
+
 from collections import deque
 
 import torch
@@ -27,6 +29,7 @@ from team_code.tracker import Tracker
 import math
 import yaml
 from impl.config import CONFIG
+from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
 display_agent = CONFIG['simulation']['display_agent']
 
@@ -35,7 +38,9 @@ try:
 except ImportError:
     raise RuntimeError("cannot import pygame, make sure pygame package is installed")
 
+WEATHER = os.environ.get("CARLA_WEATHER")
 SAVE_PATH = os.environ.get("SAVE_PATH")
+
 IMAGENET_DEFAULT_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
 
@@ -160,6 +165,12 @@ def create_carla_rgb_transform(
 
 
 class InterfuserAgent(autonomous_agent.AutonomousAgent):
+
+    def __init__(self, path_to_conf_file):
+        super().__init__(path_to_conf_file)
+        self._vehicle = None
+        self._world = None
+
     def setup(self, path_to_conf_file):
         self.sensor_interface._queue_timeout = 100
         if display_agent:
@@ -228,7 +239,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
                     (now.month, now.day, now.hour, now.minute, now.second),
                 )
             )
-            string += uuid.uuid4().hex
+            # string += uuid.uuid4().hex
 
             print(string)
 
@@ -240,6 +251,10 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         self._route_planner = RoutePlanner(4.0, 50.0)
         self._route_planner.set_route(self._global_plan, True)
         self.initialized = True
+        self._vehicle = CarlaDataProvider.get_hero_actor()
+        self._world = self._vehicle.get_world()
+        if WEATHER:
+            self._world.set_weather(carla.WeatherParameters(**CONFIG["blueprint"]["scenario"]["weather"][int(WEATHER)]))
 
     def _get_position(self, tick_data):
         gps = tick_data["gps"]
@@ -578,6 +593,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             surface = self._hic.run_interface(tick_data)
             tick_data["surface"] = surface
 
+        tick_data['other_actors'] = self.collect_actor_data()
         if SAVE_PATH is not None:
             self.save(tick_data)
 
@@ -589,6 +605,8 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             Image.fromarray(tick_data["surface"]).save(
                 self.save_path / "meta" / ("%04d.jpg" % frame)
             )
+        with open(os.path.join(self.save_path, f"tick_data_{frame:04d}.pkl"), 'wb') as _f:
+            pickle.dump(tick_data, _f)
         return
 
     def destroy(self):
@@ -596,3 +614,60 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             del self.nets
         else:
             del self.net
+
+    def collect_actor_data(self):
+        data = {}
+        vehicles = self._world.get_actors().filter("*vehicle*")
+        for actor in vehicles:
+            loc = actor.get_location()
+            if loc.distance(self._vehicle.get_location()) > 50:
+                continue
+            _id = actor.id
+            data[_id] = {}
+            data[_id]["loc"] = [loc.x, loc.y, loc.z]
+            ori = actor.get_transform().rotation.get_forward_vector()
+            data[_id]["ori"] = [ori.x, ori.y, ori.z]
+            box = actor.bounding_box.extent
+            data[_id]["box"] = [box.x, box.y]
+            vel = actor.get_velocity()
+            data[_id]["vel"] = [vel.x, vel.y, vel.z]
+            data[_id]["tpe"] = 0
+
+        walkers = self._world.get_actors().filter("*walker*")
+        for actor in walkers:
+            loc = actor.get_location()
+            if loc.distance(self._vehicle.get_location()) > 50:
+                continue
+            _id = actor.id
+            data[_id] = {}
+            data[_id]["loc"] = [loc.x, loc.y, loc.z]
+            ori = actor.get_transform().rotation.get_forward_vector()
+            data[_id]["ori"] = [ori.x, ori.y, ori.z]
+            box = actor.bounding_box.extent
+            data[_id]["box"] = [box.x, box.y]
+            vel = actor.get_velocity()
+            data[_id]["vel"] = [vel.x, vel.y, vel.z]
+            data[_id]["tpe"] = 1
+
+        lights = self._world.get_actors().filter("*traffic_light*")
+        for actor in lights:
+            loc = actor.get_location()
+            if loc.distance(self._vehicle.get_location()) > 70:
+                continue
+            _id = actor.id
+            data[_id] = {}
+            data[_id]["loc"] = [loc.x, loc.y, loc.z]
+            ori = actor.get_transform().rotation.get_forward_vector()
+            data[_id]["ori"] = [ori.x, ori.y, ori.z]
+            vel = actor.get_velocity()
+            data[_id]["sta"] = int(actor.state)
+            data[_id]["tpe"] = 2
+
+            trigger = actor.trigger_volume
+            box = trigger.extent
+            loc = trigger.location
+            ori = trigger.rotation.get_forward_vector()
+            data[_id]["taigger_loc"] = [loc.x, loc.y, loc.z]
+            data[_id]["trigger_ori"] = [ori.x, ori.y, ori.z]
+            data[_id]["trigger_box"] = [box.x, box.y]
+        return data
