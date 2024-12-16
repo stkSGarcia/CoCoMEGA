@@ -93,6 +93,12 @@ Test Cases for Autonomous Driving Systems* by Hossein Yousefizadeh, Shenghui Gu,
 - MR7: No matter how the driving scenes are synthesized to cope with different weather conditions (sunny and rainy), the
   driving steering angle are expected to be consistent with those under the corresponding original driving scenes.
 
+## Collect Runtime Data
+To collect runtime data, use the command below
+```shell
+   python -m impl run
+```
+
 ## License
 
 This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
