@@ -64,9 +64,9 @@ class ScenarioEvaluator(object):
     ego_vehicles = []
 
     # Tunable parameters
-    client_timeout = CONFIG['simulation']['client_timeout']  # in seconds
-    wait_for_world = CONFIG['simulation']['wait_for_world']  # in seconds
-    frame_rate = CONFIG['simulation']['frame_rate']  # in Hz
+    client_timeout = CONFIG["simulation"]["client_timeout"]  # in seconds
+    wait_for_world = CONFIG["simulation"]["wait_for_world"]  # in seconds
+    frame_rate = CONFIG["simulation"]["frame_rate"]  # in Hz
 
     def __init__(self, scenario_definition, args):
         """
