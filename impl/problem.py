@@ -6,6 +6,7 @@ import numpy as np
 from deap import creator, base, tools
 
 from impl.algorithm.base import Budget
+from impl.algorithm.rnsga2 import selRNSGA2WithMemory
 from impl.algorithm.rnsga3 import selRNSGA3WithMemory
 from impl.config import CONFIG
 from impl.mr.mr import Perturbations
@@ -23,11 +24,13 @@ test_version = "v2"
 
 # Define the multi-objective configurations.
 moo = True
+rnsga3 = False
 ref_points = np.array([[0.1, 0.5], [0.05, 0.6]])
 n_obj = 2
-P = 5
-H = factorial(n_obj + P - 1) / (factorial(P) * factorial(n_obj - 1))
-pop_size = int(ref_points.shape[0] * H + n_obj)
+if rnsga3:
+    P = 5
+    H = int(factorial(n_obj + P - 1) / (factorial(P) * factorial(n_obj - 1)))
+    pop_size = ref_points.shape[0] * H + n_obj
 
 # Define the budget.
 budget = Budget(max_sim=CONFIG["budget"]["max_sim"],
@@ -60,7 +63,10 @@ toolbox.register("pop_perturbation", tools.initRepeat, list, toolbox.perturbatio
 # Create a complete solution from two individuals.
 toolbox.register("collaborate", lambda scenario, perturbation: creator.Solution((scenario, perturbation)))
 if moo:
-    toolbox.register("select", selRNSGA3WithMemory(ref_points=ref_points, p=P, mu=0.1))
+    if rnsga3:
+        toolbox.register("select", selRNSGA3WithMemory(ref_points=ref_points, p=P, mu=0.1))
+    else:
+        toolbox.register("select", selRNSGA2WithMemory(ref_points=ref_points))
 
 
 # Define genetic operators.
