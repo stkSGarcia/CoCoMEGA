@@ -7,6 +7,7 @@ import argformat
 from impl import problem
 from impl.algorithm.ccea import CCEA
 from impl.algorithm.ga import GeneticAlgorithm
+from impl.algorithm.moccea import MOCCEA
 from impl.algorithm.rs import RandomSearch
 from impl.scenario.scenario_definition import ScenarioDefinition
 from impl.scenario.simulation_runner import run_scenarios, run_solutions, run_free_environments
@@ -18,6 +19,8 @@ logger = logging.getLogger("impl")
 def search(algorithm: str, resume: bool):
     if algorithm == "ccea":
         solver = CCEA(toolbox=problem.toolbox, budget=problem.budget)
+    elif algorithm == "moccea":
+        solver = MOCCEA(toolbox=problem.toolbox, budget=problem.budget)
     elif algorithm == "rs":
         solver = RandomSearch(toolbox=problem.toolbox, budget=problem.budget)
     elif algorithm == "ga":
@@ -37,9 +40,11 @@ def simulate(num: int, file: str):
         logger.info(f"Running random scenarios.")
         run_scenarios([ScenarioDefinition.generate_random_or_leaderboard() for _ in range(num)])
 
+
 def run_free_env(agent: str):
     logger.info(f"Running free simulation environment for agent {agent}.")
     run_free_environments(agent)
+
 
 class StoreDictKeyPair(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
@@ -71,9 +76,10 @@ if __name__ == "__main__":
     )
 
     parser_search = subparsers.add_parser("search", aliases=["srch"], help="start the search")
-    parser_search.add_argument("-a", "--algorithm", choices=("ccea", "rs", "ga", "gawa"), default="ccea",
+    parser_search.add_argument("-a", "--algorithm", choices=("ccea", "moccea", "rs", "ga", "gawa"), default="ccea",
                                help="choose the algorithm to use. "
                                     "ccea: cooperative co-evolutionary algorithm; "
+                                    "moccea: multi-objective cooperative co-evolutionary algorithm; "
                                     "rs: random search algorithm; "
                                     "ga: standard genetic algorithm; "
                                     "gawa: genetic algorithm with archive strategy")
