@@ -24,7 +24,7 @@ test_version = "v2"
 
 # Define the multi-objective configurations.
 rnsga3 = False
-ref_points = np.array([[0.1, 0.5], [0.05, 0.6]])
+ref_points = np.array([[0.9, 0.1], [0.8, 0.2]])
 n_obj = 2
 if rnsga3:
     P = 5

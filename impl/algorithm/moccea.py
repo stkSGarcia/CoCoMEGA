@@ -58,8 +58,8 @@ class MOCCEA(BaseAlgorithm):
                                    sim_num=self.budget.sim_num)
 
             # Generate offsprings.
-            off_scenario = self._breed(pop_scenario, len(pop_scenario))
-            off_perturbation = self._breed(pop_perturbation, len(pop_perturbation))
+            off_scenario = self._breed(pop_scenario, int(len(pop_scenario) // 2) * 2)
+            off_perturbation = self._breed(pop_perturbation, int(len(pop_perturbation) // 2) * 2)
             pop_scenario += off_scenario
             pop_perturbation += off_perturbation
             self.budget.acc_gen()
@@ -100,8 +100,8 @@ class MOCCEA(BaseAlgorithm):
         # Evaluate joint fitness.
         candidates = [ind for ind in unique_solutions if ind not in evaluated_solutions]
         logger.info(f"#complete solutions: {len(complete_solutions)}, "
-                     f"#unique solutions: {len(unique_solutions)}, "
-                     f"#candidates: {len(candidates)}.")
+                    f"#unique solutions: {len(unique_solutions)}, "
+                    f"#candidates: {len(candidates)}.")
         if len(candidates) > 0:
             candidates, sim_num = self.toolbox.evaluate_solutions(candidates)
             evaluated_solutions.extend(candidates)
@@ -126,15 +126,45 @@ class MOCCEA(BaseAlgorithm):
         @return: A list of offsprings.
         """
         assert len(population) > 0
-        offsprings = []
-        for _ in range(size):
-            parents = population[0].select(population)
-            parents = list(map(self.toolbox.clone, parents))
-            parents[0].mate(parents[1])
-            offspring = random.choice(parents)
-            offspring.mutate()
-            del offspring.fitness.values
-            offspring.correct()
-            offsprings.append(offspring)
+        if size % 2 != 0:
+            raise ValueError("The size of offsprings must be even.")
 
+        offsprings = self._tournament_DCD(population, size)
+        offsprings = list(map(self.toolbox.clone, offsprings))
+        for ind1, ind2 in zip(offsprings[::2], offsprings[1::2]):
+            ind1.mate(ind2)
+            ind1.mutate()
+            ind2.mutate()
+            del ind1.fitness.values
+            del ind2.fitness.values
+            ind1.correct()
+            ind2.correct()
         return offsprings
+
+    @staticmethod
+    def _tournament_DCD(individuals, k):
+        """Tournament selection based on dominance (D) between two individuals, if
+        the two individuals do not interdominate the selection is made based on
+        crowding distance (CD). This selection requires the individuals to have a
+        :attr:`crowding_dist` attribute.
+
+        :param individuals: A list of individuals to select from.
+        :param k: The number of individuals to select.
+        :returns: A list of selected individuals.
+        """
+        chosen = []
+        for _ in range(k):
+            ind1, ind2 = random.choice(individuals), random.choice(individuals)
+            if ind1.fitness.dominates(ind2.fitness):
+                chosen.append(ind1)
+            elif ind2.fitness.dominates(ind1.fitness):
+                chosen.append(ind2)
+            elif ind1.fitness.crowding_dist < ind2.fitness.crowding_dist:
+                chosen.append(ind2)
+            elif ind1.fitness.crowding_dist > ind2.fitness.crowding_dist:
+                chosen.append(ind1)
+            elif random.random() <= 0.5:
+                chosen.append(ind1)
+            else:
+                chosen.append(ind2)
+        return chosen
