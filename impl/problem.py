@@ -86,7 +86,7 @@ def _evaluate_solutions(solutions):
     """
     scenarios = []
     reeval = []
-    agent_name = CONFIG["agent"]["versions"][0]["name"]
+    agent_name = CONFIG["interfuser"]["versions"][0]["name"]
     for solution in solutions:
         scenarios.append(solution[0])
         follow_up = toolbox.clone(solution[0])

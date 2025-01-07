@@ -22,9 +22,9 @@ from impl.utils.leaderboad_utils import get_enviroment_confs
 
 arguments = [
     ("SCENARIOS", "scenarios",
-     os.path.join(CONFIG["agent"]["repo"], "leaderboard/data/scenarios/town05_all_scenarios.json")),
+     os.path.join(CONFIG["interfuser"]["repo"], "leaderboard/data/scenarios/town05_all_scenarios.json")),
     ("ROUTES", "routes",
-     os.path.join(CONFIG["agent"]["repo"], "leaderboard/data/training_routes/routes_town05_long.xml")),
+     os.path.join(CONFIG["interfuser"]["repo"], "leaderboard/data/training_routes/routes_town05_long.xml")),
     ("REPETITIONS", "repetitions", 1),
     ("CHALLENGE_TRACK_CODENAME", "track", "SENSORS"),
     ("CHECKPOINT_ENDPOINT", "checkpoint", os.path.join(CONFIG["workspace"]["sim_result"], "checkpoint.json")),
@@ -59,18 +59,14 @@ def _init_carla(instance_configs):
     initialize_carla(carla_host, carla_port, tm_port, gpu_device)
 
 
-def run_free_environments(agent):
-    environment_confs = get_enviroment_confs()
-    for conf in environment_confs:
-        conf["agent"] = agent
-
+def run_free_environments(confs):
     if CONFIG["runtime"]["parallel"]:
         process_configs = Manager().Queue()
         for instance in CONFIG["runtime"]["instances"]:
             process_configs.put((instance["host"], instance["port"], instance["tm_port"], instance["gpu_device"]))
         with ProcessPoolExecutor(max_workers=len(CONFIG["runtime"]["instances"]),
                                  initializer=_init_carla, initargs=(process_configs,)) as executor:
-            results = executor.map(run_environment, environment_confs)
+            results = executor.map(run_environment, confs)
     else:
         global carla_host, carla_port, tm_port, gpu_device
         instance = CONFIG["runtime"]["instances"][0]
@@ -79,33 +75,31 @@ def run_free_environments(agent):
         os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_device)
         CarlaDataProvider.cleanup()
         initialize_carla(carla_host, carla_port, tm_port, gpu_device)
-        results = map(run_environment, environment_confs)
+        results = map(run_environment, confs)
         results = zip(*results)
     return results
 
 
 def run_environment(conf):
     global carla_host, carla_port, tm_port
-    agent_conf = [_c for _c in CONFIG["agent"]["versions"] if _c["name"] == conf["agent"]][0]
 
-    cp_path = os.path.join(CONFIG["workspace"]["runtime_checkpoint"], f"weather-{conf['weather']}", f"{conf['route_name']}.json")
-    output_path = os.path.join(CONFIG["workspace"]["runtime_data"], f"weather-{conf['weather']}")
+    cp_path = os.path.join(conf["cp_root"], f"weather-{conf['weather']}", f"{conf['route_name']}.json")
+    output_path = os.path.join(conf["output_root"], f"weather-{conf['weather']}")
     os.makedirs(os.path.dirname(cp_path), exist_ok=True)
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    scenarios = os.path.join(CONFIG["agent"]["repo"], "leaderboard", "data", conf["scenario"])
-    routes = os.path.join(CONFIG["agent"]["repo"], "leaderboard", "data", conf["route"])
-    agent_path = os.path.join("impl", "scenario", "interfuser_agent.py")
+    scenarios = os.path.join(CONFIG["interfuser"]["repo"], "leaderboard", "data", conf["scenario"])
+    routes = os.path.join(CONFIG["interfuser"]["repo"], "leaderboard", "data", conf["route"])
 
     child_env = os.environ.copy()
 
     # Set environment variables as in the bash script
     child_env.update({
         "DATA_ROOT": CONFIG["workspace"]["runtime_data"],
-        "CARLA_ROOT": os.path.join(CONFIG["agent"]["repo"], "carla"),
-        "CARLA_SERVER": os.path.join(CONFIG["agent"]["repo"], "carla", "CarlaUE4.sh"),
+        "CARLA_ROOT": os.path.join(CONFIG["interfuser"]["repo"], "carla"),
+        "CARLA_SERVER": os.path.join(CONFIG["interfuser"]["repo"], "carla", "CarlaUE4.sh"),
         "CARLA_WEATHER": str(conf["weather"]),
-        "LEADERBOARD_ROOT": os.path.join(CONFIG["agent"]["repo"], "leaderboard"),
+        "LEADERBOARD_ROOT": os.path.join(CONFIG["interfuser"]["repo"], "leaderboard"),
         "CHECKPOINT_ENDPOINT": cp_path,
         "SAVE_PATH": output_path,
         "TRAFFIC_SEED": "2000",
@@ -118,7 +112,7 @@ def run_environment(conf):
         "CHALLENGE_TRACK_CODENAME": "SENSORS",
         "DEBUG_CHALLENGE": "0",
         "REPETITIONS": "1",
-        "TEAM_AGENT": agent_path,
+        "TEAM_AGENT": conf["agent_path"],
         "RESUME": "True",
         # Add RECORD_PATH if needed
         # "RECORD_PATH": "path/to/record",
@@ -127,14 +121,14 @@ def run_environment(conf):
     child_env["PYTHONPATH"] = os.pathsep.join(sys.path)
 
     command = (
-        f"{sys.executable} {os.path.join(CONFIG['agent']['repo'], 'leaderboard/leaderboard/leaderboard_evaluator.py')}"
+        f"{sys.executable} {os.path.join(CONFIG['interfuser']['repo'], 'leaderboard/leaderboard/leaderboard_evaluator.py')}"
         f" --scenarios {scenarios}"
         f" --routes {routes}"
         f" --repetitions 1"
         f" --track SENSORS"
         f" --checkpoint {cp_path}"
-        f" --agent impl/scenario/interfuser_agent.py"
-        f" --agent-config {agent_conf['config']}"
+        f" --agent {conf['agent_path']}"
+        f" --agent-config {conf['agent_config']}"
         f" --debug 1"
         f" --resume 0"
         f" --port {carla_port}"
@@ -157,7 +151,7 @@ def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False):
     global carla_host, carla_port, tm_port, gpu_device
     assert carla_host is not None and carla_port is not None and tm_port is not None and gpu_device is not None
 
-    agent_config = [conf["config"] for conf in CONFIG["agent"]["versions"] if conf["name"] == agent_name]
+    agent_config = [conf["config"] for conf in CONFIG["interfuser"]["versions"] if conf["name"] == agent_name]
     if len(agent_config) == 0:
         raise ValueError(f"Agent not defined: \"{agent_name}\".")
     agent_config = agent_config[0]

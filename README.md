@@ -96,7 +96,19 @@ Test Cases for Autonomous Driving Systems* by Hossein Yousefizadeh, Shenghui Gu,
 ## Collect Runtime Data
 To collect runtime data, use the command below
 ```shell
-   python -m impl run
+   python -m impl collect_runtime_data
+```
+
+## Generate Training Data
+To generate training data using a rule-based agent, use the command below
+```shell
+   python -m impl generate_train_data
+```
+
+## Train Interfuser
+To train an Interfuser model, use the command below
+```shell
+   python -m impl train
 ```
 
 ## License

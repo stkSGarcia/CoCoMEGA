@@ -5,20 +5,53 @@ workspace:
   log: logs
   test_result: tests
   checkpoint: checkpoints
-  runtime_checkpoint: runtime_checkpoints
+  data_collection_checkpoint: data_collection_checkpoints
+  data_gen_checkpoint: data_gen_checkpoints
   solution: solutions
   visualization: visualizations
   sim_result: results
   sim_save: results/eval
   runtime_data: runtime_data
+  train_data: train_data
 
-agent:
+
+interfuser:
   repo: "../InterFuser"
+  path: "impl/scenario/interfuser_agent.py"
   versions:
     - name: "v1"
       config: "impl/scenario/interfuser_config_v1.py"
     - name: "v2"
       config: "impl/scenario/interfuser_config_v2.py"
+
+data_collection:
+  yaml_root: "conf/yamls"
+  destory_hazard_actors: true
+  rgb_only: false
+  save_skip_frames: 10
+  waypoint_disturb: 0.2
+  waypoint_disturb_seed: 2020
+
+training:
+  gpu_num: 2
+  train_towns: [ 1, 2, 3, 4, 6, 7, 10 ]
+  val_towns: [ 5 ]
+  train_weathers: [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
+  val_weathers: [ 10, 11 ]
+  epochs: 15
+  warmup_epochs: 5
+  lr: 0.0005
+  batch_size: 16
+  j: 16
+  eval_metric: l1_error
+  opt: adamw
+  opt_eps: 1e-8
+  weight_decay: 0.05
+  scale: "0.9 1.1"
+  clip_grad: 10
+  freeze_num: -1
+  backbone_lr: 0.0002
+
 
 docker:
   enabled: true
@@ -52,10 +85,10 @@ simulation:
       gpu_device: 1
 
 runtime:
-  parallel: true
+  parallel: false
   agent: v1
-  towns: ["town01", "town02", "town03"] # Options: ["town01", "town02", "town03", "town04", "town05", "town06", "town07", "town10"]
-  weathers: [0, 2, 4] # Options: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+  towns: [ "town01", "town02", "town03" ] # Options: ["town01", "town02", "town03", "town04", "town05", "town06", "town07", "town10"]
+  weathers: [ 0, 2, 4 ] # Options: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
   instances:
     - host: localhost
       port: 2100

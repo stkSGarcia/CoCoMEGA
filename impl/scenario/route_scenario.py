@@ -37,6 +37,7 @@ from srunner.scenariomanager.scenarioatomics.atomic_behaviors import AccelerateT
 from leaderboard.utils.route_parser import RouteParser, TRIGGER_THRESHOLD, TRIGGER_ANGLE_THRESHOLD
 from impl.config import CONFIG
 from impl.scenario.scenario_definition import Walker
+from impl.utils.math_utils import polar_to_cartesian
 
 logger = logging.getLogger(__name__)
 
@@ -76,10 +77,6 @@ def convert_json_to_actor(actor_dict):
     return ActorConfigurationData.parse_from_node(node, actor_dict.get('role_name', 'simulation'))
 
 
-def convert_polar_to_cartesian(radius, angle_degrees):
-    x = radius * math.cos(math.radians(angle_degrees))
-    y = radius * math.sin(math.radians(angle_degrees))
-    return x, y
 
 
 def compare_scenarios(scenario_choice, existent_scenario):
@@ -339,7 +336,7 @@ class RouteScenario(BasicScenario):
         coef = -1 if tilt == "left" else (1 if tilt == "right" else 0)
         angs = [ang + coef * CONFIG["boundary"]["tilt_degrees"] for ang in angs]
         point_indices = [(0, 0), (0, 1), (1, 1), (1, 0)]
-        points = [convert_polar_to_cartesian(rads[i], angs[j]) for i, j in point_indices]
+        points = [polar_to_cartesian(rads[i], angs[j]) for i, j in point_indices]
         for i in range(len(points)):
             start_point = anchor.transform(carla.Location(x=points[i][0], y=points[i][1], z=z))
             end_point = anchor.transform(

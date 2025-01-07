@@ -21,7 +21,7 @@ class GlobalConfig:
     collision_buffer = [2.5, 1.2]
     model_path = "conf/interfuser.pth.tar"
     momentum = 0
-    skip_frames = 100
+    skip_frames = 1
     detect_threshold = 0.04
 
     model = "interfuser_baseline"

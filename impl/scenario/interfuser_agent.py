@@ -12,7 +12,6 @@ import carla
 from collections import deque
 
 import torch
-import carla
 import numpy as np
 from PIL import Image
 from easydict import EasyDict
@@ -625,8 +624,8 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             _id = actor.id
             data[_id] = {}
             data[_id]["loc"] = [loc.x, loc.y, loc.z]
-            ori = actor.get_transform().rotation.get_forward_vector()
-            data[_id]["ori"] = [ori.x, ori.y, ori.z]
+            rot = actor.get_transform().rotation
+            data[_id]["ori"] = {'yaw': rot.yaw, 'pitch': rot.pitch, 'roll': rot.roll}
             box = actor.bounding_box.extent
             data[_id]["box"] = [box.x, box.y]
             vel = actor.get_velocity()

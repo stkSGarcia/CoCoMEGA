@@ -8,6 +8,7 @@ from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
 from impl.utils.carla_utils import get_junction_topology, filter_junction_wp_direction, get_junction, \
     dict_to_location
+from impl.utils.math_utils import cartesian_to_polar
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -18,23 +19,6 @@ crossings = {
     "right": ["left"],
     None: ["ref"]
 }
-
-
-def cartesian_to_polar(x, y):
-    """
-    Convert Cartesian coordinates to polar coordinates.
-
-    Args:
-        x (float): The x-coordinate.
-        y (float): The y-coordinate.
-
-    Returns:
-        tuple: A tuple containing the radius (r) and the angle (theta) in degrees.
-    """
-    r = math.sqrt(x ** 2 + y ** 2)
-    theta = math.degrees(math.atan2(y, x))
-    return r, theta
-
 
 class LeaderBoardFactory:
     @classmethod

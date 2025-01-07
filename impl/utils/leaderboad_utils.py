@@ -1,4 +1,15 @@
+import os.path
+import yaml
+import logging
+
 from impl.config import CONFIG
+from impl.scenario.interfuser_agent import WEATHER
+from impl.scenario.scenario_definition import ScenarioDefinition, Vehicle, Walker, Static
+from impl.utils.math_utils import cartesian_to_polar, vector_norm
+
+from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+
+logger = logging.getLogger(__name__)
 
 routes = {}
 routes[
@@ -58,7 +69,6 @@ for route, scenario in routes.items():
         towned_routes[town] = {}
     towned_routes[town][route] = scenario
 
-
 def get_enviroment_confs():
     weathers = CONFIG["runtime"]["weathers"]
     towns = CONFIG["runtime"]["towns"]
@@ -75,3 +85,39 @@ def get_enviroment_confs():
                 }
                 confs.append(conf)
     return confs
+
+
+def make_yamls():
+    conf = CONFIG["data_collection"].copy()
+    os.makedirs(CONFIG["data_collection"]["yaml_root"], exist_ok=True)
+    for weather in CONFIG["runtime"]["weathers"]:
+        conf["weather"] = weather
+        file_path = os.path.join(CONFIG["data_collection"]["yaml_root"], f"weather-{weather}.yaml")
+        try:
+            with open(file_path, 'w') as file:
+                yaml.dump(conf, file, default_flow_style=False, sort_keys=True)
+        except Exception as e:
+            logger.error(f"An error occurred while saving the YAML file {file_path}")
+            raise e
+
+
+def vectorize_runtime_data(rt_data):
+    scenario_def = ScenarioDefinition._generate_empty_scenario()
+    scenario_def.weather = WEATHER
+    scenario_def.town = CarlaDataProvider.get_map().name
+    ego_vechile_coordinates = rt_data['gps']
+
+    for other_actor in rt_data['other_actors']:
+        relative_position = (
+        other_actor['loc'][0] - ego_vechile_coordinates[0], other_actor['loc'][1] - ego_vechile_coordinates[1])
+        radius, angle = cartesian_to_polar(*relative_position)
+        yaw = other_actor['ori']['yaw']
+        if other_actor['tpe'] == 0:
+            speed = vector_norm(other_actor['vel'])
+            scenario_def.vehicles.append(Vehicle(radius=radius, angle=angle, yaw=yaw, model=0, speed=speed))
+        if other_actor['tpe'] == 1:
+            speed = vector_norm(other_actor['vel'])
+            scenario_def.walkers.append(Walker(radius=radius, angle=angle, yaw=yaw, model=0, speed=speed))
+        if other_actor['tpe'] == 2:
+            scenario_def.statics.append(Static(radius=radius, angle=angle, yaw=yaw, model=0))
+    return scenario_def
