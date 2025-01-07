@@ -44,7 +44,7 @@ class RandomSearch(BaseAlgorithm):
 
             # Evaluate joint fitness.
             candidates = [ind for ind in unique_solutions if ind not in evaluated_solutions]
-            logger.debug(f"#complete solutions: {len(complete_solutions)}, "
+            logger.info(f"#complete solutions: {len(complete_solutions)}, "
                          f"#unique solutions: {len(unique_solutions)}, "
                          f"#candidates: {len(candidates)}.")
             if len(candidates) > 0:
@@ -81,4 +81,4 @@ class RandomSearch(BaseAlgorithm):
 
         logger.info(f"Terminate due to reaching the threshold.")
         # Store the complete solutions.
-        self.dump_results(archive_solution, evaluated_solutions, "rs")
+        self.dump_results(archive_solution, evaluated_solutions)

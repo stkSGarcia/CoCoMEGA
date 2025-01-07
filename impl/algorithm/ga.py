@@ -49,7 +49,7 @@ class GeneticAlgorithm(BaseAlgorithm):
 
             # Evaluate joint fitness.
             candidates = [ind for ind in unique_solutions if ind not in evaluated_solutions]
-            logger.debug(f"#complete solutions: {len(complete_solutions)}, "
+            logger.info(f"#complete solutions: {len(complete_solutions)}, "
                          f"#unique solutions: {len(unique_solutions)}, "
                          f"#candidates: {len(candidates)}.")
             if len(candidates) > 0:
@@ -98,7 +98,7 @@ class GeneticAlgorithm(BaseAlgorithm):
 
         logger.info(f"Terminate due to reaching the threshold.")
         # Store the complete solutions.
-        self.dump_results(archive_solution, evaluated_solutions, "gawa" if self.keep_best else "ga")
+        self.dump_results(archive_solution, evaluated_solutions)
 
     def _breed(self, population, size):
         """Perform selection, crossover and mutation on individuals.

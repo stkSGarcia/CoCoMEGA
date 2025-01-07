@@ -80,7 +80,7 @@ class MOCCEA(BaseAlgorithm):
 
         logger.info(f"Terminate due to reaching the threshold.")
         # Store the complete solutions.
-        self.dump_results(archive_solution, evaluated_solutions, "ccea")
+        self.dump_results(archive_solution, evaluated_solutions)
 
     def _evaluate(self, pop_scenario, pop_perturbation, evaluated_solutions):
         """Form complete solutions and evaluate their joint fitness as well as the individual fitness values.
@@ -99,7 +99,7 @@ class MOCCEA(BaseAlgorithm):
 
         # Evaluate joint fitness.
         candidates = [ind for ind in unique_solutions if ind not in evaluated_solutions]
-        logger.debug(f"#complete solutions: {len(complete_solutions)}, "
+        logger.info(f"#complete solutions: {len(complete_solutions)}, "
                      f"#unique solutions: {len(unique_solutions)}, "
                      f"#candidates: {len(candidates)}.")
         if len(candidates) > 0:
