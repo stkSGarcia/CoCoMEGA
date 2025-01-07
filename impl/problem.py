@@ -6,6 +6,7 @@ import numpy as np
 from deap import creator, base, tools
 
 from impl.algorithm.base import Budget
+from impl.algorithm.rnsga2 import selRNSGA2WithMemory
 from impl.algorithm.rnsga3 import selRNSGA3WithMemory
 from impl.config import CONFIG
 from impl.mr.mr import Perturbations
@@ -22,12 +23,13 @@ reference_version = "v1"
 test_version = "v2"
 
 # Define the multi-objective configurations.
-moo = True
+rnsga3 = False
 ref_points = np.array([[0.1, 0.5], [0.05, 0.6]])
 n_obj = 2
-P = 5
-H = factorial(n_obj + P - 1) / (factorial(P) * factorial(n_obj - 1))
-pop_size = int(ref_points.shape[0] * H + n_obj)
+if rnsga3:
+    P = 5
+    H = int(factorial(n_obj + P - 1) / (factorial(P) * factorial(n_obj - 1)))
+    pop_size = ref_points.shape[0] * H + n_obj
 
 # Define the budget.
 budget = Budget(max_sim=CONFIG["budget"]["max_sim"],
@@ -35,7 +37,7 @@ budget = Budget(max_sim=CONFIG["budget"]["max_sim"],
                 max_gen=CONFIG["budget"]["max_gen"])
 
 # Define individuals.
-creator.create("Fitness", base.Fitness, weights=(1.0, -1.0,) if moo else (1.0,))
+creator.create("Fitness", base.Fitness, weights=(1.0, -1.0,) if diff_testing else (1.0,))
 creator.create("Solution", tuple, fitness=creator.Fitness, is_violated=False)
 creator.create("Scenario", ScenarioDefinition, fitness=creator.Fitness)
 creator.create("Perturbation", Perturbations, fitness=creator.Fitness)
@@ -59,8 +61,17 @@ toolbox.register("pop_perturbation", tools.initRepeat, list, toolbox.perturbatio
 
 # Create a complete solution from two individuals.
 toolbox.register("collaborate", lambda scenario, perturbation: creator.Solution((scenario, perturbation)))
-if moo:
-    toolbox.register("select", selRNSGA3WithMemory(ref_points=ref_points, p=P, mu=0.1))
+if diff_testing:
+    if rnsga3:
+        toolbox.register("select_scenario", selRNSGA3WithMemory(ref_points=ref_points, p=P, mu=0.1),
+                         k=CONFIG["scenario"]["pop_size"])
+        toolbox.register("select_perturbation", selRNSGA3WithMemory(ref_points=ref_points, p=P, mu=0.1),
+                         k=CONFIG["perturbation"]["pop_size"])
+    else:
+        toolbox.register("select_scenario", selRNSGA2WithMemory(ref_points=ref_points),
+                         k=CONFIG["scenario"]["pop_size"])
+        toolbox.register("select_perturbation", selRNSGA2WithMemory(ref_points=ref_points),
+                         k=CONFIG["perturbation"]["pop_size"])
 
 
 # Define genetic operators.
@@ -77,6 +88,11 @@ def _fitness(source, follow_up, mr_set=mr_set):
         follow_up[mr_set.field] = follow_up.apply(func, axis=1, result_type="reduce")
     is_violated, extent = mr_set.is_violated(source, follow_up)
     return is_violated, (extent,) if extent is not None else None
+
+
+def _calculate_similarity(scenario, scenarios):
+    import random
+    return random.uniform(0, 1)
 
 
 def _evaluate_solutions(solutions):
@@ -134,15 +150,16 @@ def _evaluate_solutions_dt(solutions):
 
     rv_solutions, rv_sim_num = _perform_evaluation(solutions, scenarios, agent_name=reference_version)
     tv_solutions, tv_sim_num = _perform_evaluation(rv_solutions, scenarios, agent_name=test_version)
-    for solution in solutions:
+    similarities = [_calculate_similarity(scenario, []) for scenario in scenarios]
+    for solution, source_sim, follow_up_sim in zip(solutions, similarities[::2], similarities[1::2]):
         rv_fitness = getattr(solution, reference_version).fitness
         tv_fitness = getattr(solution, test_version).fitness
         if rv_fitness and tv_fitness:
-            solution.fitness.values = np.abs(rv_fitness.values[0] - tv_fitness.values[0])
-            solution.fitness_type = reference_version if rv_fitness.values[0] > tv_fitness.values[0] else test_version
+            solution.fitness.values = (np.abs(rv_fitness[0] - tv_fitness[0]), min(source_sim, follow_up_sim))
+            solution.fitness_type = reference_version if rv_fitness[0] > tv_fitness[0] else test_version
             solution.is_violated = True  # TODO define violation criteria
         else:
-            del solution.fitness.values
+            solution.fitness.values = (0, min(source_sim, follow_up_sim))
             solution.is_violated = False
             solution.fitness_type = None
 
@@ -254,9 +271,12 @@ def _evaluate_individual(individual, complete_solutions):
     involved = []
     for solution in complete_solutions:
         if solution[index] == individual:
-            involved.append(solution.fitness.values[0])  # FIXME: multi-objective.
+            involved.append(solution.fitness.values)
     if len(involved) > 0:
-        individual.fitness.values = max(involved),
+        if diff_testing:
+            individual.fitness.values = sorted(involved, key=lambda x: (-x[0], x[1]))[0]
+        else:
+            individual.fitness.values = max(involved)
     else:
         del individual.fitness.values
     return individual

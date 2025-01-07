@@ -10,53 +10,50 @@ RNSGA3Memory = namedtuple("RNSGA3Memory", ["best_point", "worst_point", "extreme
 
 
 class selRNSGA3WithMemory:
-    """Class version of R-NSGA-III selection including memory for best, worst and
-    extreme points. Registering this operator in a toolbox is a bit different
-    than classical operators, it requires to instantiate the class instead
-    of just registering the function:
-
+    """Class version of R-NSGA-III selection including memory for best, worst and extreme points.
+    Registering this operator in a toolbox is a bit different from classical operators,
+    it requires to instantiate the class instead of just registering the function:
         >>> from deap import base
         >>> ref_points = [[1.0, 0.5, 0.2], [0.3, 0.2, 0.6]]
         >>> toolbox = base.Toolbox()
-        >>> toolbox.register("select", selRNSGA3WithMemory(ref_points))
-
+        >>> toolbox.register("select", selRNSGA3WithMemory(ref_points, 10))
     """
 
     def __init__(self, ref_points, p, mu=0.05, nd="log"):
         self.ref_points = np.array(ref_points)
         self.ref_dirs = tools.uniform_reference_points(self.ref_points.shape[1], p)
+        self.best_point = np.full((1, self.ref_points.shape[1]), np.inf)
+        self.worst_point = np.full((1, self.ref_points.shape[1]), -np.inf)
+        self.extreme_points = None
         self.mu = mu
         self.nd = nd
-        self.best_point = np.full((1, ref_points.shape[1]), np.inf)
-        self.worst_point = np.full((1, ref_points.shape[1]), -np.inf)
-        self.extreme_points = None
 
     def __call__(self, individuals, k):
-        chosen, memory = selRNSGA3(individuals, k, self.ref_points, self.ref_dirs, self.mu, self.nd,
-                                   self.best_point, self.worst_point, self.extreme_points, True)
+        chosen, memory = selRNSGA3(individuals, k, self.ref_points, self.ref_dirs, self.best_point, self.worst_point,
+                                   self.extreme_points, self.mu, self.nd, True)
         self.best_point = memory.best_point.reshape((1, -1))
         self.worst_point = memory.worst_point.reshape((1, -1))
         self.extreme_points = memory.extreme_points
         return chosen
 
 
-def selRNSGA3(individuals, k, ref_points, ref_dirs, mu=0.05, nd="log",
-              best_point=None, worst_point=None, extreme_points=None, return_memory=False):
+def selRNSGA3(individuals, k, ref_points, ref_dirs, best_point=None, worst_point=None, extreme_points=None,
+              mu=0.05, nd="log", return_memory=False):
     """Implementation of R-NSGA-III selection.
 
     :param individuals: A list of individuals to select from.
     :param k: The number of individuals to select.
     :param ref_points: Reference points to use for niching.
     :param ref_dirs: Reference points uniformly on the hyperplane intersecting each axis at 1.
+    :param best_point: Best point found at previous generation.
+        If not provided find the best point only from current individuals.
+    :param worst_point: Worst point found at previous generation.
+        If not provided find the worst point only from current individuals.
+    :param extreme_points: Extreme points found at previous generation.
+        If not provided find the extreme points only from current individuals.
     :param mu: Defines the init_simplex_scale of the reference lines used during survival selection.
         Increasing mu will result having solutions with a larger spread.
     :param nd: Specify the non-dominated algorithm to use: 'standard' or 'log'.
-    :param best_point: Best point found at previous generation. If not provided
-        find the best point only from current individuals.
-    :param worst_point: Worst point found at previous generation. If not provided
-        find the worst point only from current individuals.
-    :param extreme_points: Extreme points found at previous generation. If not provided
-        find the extreme points only from current individuals.
     :param return_memory: If :data:`True`, return the best, worst and extreme points
         in addition to the chosen individuals.
     :returns: A list of selected individuals.
@@ -68,8 +65,7 @@ def selRNSGA3(individuals, k, ref_points, ref_dirs, mu=0.05, nd="log",
     elif nd == "log":
         pareto_fronts = sortLogNondominated(individuals, k)
     else:
-        raise Exception("selRNSGA3: The choice of non-dominated sorting "
-                        "method '{0}' is invalid.".format(nd))
+        raise Exception(f"selRNSGA3: The choice of non-dominated sorting method '{nd}' is invalid.")
 
     # Extract fitnesses as a numpy array in the nd-sort order.
     # Use wvalues * -1 to tackle always as a minimization problem.
@@ -168,9 +164,9 @@ def _line_plane_intersection(l0, l1, p0, p_no, epsilon=1e-6):
     dot = np.dot(l, p_no)
 
     if abs(dot) > epsilon:
-        # the factor of the point between p0 -> p1 (0 - 1)
-        # if 'fac' is between (0 - 1) the point intersects with the segment.
-        # otherwise:
+        # The factor of the point between p0 -> p1 (0 - 1).
+        # If 'fac' is between (0 - 1) the point intersects with the segment.
+        # Otherwise:
         #  < 0.0: behind p0.
         #  > 1.0: in front of p1.
         w = p0 - l0

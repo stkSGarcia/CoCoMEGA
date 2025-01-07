@@ -42,11 +42,13 @@ class MOCCEA(BaseAlgorithm):
         while not self.budget.is_reached():
             # Evaluate the population.
             current_solutions, sim_num = self._evaluate(pop_scenario, pop_perturbation, evaluated_solutions)
-            selected_solutions = self.toolbox.select(current_solutions)
-            violated_solutions = [solution for solution in selected_solutions if solution.is_violated]
+            violated_solutions = [solution for solution in current_solutions if solution.is_violated]
             violated_solutions_count = len(violated_solutions)
             logger.info(f"The number of solutions violating the relation: {violated_solutions_count}.")
             archive_solution += [solution for solution in violated_solutions if solution not in archive_solution]
+
+            pop_scenario = self.toolbox.select_scenario(pop_scenario)
+            pop_perturbation = self.toolbox.select_perturbation(pop_perturbation)
 
             self.budget.acc_sim(sim_num)
             self.record_statistics(pop_scenario, self.budget.gen_num, pop_name="pop_scen")
@@ -69,7 +71,7 @@ class MOCCEA(BaseAlgorithm):
                       "wb") as f:
                 pickle.dump(pop_scenario, f)
                 pickle.dump(pop_perturbation, f)
-                pickle.dump(selected_solutions, f)
+                pickle.dump(current_solutions, f)
                 pickle.dump(archive_solution, f)
                 pickle.dump(evaluated_solutions, f)
                 pickle.dump(list(simulation_runner.evaluated_scenarios), f)
@@ -106,8 +108,7 @@ class MOCCEA(BaseAlgorithm):
         else:
             logger.warning("Candidate solution list is empty!")
             sim_num = 0
-        archive_solution = [self.toolbox.clone(ind) for ind in evaluated_solutions
-                            if ind.fitness.valid and ind in unique_solutions]
+        archive_solution = [self.toolbox.clone(ind) for ind in evaluated_solutions if ind in unique_solutions]
 
         # Evaluate individual fitness.
         for scenario in pop_scenario:
