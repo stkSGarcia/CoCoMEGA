@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseAlgorithm:
-    _name = "BaseAlgorithm"
+    _name = "BASE"
 
     def __init__(self, toolbox: base.Toolbox, budget: Budget, seed=None):
         """Constructor.
@@ -69,15 +69,14 @@ class BaseAlgorithm:
         }
         self.logbook.record(pop=pop_name, gen=gen_num, len=len(population), sim=sim_num, **record)
 
-    def dump_results(self, results, evaluated_solutions, name=None):
+    def dump_results(self, results, evaluated_solutions):
         """Dump results and statistics."""
-        suffix = (f"{name}-" if name else "") + str(int(round(time.time() * 1000)))
+        suffix = f"{self._name.lower()}-{str(int(round(time.time() * 1000)))}"
         with open(os.path.join(CONFIG["workspace"]["solution"], f"solutions-{suffix}.pickle"), "wb") as f:
             pickle.dump(results, f)
         with open(os.path.join(CONFIG["workspace"]["solution"], f"evaluated-{suffix}.pickle"), "wb") as f:
             pickle.dump(evaluated_solutions, f)
-        statistics_path = f"statistics-{suffix}.pickle"
-        with open(os.path.join(CONFIG["workspace"]["solution"], statistics_path), "wb") as f:
+        with open(os.path.join(CONFIG["workspace"]["solution"], f"statistics-{suffix}.pickle"), "wb") as f:
             pickle.dump(self.logbook, f)
 
     @staticmethod
@@ -110,8 +109,8 @@ class BaseAlgorithm:
         dist_sum = dist_matrix.sum(axis=1)
         for i, individual in enumerate(population):
             if individual.fitness.valid:
-                raw_fitness = individual.fitness.values[0]  # FIXME: multi-objective.
-                individual.fitness.values = pow(raw_fitness, scaling) / dist_sum[i],
+                raw_fitness = np.array(individual.fitness.values)
+                individual.fitness.values = tuple(pow(raw_fitness, scaling) / dist_sum[i])
 
     @staticmethod
     def fitness_clearing(population, capacity=2):
