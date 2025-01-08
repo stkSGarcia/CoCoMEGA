@@ -107,7 +107,7 @@ def vectorize_runtime_data(rt_data):
     scenario_def.town = CarlaDataProvider.get_map().name
     ego_vechile_coordinates = rt_data['gps']
 
-    for other_actor in rt_data['other_actors']:
+    for _id, other_actor in rt_data['other_actors'].items():
         relative_position = (
         other_actor['loc'][0] - ego_vechile_coordinates[0], other_actor['loc'][1] - ego_vechile_coordinates[1])
         radius, angle = cartesian_to_polar(*relative_position)
