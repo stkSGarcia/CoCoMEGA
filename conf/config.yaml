@@ -17,12 +17,12 @@ workspace:
 
 interfuser:
   repo: "../InterFuser"
-  path: "impl/scenario/interfuser_agent.py"
+  agent_path: "impl/scenario/interfuser_agent.py"
   versions:
     - name: "v1"
-      config: "impl/scenario/interfuser_config_v1.py"
+      agent_config: "impl/scenario/interfuser_config_v1.py"
     - name: "v2"
-      config: "impl/scenario/interfuser_config_v2.py"
+      agent_config: "impl/scenario/interfuser_config_v2.py"
 
 data_collection:
   yaml_root: "conf/yamls"
@@ -61,7 +61,7 @@ docker:
   cpu: 1.5
 
 simulation:
-  parallel: true
+  parallel: false
   retry_times: 1
   display_agent: false
   scenario_duration: 20

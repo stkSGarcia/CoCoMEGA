@@ -62,7 +62,7 @@ Test Cases for Autonomous Driving Systems* by Hossein Yousefizadeh, Shenghui Gu,
    ```shell
    docker build -t [tag_name] .
    ```
-   The `tag_name` should be consistent with that defined in the configuration file located in `simulation:docker:image`.
+   The `tag_name` should be consistent with that defined in the configuration file located in `docker:image`.
 
 2. Local configurations
 
