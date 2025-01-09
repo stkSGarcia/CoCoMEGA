@@ -151,7 +151,7 @@ def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False):
     global carla_host, carla_port, tm_port, gpu_device
     assert carla_host is not None and carla_port is not None and tm_port is not None and gpu_device is not None
 
-    agent_config = [conf["config"] for conf in CONFIG["interfuser"]["versions"] if conf["name"] == agent_name]
+    agent_config = [conf["agent_config"] for conf in CONFIG["interfuser"]["versions"] if conf["name"] == agent_name]
     if len(agent_config) == 0:
         raise ValueError(f"Agent not defined: \"{agent_name}\".")
     agent_config = agent_config[0]
@@ -198,8 +198,12 @@ def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False):
         logger.warning(f"Scenario results cannot be found: {scenario.id_}.")
         return None, False
 
-    result = pd.read_csv(result_path)
-    result.set_index(result.columns[0], inplace=True)
+    try:
+        result = pd.read_csv(result_path)
+        result.set_index(result.columns[0], inplace=True)
+    except Exception as e:
+        logger.error(f"Scenario results cannot be read: {scenario.id_}, message: {e}.")
+        return None, False
     if agent_name not in evaluated_scenarios:
         evaluated_scenarios[agent_name] = []
     evaluated_scenarios[agent_name].append((scenario, result))

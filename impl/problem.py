@@ -1,3 +1,4 @@
+import pickle
 from copy import deepcopy
 from math import factorial, sqrt
 from types import SimpleNamespace
@@ -41,6 +42,11 @@ creator.create("Fitness", base.Fitness, weights=(1.0, -1.0,) if diff_testing els
 creator.create("Solution", tuple, fitness=creator.Fitness, is_violated=False)
 creator.create("Scenario", ScenarioDefinition, fitness=creator.Fitness)
 creator.create("Perturbation", Perturbations, fitness=creator.Fitness)
+
+# Load runtime scenarios.
+with open("out/runtime_data/rt_scenarios.pickle", "rb") as f:
+    runtime_scenarios = pickle.load(f)
+    runtime_scenarios = [creator.Scenario(scenario) for scenario in runtime_scenarios]
 
 toolbox = base.Toolbox()
 toolbox.register("scenario", tools.initIterate, creator.Scenario, creator.Scenario.generate_random_or_leaderboard)
@@ -91,8 +97,7 @@ def _fitness(source, follow_up, mr_set=mr_set):
 
 
 def _calculate_similarity(scenario, scenarios):
-    import random
-    return random.uniform(0, 1)
+    return min([scenario.dist(scen) for scen in scenarios])
 
 
 def _evaluate_solutions(solutions):
@@ -150,7 +155,7 @@ def _evaluate_solutions_dt(solutions):
 
     rv_solutions, rv_sim_num = _perform_evaluation(solutions, scenarios, agent_name=reference_version)
     tv_solutions, tv_sim_num = _perform_evaluation(rv_solutions, scenarios, agent_name=test_version)
-    similarities = [_calculate_similarity(scenario, []) for scenario in scenarios]
+    similarities = [_calculate_similarity(scenario, runtime_scenarios) for scenario in scenarios]
     for solution, source_sim, follow_up_sim in zip(solutions, similarities[::2], similarities[1::2]):
         rv_fitness = getattr(solution, reference_version).fitness
         tv_fitness = getattr(solution, test_version).fitness
