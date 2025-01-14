@@ -25,7 +25,7 @@ test_version = "v2"
 
 # Define the multi-objective configurations.
 rnsga3 = False
-ref_points = np.array([[0.9, 0.1], [0.8, 0.2]])
+ref_points = np.array([[0.1, 0.9], [0.2, 0.8]])
 n_obj = 2
 if rnsga3:
     P = 5
@@ -159,14 +159,23 @@ def _evaluate_solutions_dt(solutions):
     for solution, source_sim, follow_up_sim in zip(solutions, similarities[::2], similarities[1::2]):
         rv_fitness = getattr(solution, reference_version).fitness
         tv_fitness = getattr(solution, test_version).fitness
-        if rv_fitness and tv_fitness:
-            solution.fitness.values = (np.abs(rv_fitness[0] - tv_fitness[0]), min(source_sim, follow_up_sim))
-            solution.fitness_type = reference_version if rv_fitness[0] > tv_fitness[0] else test_version
-            solution.is_violated = True  # TODO define violation criteria
-        else:
+        if not rv_fitness and not tv_fitness:
             solution.fitness.values = (0, min(source_sim, follow_up_sim))
             solution.is_violated = False
             solution.fitness_type = None
+        else:
+            if not rv_fitness:
+                diff = np.abs(tv_fitness[0])
+                typ = test_version
+            elif not tv_fitness:
+                diff = np.abs(rv_fitness[0])
+                typ = reference_version
+            else:
+                diff = np.abs(rv_fitness[0] - tv_fitness[0])
+                typ = reference_version if rv_fitness[0] > tv_fitness[0] else test_version
+            solution.fitness.values = (diff, min(source_sim, follow_up_sim))
+            solution.fitness_type = typ
+            solution.is_violated = diff > 0  # TODO define violation criteria
 
     return tv_solutions, rv_sim_num + tv_sim_num
 
