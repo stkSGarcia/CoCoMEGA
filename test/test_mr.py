@@ -73,6 +73,7 @@ class TestMR(TestCase):
                      PerturbationFactory("vehicle", Boundary.Region.FOCUS, Operation.REMOVE, mark=True),
                      PerturbationFactory("vehicle", Boundary.Region.FOCUS, Operation.ADD, mark=True)]
         scenario = ScenarioDefinition._generate_empty_scenario()
+        scenario.assign_trajectory(ScenarioDefinition._random_predefined_trajectory())
         original_actors = [Vehicle.generate_random(Boundary.Region.FOCUS) for _ in range(3)]
         farthest_actor = sorted(original_actors, key=lambda v: v.radius, reverse=True)[0]
         scenario.vehicles += deepcopy(original_actors)

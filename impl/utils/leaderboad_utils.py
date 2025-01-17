@@ -3,7 +3,6 @@ import yaml
 import logging
 
 from impl.config import CONFIG
-from impl.scenario.interfuser_agent import WEATHER
 from impl.scenario.scenario_definition import ScenarioDefinition, Vehicle, Walker, Static
 from impl.utils.math_utils import cartesian_to_polar, vector_norm
 
@@ -103,9 +102,10 @@ def make_yamls():
 
 def vectorize_runtime_data(rt_data):
     scenario_def = ScenarioDefinition._generate_empty_scenario()
-    scenario_def.weather = WEATHER
+    # TODO assign trajectory
+    scenario_def.weather = rt_data['weather'] # TODO add weather  to rt_data
     scenario_def.town = CarlaDataProvider.get_map().name
-    ego_vechile_coordinates = rt_data['gps']
+    ego_vechile_coordinates = rt_data['gps'] # gps should be rotated 90 degrees clockwise
 
     for _id, other_actor in rt_data['other_actors'].items():
         relative_position = (

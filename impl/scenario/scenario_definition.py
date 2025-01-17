@@ -173,6 +173,7 @@ class ScenarioDefinition:
     @classmethod
     def generate_random(cls):
         scenario = cls._generate_empty_scenario()
+        scenario.assign_trajectory(cls._random_predefined_trajectory())
         scenario.vehicles = Vehicle.generate_random_actors(CONFIG["scenario"]["init_pb"]["vehicle"])
         scenario.walkers = Walker.generate_random_actors(CONFIG["scenario"]["init_pb"]["walker"])
         scenario.statics = Static.generate_random_actors(CONFIG["scenario"]["init_pb"]["static"])
@@ -181,6 +182,8 @@ class ScenarioDefinition:
     @classmethod
     def generate_leaderboard_scenario(cls, scenario_type, **kwargs):
         scenario = cls._generate_empty_scenario()
+        scenario.assign_trajectory(cls._random_predefined_trajectory())
+
         return LeaderBoardFactory.generate(scenario, scenario_type, **kwargs)
 
     @classmethod
@@ -194,17 +197,22 @@ class ScenarioDefinition:
     def _generate_empty_scenario(cls):
         scenario = cls()
         scenario.ego_vehicle = Vehicle.generate_random()
-        trajectory_def = random.choice(ScenarioDefinition._TRAJECTORY).copy()
-        scenario.town = trajectory_def["town"]
-        trajectory_def["direction"] = random.choice(trajectory_def.get("direction", [None]))
-        load_world(scenario.town)
-        trajectory_def["trajectory"], trajectory_def["gps_route"], trajectory_def["route"] = cls._build_trajectory(
-            trajectory_def)
-        scenario.trajectory = trajectory_def
 
         for attr in ScenarioDefinition.ATTRIBUTES:
             setattr(scenario, attr, ScenarioDefinition._BOUNDARY.random(attr))
         return scenario
+
+
+    @classmethod
+    def _random_predefined_trajectory(cls):
+        trajectory_def = random.choice(cls._TRAJECTORY).copy()
+
+        trajectory_def["direction"] = random.choice(trajectory_def.get("direction", [None]))
+        load_world(trajectory_def["town"])
+        trajectory_def["trajectory"], trajectory_def["gps_route"], trajectory_def["route"] = cls._build_trajectory(
+            trajectory_def)
+
+        return trajectory_def
 
     @classmethod
     def _build_trajectory(cls, trajectory_def):
@@ -246,6 +254,10 @@ class ScenarioDefinition:
         route = [(transform_to_dict(t), ro.name) for t, ro in route]
 
         return trajectory, gps_route, route
+
+    def assign_trajectory(self, trajectory_def):
+        self.trajectory = trajectory_def
+        self.town = trajectory_def["town"]
 
     def get_trigger_position(self):
         return self.trajectory["start"]

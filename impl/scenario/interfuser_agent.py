@@ -496,6 +496,10 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
 
         tick_data["raw"] = traffic_meta
         tick_data["bev_feature"] = bev_feature
+        tick_data["pred_waypoints"] = pred_waypoints
+        tick_data["is_junction"] = is_junction
+        tick_data["traffic_light_state"] = traffic_light_state
+        tick_data["stop_sign"] = stop_sign
 
         steer, throttle, brake, meta_infos = self.controller.run_step(
             velocity,

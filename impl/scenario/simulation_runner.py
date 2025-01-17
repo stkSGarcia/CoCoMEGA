@@ -18,7 +18,6 @@ from impl.scenario.exceptions import InvalidScenarioDefinitionError
 from impl.scenario.scenario_definition import ScenarioDefinition
 from impl.utils.carla_utils import initialize_carla
 from impl.utils.process_utils import run_silently
-from impl.utils.leaderboad_utils import get_enviroment_confs
 
 arguments = [
     ("SCENARIOS", "scenarios",
@@ -151,7 +150,7 @@ def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False):
     global carla_host, carla_port, tm_port, gpu_device
     assert carla_host is not None and carla_port is not None and tm_port is not None and gpu_device is not None
 
-    agent_config = [conf["config"] for conf in CONFIG["interfuser"]["versions"] if conf["name"] == agent_name]
+    agent_config = [conf["agent_config"] for conf in CONFIG["interfuser"]["versions"] if conf["name"] == agent_name]
     if len(agent_config) == 0:
         raise ValueError(f"Agent not defined: \"{agent_name}\".")
     agent_config = agent_config[0]
