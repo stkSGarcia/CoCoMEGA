@@ -6,8 +6,6 @@ import sys
 import argformat
 import subprocess
 
-from timm.data import create_dataset
-
 from impl import problem
 from impl.algorithm.ccea import CCEA
 from impl.algorithm.ga import GeneticAlgorithm
