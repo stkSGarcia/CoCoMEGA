@@ -94,7 +94,7 @@ runtime:
     # 6: "MidRainyNoon", 7: "MidRainSunset", 8: "WetCloudyNoon" 9: "WetCloudySunset", 10: "HardRainNoon",
     # 11: "HardRainSunset", 12: "SoftRainNoon", 13: "SoftRainSunset", 14: "ClearNight", 15: "CloudyNight",
     # 16: "WetNight", 17: "WetCloudyNight", 18: "SoftRainNight", 19: "MidRainyNight", 20: "HardRainNight"
-    ]
+    #]
   instances:
     - host: localhost
       port: 2100
