@@ -87,6 +87,7 @@ simulation:
 runtime:
   parallel: true
   agent: v1
+  routes: ["long", "short"] # Options: ["long", "short", "tiny"]
   towns: [ "town01", "town02", "town03" ] # Options: ["town01", "town02", "town03", "town04", "town05", "town06", "town07", "town10"]
   weathers: [0, 1, 2, 3, 7, 8, 10, 11, 14, 15, 16, 17, 18, 19, 20]
     # Options: [0 - 20]
