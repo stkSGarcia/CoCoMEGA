@@ -72,10 +72,14 @@ for route, scenario in routes.items():
 def get_enviroment_confs():
     weathers = CONFIG["runtime"]["weathers"]
     towns = CONFIG["runtime"]["towns"]
+    route_types = CONFIG["runtime"]["routes"]
     confs = []
     for town in towns:
         for weather in weathers:
             for route, scenario in towned_routes[town].items():
+                route_type = route.split('_')[-1][:-4]
+                if route_type not in route_types:
+                    continue
                 conf = {
                     "town": town,
                     "weather": weather,
