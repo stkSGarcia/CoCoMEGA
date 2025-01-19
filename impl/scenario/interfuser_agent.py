@@ -18,6 +18,8 @@ from easydict import EasyDict
 
 from torchvision import transforms
 from leaderboard.autoagents import autonomous_agent
+
+from impl.utils.carla_utils import location_to_dict
 from timm.models import create_model
 from team_code.utils import lidar_to_histogram_features, transform_2d_points
 from team_code.planner import RoutePlanner
@@ -597,6 +599,27 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             tick_data["surface"] = surface
 
         tick_data['other_actors'] = self.collect_actor_data()
+
+        tick_data["map"] = CarlaDataProvider.get_map().name
+        weather = CarlaDataProvider.get_world().get_weather()
+        weather_dict = {
+            key: getattr(weather, key)
+            for key in dir(weather)
+            if not key.startswith('_') and not key[0].isupper() and not callable(getattr(weather, key))
+        }
+        tick_data["weather"] = weather_dict
+        tick_data["brightness"] = weather.sun_altitude_angle
+        ego_vehicle = CarlaDataProvider.get_hero_actor()
+        ego_trans = ego_vehicle.get_transform()
+
+        tick_data["ego_vehicle"] = {
+            "x": ego_trans.location.x,
+            "y": ego_trans.location.y,
+            "yaw": ego_trans.rotation.yaw,
+            "trajectory": [location_to_dict(t[0]) for t in CarlaDataProvider._ego_vehicle_route],
+        }
+
+
         if SAVE_PATH is not None:
             self.save(tick_data)
 

@@ -146,7 +146,12 @@ def dict_to_transform(_dict):
         rotation=carla.Rotation(yaw=_dict["yaw"], pitch=0, roll=0)
     )
 
-
+def location_to_dict(location):
+    return {
+        'x': location.x,
+        'y': location.y,
+        'z': location.z,
+    }
 def dict_to_location(_dict):
     return carla.Location(x=_dict["x"], y=_dict["y"], z=_dict["z"])
 
