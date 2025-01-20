@@ -14,7 +14,7 @@ from impl.algorithm.rs import RandomSearch
 from impl.scenario.scenario_definition import ScenarioDefinition
 from impl.scenario.simulation_runner import run_scenarios, run_solutions, run_free_environments
 from impl.utils.docker_utils import cleanup_containers
-from impl.utils.leaderboad_utils import get_enviroment_confs, make_yamls
+from impl.utils.leaderboad_utils import get_enviroment_confs, make_yamls, create_dataset_index
 
 from impl.config import CONFIG
 
@@ -97,6 +97,9 @@ def generate_train_data():
 
 
 def train_interfuser():
+    logger.info(f"Creating dataset index...")
+    create_dataset_index(CONFIG["workspace"]["train_data"])
+    logger.info(f"Dataset index created at {os.path.join(CONFIG['workspace']['train_data'], 'dataset_index.txt')}")
     logger.info("Training an Interfuser model...")
     child_env = os.environ.copy()
     child_env.update({

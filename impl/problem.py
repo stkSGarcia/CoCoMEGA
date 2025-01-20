@@ -1,3 +1,4 @@
+import pickle
 from copy import deepcopy
 from math import factorial, sqrt
 from types import SimpleNamespace
@@ -24,7 +25,7 @@ test_version = "v2"
 
 # Define the multi-objective configurations.
 rnsga3 = False
-ref_points = np.array([[0.9, 0.1], [0.8, 0.2]])
+ref_points = np.array([[0.1, 0.9], [0.2, 0.8]])
 n_obj = 2
 if rnsga3:
     P = 5
@@ -41,6 +42,11 @@ creator.create("Fitness", base.Fitness, weights=(1.0, -1.0,) if diff_testing els
 creator.create("Solution", tuple, fitness=creator.Fitness, is_violated=False)
 creator.create("Scenario", ScenarioDefinition, fitness=creator.Fitness)
 creator.create("Perturbation", Perturbations, fitness=creator.Fitness)
+
+# Load runtime scenarios.
+with open("out/runtime_data/rt_scenarios.pickle", "rb") as f:
+    runtime_scenarios = pickle.load(f)
+    runtime_scenarios = [creator.Scenario(scenario) for scenario in runtime_scenarios]
 
 toolbox = base.Toolbox()
 toolbox.register("scenario", tools.initIterate, creator.Scenario, creator.Scenario.generate_random_or_leaderboard)
@@ -91,8 +97,7 @@ def _fitness(source, follow_up, mr_set=mr_set):
 
 
 def _calculate_similarity(scenario, scenarios):
-    import random
-    return random.uniform(0, 1)
+    return min([scenario.dist(scen) for scen in scenarios])
 
 
 def _evaluate_solutions(solutions):
@@ -150,18 +155,27 @@ def _evaluate_solutions_dt(solutions):
 
     rv_solutions, rv_sim_num = _perform_evaluation(solutions, scenarios, agent_name=reference_version)
     tv_solutions, tv_sim_num = _perform_evaluation(rv_solutions, scenarios, agent_name=test_version)
-    similarities = [_calculate_similarity(scenario, []) for scenario in scenarios]
+    similarities = [_calculate_similarity(scenario, runtime_scenarios) for scenario in scenarios]
     for solution, source_sim, follow_up_sim in zip(solutions, similarities[::2], similarities[1::2]):
         rv_fitness = getattr(solution, reference_version).fitness
         tv_fitness = getattr(solution, test_version).fitness
-        if rv_fitness and tv_fitness:
-            solution.fitness.values = (np.abs(rv_fitness[0] - tv_fitness[0]), min(source_sim, follow_up_sim))
-            solution.fitness_type = reference_version if rv_fitness[0] > tv_fitness[0] else test_version
-            solution.is_violated = True  # TODO define violation criteria
-        else:
+        if not rv_fitness and not tv_fitness:
             solution.fitness.values = (0, min(source_sim, follow_up_sim))
             solution.is_violated = False
             solution.fitness_type = None
+        else:
+            if not rv_fitness:
+                diff = np.abs(tv_fitness[0])
+                typ = test_version
+            elif not tv_fitness:
+                diff = np.abs(rv_fitness[0])
+                typ = reference_version
+            else:
+                diff = np.abs(rv_fitness[0] - tv_fitness[0])
+                typ = reference_version if rv_fitness[0] > tv_fitness[0] else test_version
+            solution.fitness.values = (diff, min(source_sim, follow_up_sim))
+            solution.fitness_type = typ
+            solution.is_violated = diff > 0  # TODO define violation criteria
 
     return tv_solutions, rv_sim_num + tv_sim_num
 

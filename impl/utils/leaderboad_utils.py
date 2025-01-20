@@ -1,4 +1,4 @@
-import os.path
+import os
 import yaml
 import logging
 
@@ -72,10 +72,14 @@ for route, scenario in routes.items():
 def get_enviroment_confs():
     weathers = CONFIG["runtime"]["weathers"]
     towns = CONFIG["runtime"]["towns"]
+    route_types = CONFIG["runtime"]["routes"]
     confs = []
     for town in towns:
         for weather in weathers:
             for route, scenario in towned_routes[town].items():
+                route_type = route.split('_')[-1][:-4]
+                if route_type not in route_types:
+                    continue
                 conf = {
                     "town": town,
                     "weather": weather,
@@ -126,3 +130,26 @@ def vectorize_runtime_data(rt_data):
         if other_actor['tpe'] == 2:
             scenario_def.statics.append(Static(radius=radius, angle=angle, yaw=yaw, model=0))
     return scenario_def
+
+def create_dataset_index(dataset_root):
+    """
+        Creates a dataset_index.txt file that lists the training/evaluation data.
+
+        Args:
+            dataset_root (str): Path to the root directory of the dataset.
+        """
+    index_file_path = os.path.join(dataset_root, 'dataset_index.txt')
+
+    with open(index_file_path, 'w') as index_file:
+        for root, dirs, files in os.walk(dataset_root):
+            # Filter for directories containing relevant data frames
+            if 'rgb_front' in dirs:
+                # Count the number of frames in the directory
+                rgb_dir_path = os.path.join(root, 'rgb_front')
+                frame_count = len(
+                    [file for file in os.listdir(rgb_dir_path) if os.path.isfile(os.path.join(rgb_dir_path, file))])
+
+                # Write the relative path and frame count to the index file
+                relative_path = os.path.relpath(root, dataset_root)
+                index_file.write(f"{relative_path} {frame_count}\n")
+

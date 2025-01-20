@@ -128,8 +128,8 @@ def run_environment(conf):
         f" --checkpoint {cp_path}"
         f" --agent {conf['agent_path']}"
         f" --agent-config {conf['agent_config']}"
-        f" --debug 1"
-        f" --resume 0"
+        f" --debug 0"
+        f" --resume True"
         f" --port {carla_port}"
         f" --host {carla_host}"
         f" --trafficManagerPort {tm_port}"
@@ -197,8 +197,12 @@ def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False):
         logger.warning(f"Scenario results cannot be found: {scenario.id_}.")
         return None, False
 
-    result = pd.read_csv(result_path)
-    result.set_index(result.columns[0], inplace=True)
+    try:
+        result = pd.read_csv(result_path)
+        result.set_index(result.columns[0], inplace=True)
+    except Exception as e:
+        logger.error(f"Scenario results cannot be read: {scenario.id_}, message: {e}.")
+        return None, False
     if agent_name not in evaluated_scenarios:
         evaluated_scenarios[agent_name] = []
     evaluated_scenarios[agent_name].append((scenario, result))
