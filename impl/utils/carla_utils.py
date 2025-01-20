@@ -5,6 +5,7 @@ import carla
 from impl.config import CONFIG
 from impl.utils.docker_utils import setup_carla
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+from leaderboard.utils.route_manipulation import interpolate_trajectory
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +110,15 @@ def filter_junction_wp_direction(reference_wp, wp_list, direction='opposite'):
     return filtered_wps
 
 
+def traj_interpolation(trajectory):
+    gps_route, route = interpolate_trajectory(CarlaDataProvider.get_world(), trajectory)
+
+    trajectory = [location_to_dict(t) for t in trajectory]
+    gps_route = [(t, ro.name) for t, ro in gps_route]
+    route = [(transform_to_dict(t), ro.name) for t, ro in route]
+
+    return trajectory, gps_route, route
+
 def get_junction(location):
     waypoint = CarlaDataProvider.get_map().get_waypoint(location)
 
@@ -138,7 +148,6 @@ def transform_to_dict(transform):
         'z': transform.location.z,
         'yaw': transform.rotation.yaw,
     }
-
 
 def dict_to_transform(_dict):
     return carla.Transform(
@@ -177,3 +186,33 @@ def load_world(town):
     if CarlaDataProvider.get_world() is None or CarlaDataProvider.get_world().get_map().name != town:
         world = CarlaDataProvider.get_client().load_world(town)
         CarlaDataProvider.set_world(world)
+
+def compass_to_yaw(compass):
+    pass
+
+def get_direction(trajectory):
+    direction = "forward"
+    reached_junction = False
+    reference_wp = None
+    for location, _ in trajectory:
+        waypoint = CarlaDataProvider.get_map().get_waypoint(location)
+
+        # Find the nearest junction
+        if waypoint.is_junction:
+            if not reached_junction:
+                reference_wp = waypoint
+            reached_junction = True
+            continue
+
+        if reached_junction and not waypoint.is_junction:
+            diff = (waypoint.transform.rotation.yaw - reference_wp.transform.rotation.yaw) % 360
+            if diff > 330.0 or diff < 30:
+                direction = 'forward'
+            elif diff > 225.0:
+                direction = 'right'
+            elif diff > 135.0:
+                direction = 'opposite'
+            elif diff > 30.0:
+                direction = 'left'
+
+        return direction

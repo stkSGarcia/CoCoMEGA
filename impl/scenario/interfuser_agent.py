@@ -19,7 +19,7 @@ from easydict import EasyDict
 from torchvision import transforms
 from leaderboard.autoagents import autonomous_agent
 
-from impl.utils.carla_utils import location_to_dict
+from impl.utils.carla_utils import location_to_dict, get_direction
 from timm.models import create_model
 from team_code.utils import lidar_to_histogram_features, transform_2d_points
 from team_code.planner import RoutePlanner
@@ -600,23 +600,29 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
 
         tick_data['other_actors'] = self.collect_actor_data()
 
-        tick_data["map"] = CarlaDataProvider.get_map().name
+        tick_data["town"] = CarlaDataProvider.get_map().name
         weather = CarlaDataProvider.get_world().get_weather()
-        weather_dict = {
-            key: getattr(weather, key)
-            for key in dir(weather)
-            if not key.startswith('_') and not key[0].isupper() and not callable(getattr(weather, key))
-        }
-        tick_data["weather"] = weather_dict
+        # weather_dict = {
+        #     key: getattr(weather, key)
+        #     for key in dir(weather)
+        #     if not key.startswith('_') and not key[0].isupper() and not callable(getattr(weather, key))
+        # }
+        # tick_data["weather"] = weather_dict
+        tick_data["weather"] = WEATHER
         tick_data["brightness"] = weather.sun_altitude_angle
         ego_vehicle = CarlaDataProvider.get_hero_actor()
         ego_trans = ego_vehicle.get_transform()
 
-        tick_data["ego_vehicle"] = {
-            "x": ego_trans.location.x,
-            "y": ego_trans.location.y,
-            "yaw": ego_trans.rotation.yaw,
-            "trajectory": [location_to_dict(t[0]) for t in CarlaDataProvider._ego_vehicle_route],
+        tick_data["route"] = [location_to_dict(t[0]) for t in CarlaDataProvider._ego_vehicle_route],
+        tick_data["trajectory"] = {
+            "start": {
+                "x": ego_trans.location.x,
+                "y": ego_trans.location.y,
+                "z": ego_trans.location.z,
+                "yaw": ego_trans.rotation.yaw,
+                "speed": tick_data["speed"]
+            },
+            "direction": get_direction(CarlaDataProvider._ego_vehicle_route),
         }
 
 
@@ -667,8 +673,8 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             _id = actor.id
             data[_id] = {}
             data[_id]["loc"] = [loc.x, loc.y, loc.z]
-            ori = actor.get_transform().rotation.get_forward_vector()
-            data[_id]["ori"] = [ori.x, ori.y, ori.z]
+            rot = actor.get_transform().rotation
+            data[_id]["ori"] = {'yaw': rot.yaw, 'pitch': rot.pitch, 'roll': rot.roll}
             box = actor.bounding_box.extent
             data[_id]["box"] = [box.x, box.y]
             vel = actor.get_velocity()
@@ -683,9 +689,8 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             _id = actor.id
             data[_id] = {}
             data[_id]["loc"] = [loc.x, loc.y, loc.z]
-            ori = actor.get_transform().rotation.get_forward_vector()
-            data[_id]["ori"] = [ori.x, ori.y, ori.z]
-            vel = actor.get_velocity()
+            rot = actor.get_transform().rotation
+            data[_id]["ori"] = {'yaw': rot.yaw, 'pitch': rot.pitch, 'roll': rot.roll}
             data[_id]["sta"] = int(actor.state)
             data[_id]["tpe"] = 2
 

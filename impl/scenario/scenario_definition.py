@@ -9,7 +9,7 @@ from enum import Enum
 import carla
 import numpy as np
 from deap import tools
-from leaderboard.utils.route_manipulation import interpolate_trajectory
+
 from scipy.spatial.distance import cdist
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
@@ -17,7 +17,7 @@ from impl.config import CONFIG
 from impl.scenario.LeaderboardFactory import LeaderBoardFactory
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
 from impl.utils.carla_utils import get_junction_topology, filter_junction_wp_direction, transform_to_dict, \
-    get_closest_wp, load_world
+    get_closest_wp, load_world, traj_interpolation
 from impl.utils.trajectory import rotate_vector, single_trajectory_score
 
 logger = logging.getLogger(__name__)
@@ -173,7 +173,7 @@ class ScenarioDefinition:
     @classmethod
     def generate_random(cls):
         scenario = cls._generate_empty_scenario()
-        scenario.assign_trajectory(cls._random_predefined_trajectory())
+        scenario.set_trajectory(cls._random_predefined_trajectory())
         scenario.vehicles = Vehicle.generate_random_actors(CONFIG["scenario"]["init_pb"]["vehicle"])
         scenario.walkers = Walker.generate_random_actors(CONFIG["scenario"]["init_pb"]["walker"])
         scenario.statics = Static.generate_random_actors(CONFIG["scenario"]["init_pb"]["static"])
@@ -182,7 +182,7 @@ class ScenarioDefinition:
     @classmethod
     def generate_leaderboard_scenario(cls, scenario_type, **kwargs):
         scenario = cls._generate_empty_scenario()
-        scenario.assign_trajectory(cls._random_predefined_trajectory())
+        scenario.set_trajectory(cls._random_predefined_trajectory())
 
         return LeaderBoardFactory.generate(scenario, scenario_type, **kwargs)
 
@@ -202,16 +202,10 @@ class ScenarioDefinition:
             setattr(scenario, attr, ScenarioDefinition._BOUNDARY.random(attr))
         return scenario
 
-
     @classmethod
     def _random_predefined_trajectory(cls):
         trajectory_def = random.choice(cls._TRAJECTORY).copy()
-
         trajectory_def["direction"] = random.choice(trajectory_def.get("direction", [None]))
-        load_world(trajectory_def["town"])
-        trajectory_def["trajectory"], trajectory_def["gps_route"], trajectory_def["route"] = cls._build_trajectory(
-            trajectory_def)
-
         return trajectory_def
 
     @classmethod
@@ -247,15 +241,15 @@ class ScenarioDefinition:
                 trajectory.append(target_wp.transform)
                 target_wp = target_wp.next(10)[0]
 
-        gps_route, route = interpolate_trajectory(CarlaDataProvider.get_world(), [t.location for t in trajectory])
-
-        trajectory = [transform_to_dict(t) for t in trajectory]
-        gps_route = [(t, ro.name) for t, ro in gps_route]
-        route = [(transform_to_dict(t), ro.name) for t, ro in route]
+        trajectory, gps_route, route = traj_interpolation([t.location for t in trajectory])
 
         return trajectory, gps_route, route
 
-    def assign_trajectory(self, trajectory_def):
+    def set_trajectory(self, trajectory_def):
+        load_world(trajectory_def["town"])
+        trajectory_def["trajectory"], trajectory_def["gps_route"], trajectory_def[
+            "route"] = ScenarioDefinition._build_trajectory(
+            trajectory_def)
         self.trajectory = trajectory_def
         self.town = trajectory_def["town"]
 
@@ -269,6 +263,18 @@ class ScenarioDefinition:
         weather_parameters = ScenarioDefinition._BLUEPRINTS["weather"][self.weather]
         weather_parameters["sun_altitude_angle"] = ScenarioDefinition._BLUEPRINTS["brightness"][self.brightness]
         return weather_parameters
+
+    def set_brightness(self, brightness_value):
+        self.brightness = self._find_closest_brightness_index(brightness_value)
+
+    def _find_closest_brightness_index(self, brightness_value):
+        ret = 0
+        dist = None
+        for idx, value in enumerate(ScenarioDefinition._BLUEPRINTS["brightness"]):
+            if not dist or dist > abs(value - brightness_value):
+                dist = abs(value - brightness_value)
+                ret = idx
+        return ret
 
     def add_actor(self, category: str, new_actor, mark=False, tilt_dir=None):
         actors = getattr(self, f"{category}s")

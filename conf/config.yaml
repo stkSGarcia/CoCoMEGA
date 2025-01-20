@@ -161,6 +161,7 @@ trajectory:
       y: 111.89
       z: 0.0
       yaw: -90.0
+      speed: 0
     direction:
       - left
       - forward
@@ -171,6 +172,7 @@ trajectory:
       y: 111.96
       z: 0.0
       yaw: -90.0
+      speed: 0
     direction:
       - right
       - forward
@@ -181,6 +183,7 @@ trajectory:
       y: 50.0
       z: 0.0
       yaw: 90.0
+      speed: 0
 
 boundary:
   tilt_degrees: 15

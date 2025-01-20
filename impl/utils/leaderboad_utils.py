@@ -4,6 +4,7 @@ import logging
 
 from impl.config import CONFIG
 from impl.scenario.scenario_definition import ScenarioDefinition, Vehicle, Walker, Static
+from impl.utils.carla_utils import traj_interpolation, location_to_dict, compass_to_yaw
 from impl.utils.math_utils import cartesian_to_polar, vector_norm
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
@@ -102,14 +103,18 @@ def make_yamls():
 
 def vectorize_runtime_data(rt_data):
     scenario_def = ScenarioDefinition._generate_empty_scenario()
-    # TODO assign trajectory
-    scenario_def.weather = rt_data['weather'] # TODO add weather  to rt_data
-    scenario_def.town = CarlaDataProvider.get_map().name
-    ego_vechile_coordinates = rt_data['gps'] # gps should be rotated 90 degrees clockwise
+    trajectory = rt_data["trajectory"]
+    scenario_def.set_trajectory({
+        "town": rt_data["town"],
+        **trajectory,
+    })
+    scenario_def.weather = rt_data["weather"]
+    scenario_def.brightness = scenario_def.set_brightness(rt_data["brightness"])
+    scenario_def.town = rt_data["town"]
 
     for _id, other_actor in rt_data['other_actors'].items():
         relative_position = (
-        other_actor['loc'][0] - ego_vechile_coordinates[0], other_actor['loc'][1] - ego_vechile_coordinates[1])
+        other_actor['loc'][0] - trajectory["start"]["x"], other_actor['loc'][1] - trajectory["start"]["y"])
         radius, angle = cartesian_to_polar(*relative_position)
         yaw = other_actor['ori']['yaw']
         if other_actor['tpe'] == 0:
