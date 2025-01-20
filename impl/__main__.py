@@ -2,9 +2,11 @@ import argparse
 import logging.config
 import os
 import sys
+import torch
 
 import argformat
 import subprocess
+from typing import List
 
 from impl import problem
 from impl.algorithm.ccea import CCEA
@@ -19,6 +21,20 @@ from impl.utils.leaderboad_utils import get_enviroment_confs, make_yamls, create
 from impl.config import CONFIG
 
 logger = logging.getLogger("impl")
+
+
+def parse_list(type, delimeter):
+    def parse_func(arg_str):
+        """Parse a comma-separated list of integers into a list."""
+        try:
+            arg_str = arg_str.strip()
+            if arg_str.startswith('[') and arg_str.endswith(']'):
+                arg_str = arg_str[1:-1]
+            return [type(str(w).strip()) for w in arg_str.split(delimeter)]
+        except ValueError:
+            raise argparse.ArgumentTypeError(f"args must be a list of '{type}' separated by '{delimeter}'")
+
+    return parse_func
 
 
 def search(algorithm: str, resume: bool):
@@ -96,45 +112,54 @@ def generate_train_data():
     run_free_environments(environment_confs)
 
 
-def train_interfuser():
+def train_interfuser(args):
     logger.info(f"Creating dataset index...")
-    create_dataset_index(CONFIG["workspace"]["train_data"])
+    create_dataset_index(CONFIG["workspace"]["train_data"],
+                         weathers=args.train_weathers + args.val_weathers,
+                         towns=args.train_towns + args.val_towns,
+                         )
     logger.info(f"Dataset index created at {os.path.join(CONFIG['workspace']['train_data'], 'dataset_index.txt')}")
-    logger.info("Training an Interfuser model...")
+
+    gpu_count = torch.cuda.device_count()
+    if args.gpu_num > gpu_count:
+        raise RuntimeError(f"Requested {args.gpu_num} GPUs, but only {gpu_count} are available.")
+
+    logger.info(f"Training an Interfuser model on {args.gpu_num} GPUs...")
     child_env = os.environ.copy()
     child_env.update({
-        "GPU_NUM": str(CONFIG["training"]["gpu_num"]),
+        "GPU_NUM": str(args.gpu_num), #TODO test
         "DATASET_ROOT": CONFIG["workspace"]["train_data"],
     })
     child_env["PYTHONPATH"] = os.pathsep.join(sys.path)
 
+    distributed_command = f"-m torch.distributed.launch --nproc_per_node={args.gpu_num}" if args.gpu_num > 1 else ""
     command = (
-        f"{sys.executable} -m torch.distributed.launch --nproc_per_node={str(CONFIG['training']['gpu_num'])}"
+        f"{sys.executable} {distributed_command}"
         f" {os.path.join(CONFIG['interfuser']['repo'], 'interfuser', 'train.py')}"
         f" {CONFIG['workspace']['train_data']}"
         f" --dataset carla"
-        f" --train-towns {' '.join([str(c) for c in CONFIG['training']['train_towns']])}"
-        f" --val-towns {' '.join([str(c) for c in CONFIG['training']['val_towns']])}"
-        f" --train-weathers {' '.join([str(c) for c in CONFIG['training']['train_weathers']])}"
-        f" --val-weathers {' '.join([str(c) for c in CONFIG['training']['val_weathers']])}"
-        f" --model interfuser_baseline"
+        f" --train-towns {' '.join([str(c) for c in args.train_towns])}"
+        f" --val-towns {' '.join([str(c) for c in args.val_towns])}"
+        f" --train-weathers {' '.join([str(c) for c in args.train_weathers])}"
+        f" --val-weathers {' '.join([str(c) for c in args.val_weathers])}"
+        f" --model {args.model}"
         f" --sched cosine"
-        f" --epochs {CONFIG['training']['epochs']}"
-        f" --warmup-epochs {CONFIG['training']['warmup_epochs']}"
-        f" --lr {CONFIG['training']['lr']}"
-        f" --batch-size {CONFIG['training']['batch_size']}"
-        f" -j {CONFIG['training']['j']}"
+        f" --epochs {args.epochs}"
+        f" --warmup-epochs {args.warmup_epochs}"
+        f" --lr {args.lr}"
+        f" --batch-size {args.batch_size}"
+        f" -j 16"
         f" --no-prefetcher"
-        f" --eval-metric {CONFIG['training']['eval_metric']}"
-        f" --opt {CONFIG['training']['opt']}"
-        f" --opt-eps {CONFIG['training']['opt_eps']}"
-        f" --weight-decay {CONFIG['training']['weight_decay']}"
-        f" --scale {CONFIG['training']['scale']}"
+        f" --eval-metric {args.eval_metric}"
+        f" --opt {args.opt}"
+        f" --opt-eps {args.opt_eps}"
+        f" --weight-decay {args.weight_decay}"
+        f" --scale 0.9 1.1"
         f" --saver-decreasing"
-        f" --clip-grad {CONFIG['training']['clip_grad']}"
-        f" --freeze-num {CONFIG['training']['freeze_num']}"
+        f" --clip-grad 10"
+        f" --freeze-num -1"
         f" --with-backbone-lr"
-        f" --backbone-lr {CONFIG['training']['backbone_lr']}"
+        f" --backbone-lr {args.backbone_lr}"
         f" --multi-view"
         f" --with-lidar"
         f" --multi-view-input-size 3 128 128"
@@ -201,7 +226,53 @@ if __name__ == "__main__":
     parser_sim.set_defaults(func=lambda args: generate_train_data())
 
     parser_sim = subparsers.add_parser("train", help="Train an Interfuser agent using generated data.")
-    parser_sim.set_defaults(func=lambda args: train_interfuser())
+
+    parser_sim.add_argument("--gpu-num", type=int,
+                            default=CONFIG["training"]["gpu_num"],
+                            help="Number of GPUS for training.")
+    parser_sim.add_argument("--train-weathers", type=parse_list(int, ","),
+                            default=CONFIG["training"]["train_weathers"],
+                            help="List of weathers for training, e.g. '0,1,2,3'")
+    parser_sim.add_argument("--train-towns", type=parse_list(int, ","),
+                            default=CONFIG["training"]["train_towns"],
+                            help="List of towns for training, e.g. '1,2,3'")
+    parser_sim.add_argument("--val-weathers", type=parse_list(int, ","),
+                            default=CONFIG["training"]["val_weathers"],
+                            help="List of weathers for validation, e.g. '0,1,2,3'")
+    parser_sim.add_argument("--val-towns", type=parse_list(int, ","),
+                            default=CONFIG["training"]["val_towns"],
+                            help="List of towns for validation, e.g. '1,2,3'")
+    parser_sim.add_argument("--model", type=str,
+                            default="interfuser_baseline",
+                            help="Model to train, default: 'interfuser_baseline'")
+    parser_sim.add_argument("--epochs", type=int,
+                            default=CONFIG["training"]["epochs"],
+                            help="Number of training epochs.")
+    parser_sim.add_argument("--warmup-epochs", type=int,
+                            default=CONFIG["training"]["warmup_epochs"],
+                            help="Number of warmup epochs.")
+    parser_sim.add_argument("--lr", type=float,
+                            default=CONFIG["training"]["lr"],
+                            help="Learning rate.")
+    parser_sim.add_argument("--batch-size", type=int,
+                            default=CONFIG["training"]["batch_size"],
+                            help="Size of batches.")
+    parser_sim.add_argument("--eval-metric", type=str,
+                            default=CONFIG["training"]["eval_metric"],
+                            help="Evaluation metric.")
+    parser_sim.add_argument("--opt", type=str,
+                            default=CONFIG["training"]["opt"],
+                            help="Optimization algorithm.")
+    parser_sim.add_argument("--opt-eps", type=float,
+                            default=CONFIG["training"]["opt_eps"],
+                            help="Optimization tolerance.")
+    parser_sim.add_argument("--weight-decay", type=float,
+                            default=CONFIG["training"]["weight_decay"],
+                            help="Weight decay regularization parameter.")
+    parser_sim.add_argument("--backbone-lr", type=float,
+                            default=CONFIG["training"]["backbone_lr"],
+                            help="Learning rate of backbone models.")
+    parser_sim.set_defaults(func=lambda args: train_interfuser(args))
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)

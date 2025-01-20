@@ -69,6 +69,7 @@ for route, scenario in routes.items():
         towned_routes[town] = {}
     towned_routes[town][route] = scenario
 
+
 def get_enviroment_confs():
     weathers = CONFIG["runtime"]["weathers"]
     towns = CONFIG["runtime"]["towns"]
@@ -118,7 +119,7 @@ def vectorize_runtime_data(rt_data):
 
     for _id, other_actor in rt_data['other_actors'].items():
         relative_position = (
-        other_actor['loc'][0] - trajectory["start"]["x"], other_actor['loc'][1] - trajectory["start"]["y"])
+            other_actor['loc'][0] - trajectory["start"]["x"], other_actor['loc'][1] - trajectory["start"]["y"])
         radius, angle = cartesian_to_polar(*relative_position)
         yaw = other_actor['ori']['yaw']
         if other_actor['tpe'] == 0:
@@ -131,7 +132,8 @@ def vectorize_runtime_data(rt_data):
             scenario_def.statics.append(Static(radius=radius, angle=angle, yaw=yaw, model=0))
     return scenario_def
 
-def create_dataset_index(dataset_root):
+
+def create_dataset_index(dataset_root, weathers=None, towns=None):
     """
         Creates a dataset_index.txt file that lists the training/evaluation data.
 
@@ -144,6 +146,9 @@ def create_dataset_index(dataset_root):
         for root, dirs, files in os.walk(dataset_root):
             # Filter for directories containing relevant data frames
             if 'rgb_front' in dirs:
+                data_weather = int(os.path.basename(os.path.dirname(root)).split('-')[-1])
+                data_town = int(root.split('/')[-1].split('_')[1][4:])
+                if (weathers and data_weather not in weathers) or (towns and data_town not in towns): continue
                 # Count the number of frames in the directory
                 rgb_dir_path = os.path.join(root, 'rgb_front')
                 frame_count = len(
@@ -152,4 +157,3 @@ def create_dataset_index(dataset_root):
                 # Write the relative path and frame count to the index file
                 relative_path = os.path.relpath(root, dataset_root)
                 index_file.write(f"{relative_path} {frame_count}\n")
-
