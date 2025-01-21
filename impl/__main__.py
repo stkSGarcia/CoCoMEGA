@@ -123,6 +123,16 @@ def train_interfuser(args):
     gpu_count = torch.cuda.device_count()
     if args.gpu_num > gpu_count:
         raise RuntimeError(f"Requested {args.gpu_num} GPUs, but only {gpu_count} are available.")
+    output_base = ""
+    last_cp = None
+    if args.resume:
+        runs = [d for d in os.listdir(output_base) if os.path.isdir(os.path.join(output_base, d))]
+        if len(runs) == 0:
+            logger.warning("Cannot find the last run, setting 'resume' to False...")
+            args.resume = False
+        else:
+            last_cp_dir = sorted(runs, key=lambda d: os.path.getctime(os.path.join(output_base, d)), reverse=True)[0]
+            last_cp = os.path.join(output_base, last_cp_dir, "last.pth.tar")
 
     logger.info(f"Training an Interfuser model on {args.gpu_num} GPUs...")
     child_env = os.environ.copy()
@@ -165,6 +175,8 @@ def train_interfuser(args):
         f" --multi-view-input-size 3 128 128"
         f" --experiment interfuser_baseline"
         f" --pretrained"
+        f" --resume {last_cp}" if args.resume else ""
+        f" --output {args.output}" if args.output else ""
     )
 
     process = subprocess.run(command, env=child_env, check=True, shell=True, text=True, stdout=None, stderr=None)
@@ -272,6 +284,12 @@ if __name__ == "__main__":
     parser_sim.add_argument("--backbone-lr", type=float,
                             default=CONFIG["training"]["backbone_lr"],
                             help="Learning rate of backbone models.")
+    parser_sim.add_argument("--resume", type=bool,
+                            default=CONFIG["training"]["resume"],
+                            help="Resume the last checkpoint.")
+    parser_sim.add_argument("--output", type=str,
+                            default=CONFIG["workspace"]["trained_models"],
+                            help="Path to training output and results.")
     parser_sim.set_defaults(func=lambda args: train_interfuser(args))
 
     if len(sys.argv) == 1:
