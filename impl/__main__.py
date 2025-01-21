@@ -123,7 +123,7 @@ def train_interfuser(args):
     gpu_count = torch.cuda.device_count()
     if args.gpu_num > gpu_count:
         raise RuntimeError(f"Requested {args.gpu_num} GPUs, but only {gpu_count} are available.")
-    output_base = ""
+    output_base = args.output
     last_cp = None
     if args.resume:
         runs = [d for d in os.listdir(output_base) if os.path.isdir(os.path.join(output_base, d))]
