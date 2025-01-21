@@ -49,6 +49,7 @@ training:
   weight_decay: 0.05
   backbone_lr: 0.0002
   resume: true
+  workers: 4
 
 
 docker:

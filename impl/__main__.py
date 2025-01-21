@@ -158,7 +158,7 @@ def train_interfuser(args):
         f" --warmup-epochs {args.warmup_epochs}"
         f" --lr {args.lr}"
         f" --batch-size {args.batch_size}"
-        f" -j 16"
+        f" --workers {args.workers}"
         f" --no-prefetcher"
         f" --eval-metric {args.eval_metric}"
         f" --opt {args.opt}"
@@ -176,7 +176,7 @@ def train_interfuser(args):
         f" --experiment interfuser_baseline"
         f" --pretrained"
         f" --resume {last_cp}" if args.resume else ""
-        f" --output {args.output}" if args.output else ""
+        f" --output {args.output}"
     )
 
     process = subprocess.run(command, env=child_env, check=True, shell=True, text=True, stdout=None, stderr=None)
@@ -290,6 +290,11 @@ if __name__ == "__main__":
     parser_sim.add_argument("--output", type=str,
                             default=CONFIG["workspace"]["trained_models"],
                             help="Path to training output and results.")
+    parser_sim.add_argument("--workers", type=int,
+                            default=CONFIG["training"]["workers"],
+                            help="How many training processes to use.")
+
+
     parser_sim.set_defaults(func=lambda args: train_interfuser(args))
 
     if len(sys.argv) == 1:
