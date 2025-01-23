@@ -175,9 +175,10 @@ def train_interfuser(args):
         f" --multi-view-input-size 3 128 128"
         f" --experiment interfuser_baseline"
         f" --pretrained"
-        f" --resume {last_cp}" if args.resume else ""
         f" --output {args.output}"
     )
+    if args.resume:
+        command = command + f" --resume {last_cp}"
 
     process = subprocess.run(command, env=child_env, check=True, shell=True, text=True, stdout=None, stderr=None)
 
