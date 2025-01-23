@@ -1,6 +1,8 @@
 import pickle
+import random
 from copy import deepcopy
 from math import factorial, sqrt
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -24,6 +26,7 @@ reference_version = "v1"
 test_version = "v2"
 
 # Define the multi-objective configurations.
+moo = True
 rnsga3 = False
 ref_points = np.array([[0.1, 0.9], [0.2, 0.8]])
 n_obj = 2
@@ -38,15 +41,22 @@ budget = Budget(max_sim=CONFIG["budget"]["max_sim"],
                 max_gen=CONFIG["budget"]["max_gen"])
 
 # Define individuals.
-creator.create("Fitness", base.Fitness, weights=(1.0, -1.0,) if diff_testing else (1.0,))
+weights = (1.0, -1.0,) if moo else (1.0,)
+creator.create("Fitness", base.Fitness, weights=weights)
 creator.create("Solution", tuple, fitness=creator.Fitness, is_violated=False)
 creator.create("Scenario", ScenarioDefinition, fitness=creator.Fitness)
 creator.create("Perturbation", Perturbations, fitness=creator.Fitness)
 
 # Load runtime scenarios.
-with open("out/runtime_data/rt_scenarios.pickle", "rb") as f:
-    runtime_scenarios = pickle.load(f)
+if diff_testing:
+    runtime_scenarios = []
+    for data_path in Path(CONFIG["workspace"]["runtime_scenario"]).rglob("*.*"):
+        with open(data_path, "rb") as f:
+            runtime_data = pickle.load(f)
+            runtime_scenarios += runtime_data
     runtime_scenarios = [creator.Scenario(scenario) for scenario in runtime_scenarios]
+    if len(runtime_scenarios) == 0:
+        raise ValueError("No runtime scenarios found.")
 
 toolbox = base.Toolbox()
 toolbox.register("scenario", tools.initIterate, creator.Scenario, creator.Scenario.generate_random_or_leaderboard)
@@ -62,7 +72,10 @@ def _pop_scenario():
     return pop_scenario
 
 
-toolbox.register("pop_scenario", _pop_scenario)
+if diff_testing and not moo:
+    toolbox.register("pop_scenario", lambda: random.choices(runtime_scenarios, k=CONFIG["scenario"]["pop_size"]))
+else:
+    toolbox.register("pop_scenario", _pop_scenario)
 toolbox.register("pop_perturbation", tools.initRepeat, list, toolbox.perturbation, n=CONFIG["perturbation"]["pop_size"])
 
 # Create a complete solution from two individuals.
@@ -155,27 +168,28 @@ def _evaluate_solutions_dt(solutions):
 
     rv_solutions, rv_sim_num = _perform_evaluation(solutions, scenarios, agent_name=reference_version)
     tv_solutions, tv_sim_num = _perform_evaluation(rv_solutions, scenarios, agent_name=test_version)
-    similarities = [_calculate_similarity(scenario, runtime_scenarios) for scenario in scenarios]
-    for solution, source_sim, follow_up_sim in zip(solutions, similarities[::2], similarities[1::2]):
+    if moo:
+        similarities = [_calculate_similarity(scenario, runtime_scenarios) for scenario in scenarios]
+    for i, solution in enumerate(solutions):
         rv_fitness = getattr(solution, reference_version).fitness
         tv_fitness = getattr(solution, test_version).fitness
         if not rv_fitness and not tv_fitness:
-            solution.fitness.values = (0, min(source_sim, follow_up_sim))
-            solution.is_violated = False
-            solution.fitness_type = None
+            diff, typ = 0, None
         else:
             if not rv_fitness:
-                diff = np.abs(tv_fitness[0])
-                typ = test_version
+                diff, typ = np.abs(tv_fitness[0]), test_version
             elif not tv_fitness:
-                diff = np.abs(rv_fitness[0])
-                typ = reference_version
+                diff, typ = np.abs(rv_fitness[0]), reference_version
             else:
                 diff = np.abs(rv_fitness[0] - tv_fitness[0])
                 typ = reference_version if rv_fitness[0] > tv_fitness[0] else test_version
-            solution.fitness.values = (diff, min(source_sim, follow_up_sim))
-            solution.fitness_type = typ
-            solution.is_violated = diff > 0  # TODO define violation criteria
+        if moo:
+            solution.similarity = (similarities[i * 2], similarities[i * 2 + 1])
+            solution.fitness.values = (diff, min(solution.similarity))
+        else:
+            solution.fitness.values = (diff,)
+        solution.fitness_type = typ
+        solution.is_violated = diff > 0  # TODO define violation criteria
 
     return tv_solutions, rv_sim_num + tv_sim_num
 
@@ -285,12 +299,12 @@ def _evaluate_individual(individual, complete_solutions):
     involved = []
     for solution in complete_solutions:
         if solution[index] == individual:
-            involved.append(solution.fitness.values)
+            if moo:
+                involved.append((solution.fitness.values[0], solution.similarity[index]))
+            else:
+                involved.append(solution.fitness.values)
     if len(involved) > 0:
-        if diff_testing:
-            individual.fitness.values = sorted(involved, key=lambda x: (-x[0], x[1]))[0]
-        else:
-            individual.fitness.values = max(involved)
+        individual.fitness.values = sorted(involved, key=lambda x: tuple(np.array(x) * -np.array(weights)))[0]
     else:
         del individual.fitness.values
     return individual

@@ -1,24 +1,25 @@
 import argparse
 import logging.config
 import os
+import pickle
+import subprocess
 import sys
-import torch
+import time
+from pathlib import Path
 
 import argformat
-import subprocess
-from typing import List
+import torch
 
 from impl import problem
 from impl.algorithm.ccea import CCEA
 from impl.algorithm.ga import GeneticAlgorithm
 from impl.algorithm.moccea import MOCCEA
 from impl.algorithm.rs import RandomSearch
+from impl.config import CONFIG
 from impl.scenario.scenario_definition import ScenarioDefinition
 from impl.scenario.simulation_runner import run_scenarios, run_solutions, run_free_environments
 from impl.utils.docker_utils import cleanup_containers
-from impl.utils.leaderboad_utils import get_enviroment_confs, make_yamls, create_dataset_index
-
-from impl.config import CONFIG
+from impl.utils.leaderboad_utils import get_enviroment_confs, make_yamls, create_dataset_index, vectorize_runtime_data
 
 logger = logging.getLogger("impl")
 
@@ -137,7 +138,7 @@ def train_interfuser(args):
     logger.info(f"Training an Interfuser model on {args.gpu_num} GPUs...")
     child_env = os.environ.copy()
     child_env.update({
-        "GPU_NUM": str(args.gpu_num), #TODO test
+        "GPU_NUM": str(args.gpu_num),  # TODO test
         "DATASET_ROOT": CONFIG["workspace"]["train_data"],
     })
     child_env["PYTHONPATH"] = os.pathsep.join(sys.path)
@@ -185,6 +186,18 @@ def train_interfuser(args):
     return process.returncode
 
 
+def convert2scenarios(directory: str):
+    scenarios = []
+    for data_path in Path(directory).rglob("*.*"):
+        with open(data_path, "rb") as f:
+            runtime_data = pickle.load(f)
+        scenarios.append(vectorize_runtime_data(runtime_data))
+
+    with open(os.path.join(CONFIG["workspace"]["runtime_scenario"],
+                           f"rt_scen_{str(int(round(time.time() * 1000)))}.pickle"), "wb") as f:
+        pickle.dump(scenarios, f)
+
+
 class StoreDictKeyPair(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         is_kv = ["=" in value for value in values]
@@ -230,72 +243,76 @@ if __name__ == "__main__":
     parser_sim.add_argument("-f", "--file", default=None, help="solution file")
     parser_sim.set_defaults(func=lambda args: simulate(args.number, args.file))
 
-    parser_sim = subparsers.add_parser("collect_runtime_data",
+    parser_crd = subparsers.add_parser("collect_runtime_data",
                                        help="Execute free environments to collect runtime data.")
-    parser_sim.add_argument("-a", "--agent", type=str, default="v1", help="Agent version or name")
-    parser_sim.set_defaults(func=lambda args: collect_runtime_data(args.agent))
+    parser_crd.add_argument("-a", "--agent", type=str, default="v1", help="Agent version or name")
+    parser_crd.set_defaults(func=lambda args: collect_runtime_data(args.agent))
 
-    parser_sim = subparsers.add_parser("generate_train_data", help="Generate training data using a rule-based agent")
-    parser_sim.set_defaults(func=lambda args: generate_train_data())
+    parser_gtd = subparsers.add_parser("generate_train_data", help="Generate training data using a rule-based agent")
+    parser_gtd.set_defaults(func=lambda args: generate_train_data())
 
-    parser_sim = subparsers.add_parser("train", help="Train an Interfuser agent using generated data.")
+    parser_train = subparsers.add_parser("train", help="Train an Interfuser agent using generated data.")
 
-    parser_sim.add_argument("--gpu-num", type=int,
-                            default=CONFIG["training"]["gpu_num"],
-                            help="Number of GPUS for training.")
-    parser_sim.add_argument("--train-weathers", type=parse_list(int, ","),
-                            default=CONFIG["training"]["train_weathers"],
-                            help="List of weathers for training, e.g. '0,1,2,3'")
-    parser_sim.add_argument("--train-towns", type=parse_list(int, ","),
-                            default=CONFIG["training"]["train_towns"],
-                            help="List of towns for training, e.g. '1,2,3'")
-    parser_sim.add_argument("--val-weathers", type=parse_list(int, ","),
-                            default=CONFIG["training"]["val_weathers"],
-                            help="List of weathers for validation, e.g. '0,1,2,3'")
-    parser_sim.add_argument("--val-towns", type=parse_list(int, ","),
-                            default=CONFIG["training"]["val_towns"],
-                            help="List of towns for validation, e.g. '1,2,3'")
-    parser_sim.add_argument("--model", type=str,
-                            default="interfuser_baseline",
-                            help="Model to train, default: 'interfuser_baseline'")
-    parser_sim.add_argument("--epochs", type=int,
-                            default=CONFIG["training"]["epochs"],
-                            help="Number of training epochs.")
-    parser_sim.add_argument("--warmup-epochs", type=int,
-                            default=CONFIG["training"]["warmup_epochs"],
-                            help="Number of warmup epochs.")
-    parser_sim.add_argument("--lr", type=float,
-                            default=CONFIG["training"]["lr"],
-                            help="Learning rate.")
-    parser_sim.add_argument("--batch-size", type=int,
-                            default=CONFIG["training"]["batch_size"],
-                            help="Size of batches.")
-    parser_sim.add_argument("--eval-metric", type=str,
-                            default=CONFIG["training"]["eval_metric"],
-                            help="Evaluation metric.")
-    parser_sim.add_argument("--opt", type=str,
-                            default=CONFIG["training"]["opt"],
-                            help="Optimization algorithm.")
-    parser_sim.add_argument("--opt-eps", type=float,
-                            default=CONFIG["training"]["opt_eps"],
-                            help="Optimization tolerance.")
-    parser_sim.add_argument("--weight-decay", type=float,
-                            default=CONFIG["training"]["weight_decay"],
-                            help="Weight decay regularization parameter.")
-    parser_sim.add_argument("--backbone-lr", type=float,
-                            default=CONFIG["training"]["backbone_lr"],
-                            help="Learning rate of backbone models.")
-    parser_sim.add_argument("--resume", action="store_true",
-                            help="Resume the last checkpoint.")
-    parser_sim.add_argument("--output", type=str,
-                            default=CONFIG["workspace"]["trained_models"],
-                            help="Path to training output and results.")
-    parser_sim.add_argument("--workers", type=int,
-                            default=CONFIG["training"]["workers"],
-                            help="How many training processes to use.")
+    parser_train.add_argument("--gpu-num", type=int,
+                              default=CONFIG["training"]["gpu_num"],
+                              help="Number of GPUS for training.")
+    parser_train.add_argument("--train-weathers", type=parse_list(int, ","),
+                              default=CONFIG["training"]["train_weathers"],
+                              help="List of weathers for training, e.g. '0,1,2,3'")
+    parser_train.add_argument("--train-towns", type=parse_list(int, ","),
+                              default=CONFIG["training"]["train_towns"],
+                              help="List of towns for training, e.g. '1,2,3'")
+    parser_train.add_argument("--val-weathers", type=parse_list(int, ","),
+                              default=CONFIG["training"]["val_weathers"],
+                              help="List of weathers for validation, e.g. '0,1,2,3'")
+    parser_train.add_argument("--val-towns", type=parse_list(int, ","),
+                              default=CONFIG["training"]["val_towns"],
+                              help="List of towns for validation, e.g. '1,2,3'")
+    parser_train.add_argument("--model", type=str,
+                              default="interfuser_baseline",
+                              help="Model to train, default: 'interfuser_baseline'")
+    parser_train.add_argument("--epochs", type=int,
+                              default=CONFIG["training"]["epochs"],
+                              help="Number of training epochs.")
+    parser_train.add_argument("--warmup-epochs", type=int,
+                              default=CONFIG["training"]["warmup_epochs"],
+                              help="Number of warmup epochs.")
+    parser_train.add_argument("--lr", type=float,
+                              default=CONFIG["training"]["lr"],
+                              help="Learning rate.")
+    parser_train.add_argument("--batch-size", type=int,
+                              default=CONFIG["training"]["batch_size"],
+                              help="Size of batches.")
+    parser_train.add_argument("--eval-metric", type=str,
+                              default=CONFIG["training"]["eval_metric"],
+                              help="Evaluation metric.")
+    parser_train.add_argument("--opt", type=str,
+                              default=CONFIG["training"]["opt"],
+                              help="Optimization algorithm.")
+    parser_train.add_argument("--opt-eps", type=float,
+                              default=CONFIG["training"]["opt_eps"],
+                              help="Optimization tolerance.")
+    parser_train.add_argument("--weight-decay", type=float,
+                              default=CONFIG["training"]["weight_decay"],
+                              help="Weight decay regularization parameter.")
+    parser_train.add_argument("--backbone-lr", type=float,
+                              default=CONFIG["training"]["backbone_lr"],
+                              help="Learning rate of backbone models.")
+    parser_train.add_argument("--resume", action="store_true",
+                              help="Resume the last checkpoint.")
+    parser_train.add_argument("--output", type=str,
+                              default=CONFIG["workspace"]["trained_models"],
+                              help="Path to training output and results.")
+    parser_train.add_argument("--workers", type=int,
+                              default=CONFIG["training"]["workers"],
+                              help="How many training processes to use.")
 
+    parser_train.set_defaults(func=lambda args: train_interfuser(args))
 
-    parser_sim.set_defaults(func=lambda args: train_interfuser(args))
+    parser_convert = subparsers.add_parser("convert", aliases=["conv"],
+                                           help="convert runtime data to runtime scenarios")
+    parser_convert.add_argument("-d", "--directory", required=True, help="directory of runtime data")
+    parser_convert.set_defaults(func=lambda args: convert2scenarios(args.directory))
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)

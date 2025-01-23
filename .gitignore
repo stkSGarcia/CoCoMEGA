@@ -1,7 +1,7 @@
 ### Example user template
 .idea
 *.yaml
-/conf/interfuser.pth.tar
+/conf/*.pth.tar
 test/exp.ipynb
 
 ### VisualStudioCode template

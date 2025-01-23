@@ -40,7 +40,7 @@ class selRNSGA2WithMemory:
         return chosen
 
 
-def selRNSGA2(individuals, k, ref_points, ideal_point, nadir_point, epsilon=0.001, normalization="front",
+def selRNSGA2(individuals, k, ref_points, ideal_point, nadir_point, epsilon=0.01, normalization="front",
               weights=None, extreme_points_as_reference_points=False, nd="log", return_memory=False):
     """Implementation of R-NSGA-II selection.
 
