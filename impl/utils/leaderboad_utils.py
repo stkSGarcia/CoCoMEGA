@@ -113,8 +113,8 @@ def vectorize_runtime_data(rt_data):
         "town": rt_data["town"],
         **trajectory,
     })
-    scenario_def.weather = rt_data["weather"]
-    scenario_def.brightness = scenario_def.set_brightness(rt_data["brightness"])
+    scenario_def.weather = int(rt_data["weather"])
+    scenario_def.set_brightness(rt_data["brightness"])
     scenario_def.town = rt_data["town"]
 
     for _id, other_actor in rt_data['other_actors'].items():

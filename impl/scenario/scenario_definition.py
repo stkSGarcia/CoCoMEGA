@@ -197,6 +197,9 @@ class ScenarioDefinition:
     def _generate_empty_scenario(cls):
         scenario = cls()
         scenario.ego_vehicle = Vehicle.generate_random()
+        scenario.ego_vehicle.angle = 0
+        scenario.ego_vehicle.radius = 0
+        scenario.ego_vehicle.region = None
 
         for attr in ScenarioDefinition.ATTRIBUTES:
             setattr(scenario, attr, ScenarioDefinition._BOUNDARY.random(attr))
@@ -246,12 +249,16 @@ class ScenarioDefinition:
         return trajectory, gps_route, route
 
     def set_trajectory(self, trajectory_def):
+        self.ego_vehicle.yaw = trajectory_def["start"]["yaw"]
+        self.ego_vehicle.speed = trajectory_def["start"]["speed"]
         load_world(trajectory_def["town"])
         trajectory_def["trajectory"], trajectory_def["gps_route"], trajectory_def[
             "route"] = ScenarioDefinition._build_trajectory(
             trajectory_def)
         self.trajectory = trajectory_def
         self.town = trajectory_def["town"]
+
+
 
     def get_trigger_position(self):
         return self.trajectory["start"]
