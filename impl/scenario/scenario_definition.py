@@ -153,19 +153,32 @@ class ScenarioDefinition:
     _BOUNDARY = Boundary(CONFIG["boundary"]["env"])
     _TRAJECTORY = CONFIG["trajectory"]
 
-    def __new__(cls, *args):
-        if len(args) == 1 and isinstance(args[0], cls): return args[0]
-        self = super().__new__(cls)
-        self.id_ = uuid.uuid4().hex
-        self.town = None
-        self.ego_vehicle = None
-        self.trajectory = []
-        self.vehicles = []
-        self.walkers = []
-        self.statics = []
-        self.weather = None
-        self.brightness = None
-        return self
+    def __new__(cls, instance=None):
+        if isinstance(instance, cls):
+            return instance
+        return super().__new__(cls)
+
+    def __init__(self, instance=None):
+        if instance is None:
+            self.id_ = uuid.uuid4().hex
+            self.town = None
+            self.ego_vehicle = None
+            self.trajectory = []
+            self.vehicles = []
+            self.walkers = []
+            self.statics = []
+            self.weather = None
+            self.brightness = None
+        elif isinstance(instance, ScenarioDefinition):
+            self.id_ = instance.id_
+            self.town = instance.town
+            self.ego_vehicle = instance.ego_vehicle
+            self.trajectory = instance.trajectory
+            self.vehicles = instance.vehicles
+            self.walkers = instance.walkers
+            self.statics = instance.statics
+            self.weather = instance.weather
+            self.brightness = instance.brightness
 
     def assign_new_id(self):
         self.id_ = uuid.uuid4().hex

@@ -12,9 +12,9 @@ workspace:
   sim_result: results
   sim_save: results/eval
   runtime_data: runtime_data
+  runtime_scenario: runtime_scenario
   train_data: train_data
   trained_models: trained_models
-
 
 interfuser:
   repo: "../InterFuser"
@@ -50,7 +50,6 @@ training:
   backbone_lr: 0.0002
   workers: 4
 
-
 docker:
   enabled: true
   image: carla-0.9.10
@@ -85,15 +84,15 @@ simulation:
 runtime:
   parallel: true
   agent: v1
-  routes: ["long", "short"] # Options: ["long", "short", "tiny"]
+  routes: [ "long", "short" ] # Options: ["long", "short", "tiny"]
   towns: [ "town01", "town02", "town03" ] # Options: ["town01", "town02", "town03", "town04", "town05", "town06", "town07", "town10"]
-  weathers: [0, 1, 2, 3, 6, 7, 10, 11, 12, 13, 14, 15, 18, 19, 20]
-    # Options: [0 - 20]
-    # [0: "ClearNoon", 1: "ClearSunset", 2: "CloudyNoon", 3: "CloudySunset", 4: "WetNoon", 5: "WetSunset",
-    # 6: "MidRainyNoon", 7: "MidRainSunset", 8: "WetCloudyNoon" 9: "WetCloudySunset", 10: "HardRainNoon",
-    # 11: "HardRainSunset", 12: "SoftRainNoon", 13: "SoftRainSunset", 14: "ClearNight", 15: "CloudyNight",
-    # 16: "WetNight", 17: "WetCloudyNight", 18: "SoftRainNight", 19: "MidRainyNight", 20: "HardRainNight"
-    #]
+  weathers: [ 0, 1, 2, 3, 6, 7, 10, 11, 12, 13, 14, 15, 18, 19, 20 ]
+  # Options: [0 - 20]
+  # [0: "ClearNoon", 1: "ClearSunset", 2: "CloudyNoon", 3: "CloudySunset", 4: "WetNoon", 5: "WetSunset",
+  # 6: "MidRainyNoon", 7: "MidRainSunset", 8: "WetCloudyNoon" 9: "WetCloudySunset", 10: "HardRainNoon",
+  # 11: "HardRainSunset", 12: "SoftRainNoon", 13: "SoftRainSunset", 14: "ClearNight", 15: "CloudyNight",
+  # 16: "WetNight", 17: "WetCloudyNight", 18: "SoftRainNight", 19: "MidRainyNight", 20: "HardRainNight"
+  #]
   instances:
     - host: localhost
       port: 2100
@@ -110,8 +109,8 @@ budget:
   max_gen: 20  # Set`null` to make it unlimited
 
 scenario:
-  pop_size: 10
-  archive_size: 3
+  pop_size: &pop 10
+  archive_size: &arc 3
   leaderboard_pb: 0.8
   init_pb:
     vehicle: 0.4
@@ -129,8 +128,8 @@ scenario:
   mut_del: 0.5
 
 perturbation:
-  pop_size: 10
-  archive_size: 3
+  pop_size: *pop
+  archive_size: *arc
   dist_scaling: 1.0
   tournament: 3
   cxpb: 0.8
@@ -141,10 +140,7 @@ perturbation:
 
 violation:
   strategy: position  # Options: curve, position
-  threshold:
-    velocity: 1.0
-    steer: 0.1
-    max_ego_distance: 5 # Maximum distance in meters between ego-vehicle and closest object in simulation-based strategy
+  max_ego_distance: 5 # Maximum distance in meters between ego-vehicle and closest object in simulation-based strategy
   dtw: true
   reevaluation:
     threshold: 0.2

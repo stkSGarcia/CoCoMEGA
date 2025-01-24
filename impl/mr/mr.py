@@ -215,9 +215,6 @@ class Relation(ABC):
         if df.empty: return False, None
 
         df["extent"] = df.apply(self._extent_func, axis=1, result_type="reduce")
-        # df = df.loc[df["extent"].abs() > CONFIG["violation"]["threshold"][self.field]]
-        # if df.empty: return False, None
-
         extent = df["extent"].mean()
         return extent > 0, extent
 
@@ -278,7 +275,7 @@ class Relation(ABC):
         @return: A sequence of indices that indicate the critical intervals.
         """
         return dataframe.index[(dataframe[labels].min(axis=1) if len(labels) > 0 else dataframe[Relation._d])
-                               < CONFIG["violation"]["threshold"]["max_ego_distance"]]
+                               < CONFIG["violation"]["max_ego_distance"]]
 
     def __eq__(self, other):
         return (isinstance(other, self.__class__) and
