@@ -285,8 +285,7 @@ if __name__ == "__main__":
     parser_sim.add_argument("--backbone-lr", type=float,
                             default=CONFIG["training"]["backbone_lr"],
                             help="Learning rate of backbone models.")
-    parser_sim.add_argument("--resume", type=bool,
-                            default=CONFIG["training"]["resume"],
+    parser_sim.add_argument("--resume", action="store_true",
                             help="Resume the last checkpoint.")
     parser_sim.add_argument("--output", type=str,
                             default=CONFIG["workspace"]["trained_models"],
