@@ -188,19 +188,28 @@ def train_interfuser(args):
 
 
 def convert2scenarios(directory: str, n: int):
+    def vectorize(path):
+        try:
+            with open(path, "rb") as f:
+                runtime_data = pickle.load(f)
+            return vectorize_runtime_data(runtime_data)
+        except Exception as e:
+            logger.error(f"Failed to vectorize runtime data from {path}, error message {e}.")
+            return None
+
     scenarios = []
     count = 0
     for data_path in Path(directory).rglob("*.*"):
         if count < n:
-            with open(data_path, "rb") as f:
-                runtime_data = pickle.load(f)
-            scenarios.append(vectorize_runtime_data(runtime_data))
+            scenario = vectorize(data_path)
+            if scenario is None: continue
+            scenarios.append(scenario)
         else:
             i = random.randint(0, count)
             if i < n:
-                with open(data_path, "rb") as f:
-                    runtime_data = pickle.load(f)
-                scenarios[i] = vectorize_runtime_data(runtime_data)
+                scenario = vectorize(data_path)
+                if scenario is None: continue
+                scenarios[i] = scenario
         count += 1
 
     with open(os.path.join(CONFIG["workspace"]["runtime_scenario"],
