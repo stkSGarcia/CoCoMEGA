@@ -28,8 +28,7 @@ test_version = "v2"
 # Define constraints
 constraint = False
 similarity_threshold = 0.2
-penalty_factor = 1.0
-b, c = np.e, 6.66
+penalty_factor_b, penalty_factor_c = np.e, 6.66
 
 # Define the multi-objective configurations.
 moo = True
@@ -295,7 +294,7 @@ def _reevaluate(solutions):
 
 def _penalize(fitness, similarity):
     if similarity <= similarity_threshold: return (fitness[0],)
-    return (fitness[0] / b ** (c * (similarity - similarity_threshold)),)
+    return (fitness[0] / penalty_factor_b ** (penalty_factor_c * (similarity - similarity_threshold)),)
 
 
 def _evaluate_individual(individual, complete_solutions):
