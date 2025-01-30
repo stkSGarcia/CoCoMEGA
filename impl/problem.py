@@ -25,8 +25,14 @@ diff_testing = True
 reference_version = "v1"
 test_version = "v2"
 
+# Define constraints
+constraint = False
+similarity_threshold = 0.2
+penalty_factor_b, penalty_factor_c = np.e, 6.66
+
 # Define the multi-objective configurations.
 moo = True
+assert not constraint or not moo, "Variables `constraint` and `moo` cannot be `True` at the same time."
 rnsga3 = False
 ref_points = np.array([[0.1, 0.9], [0.2, 0.8]])
 n_obj = 2
@@ -168,7 +174,7 @@ def _evaluate_solutions_dt(solutions):
 
     rv_solutions, rv_sim_num = _perform_evaluation(solutions, scenarios, agent_name=reference_version)
     tv_solutions, tv_sim_num = _perform_evaluation(rv_solutions, scenarios, agent_name=test_version)
-    if moo:
+    if moo or constraint:
         similarities = [_calculate_similarity(scenario, runtime_scenarios) for scenario in scenarios]
     for i, solution in enumerate(solutions):
         rv_fitness = getattr(solution, reference_version).fitness
@@ -183,11 +189,9 @@ def _evaluate_solutions_dt(solutions):
             else:
                 diff = np.abs(rv_fitness[0] - tv_fitness[0])
                 typ = reference_version if rv_fitness[0] > tv_fitness[0] else test_version
-        if moo:
+        if moo or constraint:
             solution.similarity = (similarities[i * 2], similarities[i * 2 + 1])
-            solution.fitness.values = (diff, min(solution.similarity))
-        else:
-            solution.fitness.values = (diff,)
+        solution.fitness.values = (diff, min(solution.similarity)) if moo else (diff,)
         solution.fitness_type = typ
         solution.is_violated = diff > 0  # TODO define violation criteria
 
@@ -288,6 +292,11 @@ def _reevaluate(solutions):
     return sim_num
 
 
+def _penalize(fitness, similarity):
+    if similarity <= similarity_threshold: return (fitness[0],)
+    return (fitness[0] / penalty_factor_b ** (penalty_factor_c * (similarity - similarity_threshold)),)
+
+
 def _evaluate_individual(individual, complete_solutions):
     """Evaluate the individual fitness of a scenario or a sequence of perturbations.
 
@@ -299,12 +308,14 @@ def _evaluate_individual(individual, complete_solutions):
     involved = []
     for solution in complete_solutions:
         if solution[index] == individual:
-            if moo:
+            if moo or constraint:
                 involved.append((solution.fitness.values[0], solution.similarity[index]))
             else:
                 involved.append(solution.fitness.values)
     if len(involved) > 0:
-        individual.fitness.values = sorted(involved, key=lambda x: tuple(np.array(x) * -np.array(weights)))[0]
+        sorted_involved = sorted(involved, key=lambda x: tuple(np.array(x) * -np.array(weights)))
+        individual.fitness.values = _penalize(sorted_involved[0], np.min(sorted_involved, axis=0)[1]) if constraint \
+            else sorted_involved[0]
     else:
         del individual.fitness.values
     return individual

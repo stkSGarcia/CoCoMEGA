@@ -2,6 +2,7 @@ import argparse
 import logging.config
 import os
 import pickle
+import random
 import subprocess
 import sys
 import time
@@ -187,12 +188,30 @@ def train_interfuser(args):
     return process.returncode
 
 
-def convert2scenarios(directory: str):
+def convert2scenarios(directory: str, n: int):
+    def vectorize(path):
+        try:
+            with open(path, "rb") as f:
+                runtime_data = pickle.load(f)
+            return vectorize_runtime_data(runtime_data)
+        except Exception as e:
+            logger.error(f"Failed to vectorize runtime data from {path}, error message {e}.")
+            return None
+
     scenarios = []
+    count = 0
     for data_path in Path(directory).rglob("*.*"):
-        with open(data_path, "rb") as f:
-            runtime_data = pickle.load(f)
-        scenarios.append(vectorize_runtime_data(runtime_data))
+        if count < n:
+            scenario = vectorize(data_path)
+            if scenario is None: continue
+            scenarios.append(scenario)
+        else:
+            i = random.randint(0, count)
+            if i < n:
+                scenario = vectorize(data_path)
+                if scenario is None: continue
+                scenarios[i] = scenario
+        count += 1
 
     with open(os.path.join(CONFIG["workspace"]["runtime_scenario"],
                            f"rt_scen_{str(int(round(time.time() * 1000)))}.pickle"), "wb") as f:
@@ -316,7 +335,8 @@ if __name__ == "__main__":
     parser_convert = subparsers.add_parser("convert", aliases=["conv"],
                                            help="convert runtime data to runtime scenarios")
     parser_convert.add_argument("-d", "--directory", required=True, help="directory of runtime data")
-    parser_convert.set_defaults(func=lambda args: convert2scenarios(args.directory))
+    parser_convert.add_argument("-n", "--number", type=int, default=100, help="number of runtime scenarios")
+    parser_convert.set_defaults(func=lambda args: convert2scenarios(args.directory, args.number))
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)

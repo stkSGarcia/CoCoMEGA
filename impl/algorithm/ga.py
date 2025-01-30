@@ -33,7 +33,7 @@ class GeneticAlgorithm(BaseAlgorithm):
                 current_solutions = pickle.load(f)
                 archive_solution = pickle.load(f)
                 evaluated_solutions = pickle.load(f)
-                simulation_runner.evaluated_scenarios = Manager().list(pickle.load(f))
+                simulation_runner.evaluated_scenarios = Manager().dict(pickle.load(f))
                 self.budget.initialize(other=pickle.load(f))
                 self.logbook = pickle.load(f)
         else:
