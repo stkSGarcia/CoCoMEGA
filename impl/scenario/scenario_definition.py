@@ -169,6 +169,8 @@ class ScenarioDefinition:
             self.statics = []
             self.weather = None
             self.brightness = None
+            self.stop_sign_est = None
+            self.red_light_est = None
         elif isinstance(instance, ScenarioDefinition):
             self.id_ = instance.id_
             self.town = instance.town
@@ -179,6 +181,8 @@ class ScenarioDefinition:
             self.statics = instance.statics
             self.weather = instance.weather
             self.brightness = instance.brightness
+            self.stop_sign_est = instance.stop_sign_est
+            self.red_light_est = instance.red_light_est
 
     def assign_new_id(self):
         self.id_ = uuid.uuid4().hex
@@ -213,6 +217,8 @@ class ScenarioDefinition:
         scenario.ego_vehicle.angle = 0
         scenario.ego_vehicle.radius = 0
         scenario.ego_vehicle.region = None
+        scenario.stop_sign_est = 0
+        scenario.red_light_est = 0
 
         for attr in ScenarioDefinition.ATTRIBUTES:
             setattr(scenario, attr, ScenarioDefinition._BOUNDARY.random(attr))
@@ -229,6 +235,7 @@ class ScenarioDefinition:
         trajectory = []
         location = carla.Location(x=trajectory_def["start"]["x"], y=trajectory_def["start"]["y"], z=0)
         waypoint = CarlaDataProvider.get_map().get_waypoint(location)
+        is_junction = waypoint.is_junction
         trajectory.append(waypoint.transform)
 
         # Find the nearest junction
@@ -259,19 +266,17 @@ class ScenarioDefinition:
 
         trajectory, gps_route, route = traj_interpolation([t.location for t in trajectory])
 
-        return trajectory, gps_route, route
+        return trajectory, gps_route, route, is_junction
 
     def set_trajectory(self, trajectory_def):
         self.ego_vehicle.yaw = trajectory_def["start"]["yaw"]
         self.ego_vehicle.speed = trajectory_def["start"]["speed"]
         load_world(trajectory_def["town"])
         trajectory_def["trajectory"], trajectory_def["gps_route"], trajectory_def[
-            "route"] = ScenarioDefinition._build_trajectory(
+            "route"], trajectory_def["start"]["is_junction"] = ScenarioDefinition._build_trajectory(
             trajectory_def)
         self.trajectory = trajectory_def
         self.town = trajectory_def["town"]
-
-
 
     def get_trigger_position(self):
         return self.trajectory["start"]

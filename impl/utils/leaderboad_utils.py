@@ -117,6 +117,10 @@ def vectorize_runtime_data(rt_data):
     scenario_def.set_brightness(rt_data["brightness"])
     scenario_def.town = rt_data["town"]
 
+    scenario_def.stop_sign_est = rt_data["stop_sign"]
+    scenario_def.red_light_est = rt_data["traffic_light_state"]
+
+
     for _id, other_actor in rt_data['other_actors'].items():
         relative_position = (
             other_actor['loc'][0] - trajectory["start"]["x"], other_actor['loc'][1] - trajectory["start"]["y"])

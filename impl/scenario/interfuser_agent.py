@@ -692,6 +692,10 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             rot = actor.get_transform().rotation
             data[_id]["ori"] = {'yaw': rot.yaw, 'pitch': rot.pitch, 'roll': rot.roll}
             data[_id]["sta"] = int(actor.state)
+            data[_id]["elaps"] = actor.get_elapsed_time()
+            data[_id]["green"] = actor.get_green_time()
+            data[_id]["yellow"] = actor.get_yellow_time()
+            data[_id]["red"] = actor.get_red_time()
             data[_id]["tpe"] = 2
 
             trigger = actor.trigger_volume
