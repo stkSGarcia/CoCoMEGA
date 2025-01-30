@@ -125,15 +125,7 @@ def train_interfuser(args):
     if args.gpu_num > gpu_count:
         raise RuntimeError(f"Requested {args.gpu_num} GPUs, but only {gpu_count} are available.")
     output_base = args.output
-    last_cp = None
-    if args.resume:
-        runs = [d for d in os.listdir(output_base) if os.path.isdir(os.path.join(output_base, d))]
-        if len(runs) == 0:
-            logger.warning("Cannot find the last run, setting 'resume' to False...")
-            args.resume = False
-        else:
-            last_cp_dir = sorted(runs, key=lambda d: os.path.getctime(os.path.join(output_base, d)), reverse=True)[0]
-            last_cp = os.path.join(output_base, last_cp_dir, "last.pth.tar")
+
 
     logger.info(f"Training an Interfuser model on {args.gpu_num} GPUs...")
     child_env = os.environ.copy()
@@ -179,7 +171,16 @@ def train_interfuser(args):
         f" --output {args.output}"
     )
     if args.resume:
+        runs = [d for d in os.listdir(output_base) if os.path.isdir(os.path.join(output_base, d))]
+        if len(runs) == 0: raise RuntimeError("'--resume' was given but cannot find the last run.")
+
+        last_cp_dir = sorted(runs, key=lambda d: os.path.getctime(os.path.join(output_base, d)), reverse=True)[
+            0]
+        last_cp = os.path.join(output_base, last_cp_dir, "last.pth.tar")
         command = command + f" --resume {last_cp}"
+
+    if hasattr(args, "retrain") and args.retrain is not None:
+        command = command + f" --resume {args.retrain}"
 
     process = subprocess.run(command, env=child_env, check=True, shell=True, text=True, stdout=None, stderr=None)
 
@@ -298,14 +299,17 @@ if __name__ == "__main__":
     parser_train.add_argument("--backbone-lr", type=float,
                               default=CONFIG["training"]["backbone_lr"],
                               help="Learning rate of backbone models.")
-    parser_train.add_argument("--resume", action="store_true",
-                              help="Resume the last checkpoint.")
     parser_train.add_argument("--output", type=str,
                               default=CONFIG["workspace"]["trained_models"],
                               help="Path to training output and results.")
     parser_train.add_argument("--workers", type=int,
                               default=CONFIG["training"]["workers"],
                               help="How many training processes to use.")
+    group = parser_train.add_mutually_exclusive_group()
+    group.add_argument("--resume", action="store_true",
+                       help="Resume the last checkpoint.")
+    group.add_argument("--retrain", type=str,
+                       help="Fine-tune a specific model give the model's path")
 
     parser_train.set_defaults(func=lambda args: train_interfuser(args))
 
