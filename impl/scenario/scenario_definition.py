@@ -171,6 +171,7 @@ class ScenarioDefinition:
             self.brightness = None
             self.stop_sign_est = None
             self.red_light_est = None
+            self.is_junction_est = None
         elif isinstance(instance, ScenarioDefinition):
             self.id_ = instance.id_
             self.town = instance.town
@@ -183,6 +184,7 @@ class ScenarioDefinition:
             self.brightness = instance.brightness
             self.stop_sign_est = instance.stop_sign_est
             self.red_light_est = instance.red_light_est
+            self.is_junction_est = instance.is_junction_est
 
     def assign_new_id(self):
         self.id_ = uuid.uuid4().hex
@@ -219,6 +221,7 @@ class ScenarioDefinition:
         scenario.ego_vehicle.region = None
         scenario.stop_sign_est = 0
         scenario.red_light_est = 0
+        scenario.is_junction_est = 0
 
         for attr in ScenarioDefinition.ATTRIBUTES:
             setattr(scenario, attr, ScenarioDefinition._BOUNDARY.random(attr))

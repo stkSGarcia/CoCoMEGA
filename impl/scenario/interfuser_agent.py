@@ -499,9 +499,11 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         tick_data["raw"] = traffic_meta
         tick_data["bev_feature"] = bev_feature
         tick_data["pred_waypoints"] = pred_waypoints
-        tick_data["is_junction"] = is_junction
-        tick_data["traffic_light_state"] = traffic_light_state
-        tick_data["stop_sign"] = stop_sign
+        tick_data["traffic"] = {
+            "is_junction": is_junction,
+            "red_light": traffic_light_state,
+            "stop_sign": stop_sign
+        }
 
         steer, throttle, brake, meta_infos = self.controller.run_step(
             velocity,
@@ -598,9 +600,10 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             surface = self._hic.run_interface(tick_data)
             tick_data["surface"] = surface
 
-        tick_data['other_actors'] = self.collect_actor_data()
+        tick_data["sim_data"] = {}
+        tick_data["sim_data"]["other_actors"] = self.collect_actor_data()
 
-        tick_data["town"] = CarlaDataProvider.get_map().name
+        tick_data["sim_data"]["town"] = CarlaDataProvider.get_map().name
         weather = CarlaDataProvider.get_world().get_weather()
         # weather_dict = {
         #     key: getattr(weather, key)
@@ -608,13 +611,13 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         #     if not key.startswith('_') and not key[0].isupper() and not callable(getattr(weather, key))
         # }
         # tick_data["weather"] = weather_dict
-        tick_data["weather"] = WEATHER
-        tick_data["brightness"] = weather.sun_altitude_angle
+        tick_data["sim_data"]["weather"] = WEATHER
+        tick_data["sim_data"]["brightness"] = weather.sun_altitude_angle
         ego_vehicle = CarlaDataProvider.get_hero_actor()
         ego_trans = ego_vehicle.get_transform()
 
-        tick_data["route"] = [location_to_dict(t[0]) for t in CarlaDataProvider._ego_vehicle_route],
-        tick_data["trajectory"] = {
+        tick_data["sim_data"]["route"] = [location_to_dict(t[0]) for t in CarlaDataProvider._ego_vehicle_route],
+        tick_data["sim_data"]["trajectory"] = {
             "start": {
                 "x": ego_trans.location.x,
                 "y": ego_trans.location.y,
