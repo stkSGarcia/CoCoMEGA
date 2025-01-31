@@ -27,7 +27,7 @@ interfuser:
 
 data_collection:
   yaml_root: "conf/yamls"
-  destory_hazard_actors: true
+  destroy_hazard_actors: true
   rgb_only: false
   save_skip_frames: 10
   waypoint_disturb: 0.2
@@ -108,8 +108,23 @@ budget:
   max_time: 3600  # Set`null` to make it unlimited
   max_gen: 20  # Set`null` to make it unlimited
 
+search:
+  diff_testing: True
+  runtime_data_as_seeds: False
+  constraint:
+    enable: False
+    threshold: 0.5
+    penalty_base: 2.71828
+    penalty_amplifier: 6.66
+  multi_objective:
+    enable: False  # Do NOT enable multi-objective and constraints at the same time
+    algorithm: rnsga2  # Options: rnsga2, rnsga3
+    ref_points:
+      - [ 0.1, 0.9 ]
+      - [ 0.2, 0.8 ]
+
 scenario:
-  pop_size: &pop 10
+  pop_size: &pop 7
   archive_size: &arc 3
   leaderboard_pb: 0.8
   init_pb:

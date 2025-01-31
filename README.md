@@ -29,7 +29,6 @@ Test Cases for Autonomous Driving Systems* by Hossein Yousefizadeh, Shenghui Gu,
    cd CoCoMEGA 
    python3.7 -m venv .venv
    source .venv/bin/activate
-   pip install -r requirements.txt
    ```
 
 2. Install InterFuser
@@ -42,6 +41,7 @@ Test Cases for Autonomous Driving Systems* by Hossein Yousefizadeh, Shenghui Gu,
    cd interfuser
    python setup.py develop
    ```
+
 3. Download and setup CARLA 0.9.10.1
 
    ```shell
@@ -50,7 +50,14 @@ Test Cases for Autonomous Driving Systems* by Hossein Yousefizadeh, Shenghui Gu,
    easy_install carla/PythonAPI/carla/dist/carla-0.9.10-py3.7-linux-x86_64.egg
    ```
 
-4. Download pretrained model
+4. Install CoCoMEGA requirements
+
+   ```shell
+   cd ../CoCoMEGA
+   pip install -r requirements.txt
+   ```
+
+5. Download pretrained model
 
    The model can be downloaded at [here](http://43.159.60.142/s/p2CN) and needs to be moved
    to `conf`.
@@ -94,19 +101,25 @@ Test Cases for Autonomous Driving Systems* by Hossein Yousefizadeh, Shenghui Gu,
   driving steering angle are expected to be consistent with those under the corresponding original driving scenes.
 
 ## Collect Runtime Data
+
 To collect runtime data, use the command below
+
 ```shell
    python -m impl collect_runtime_data
 ```
 
 ## Generate Training Data
+
 To generate training data using a rule-based agent, use the command below
+
 ```shell
    python -m impl generate_train_data
 ```
 
 ## Train Interfuser
+
 To train an Interfuser model, use the command below
+
 ```shell
    python -m impl train
 ```

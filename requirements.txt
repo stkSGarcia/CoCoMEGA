@@ -1,10 +1,9 @@
 # General Requirements
-deap~=1.4.1
-argformat~=0.0.3
-docker~=5.0.3
-plotly==5.18.0
-tslearn~=0.6.3
-matplotlib~=3.0.3
-networkx~=2.2
-pyyaml~=6.0.1
-
+argformat>=0.0.3
+deap>=1.4.1
+docker>=5.0.3
+matplotlib>=3.5.3
+networkx>=2.6.3
+plotly>=5.18.0
+PyYAML>=6.0.1
+tslearn>=0.6.3

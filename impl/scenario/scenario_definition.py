@@ -9,15 +9,14 @@ from enum import Enum
 import carla
 import numpy as np
 from deap import tools
-
 from scipy.spatial.distance import cdist
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
 from impl.config import CONFIG
 from impl.scenario.LeaderboardFactory import LeaderBoardFactory
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
-from impl.utils.carla_utils import get_junction_topology, filter_junction_wp_direction, transform_to_dict, \
-    get_closest_wp, load_world, traj_interpolation
+from impl.utils.carla_utils import get_junction_topology, filter_junction_wp_direction, get_closest_wp, load_world, \
+    traj_interpolation
 from impl.utils.trajectory import rotate_vector, single_trajectory_score
 
 logger = logging.getLogger(__name__)
@@ -147,7 +146,7 @@ def _mutate_attrs(this, attrs, boundary: Boundary, mutpb, eta, std):
 
 
 class ScenarioDefinition:
-    ATTRIBUTES = ["weather", "brightness"]
+    ATTRIBUTES = ["weather", "brightness", "stop_sign_est", "red_light_est", "is_junction_est"]
     DYNAMIC = ["vehicle", "walker", "static"]
     _BLUEPRINTS = CONFIG["blueprint"]["scenario"]
     _BOUNDARY = Boundary(CONFIG["boundary"]["env"])
