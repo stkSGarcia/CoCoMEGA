@@ -233,6 +233,9 @@ boundary:
   env:
     weather: [ 0, 11 ]
     brightness: [ 0, 8 ]
+    stop_sign_est: [ 0, 1 ]
+    red_light_est: [ 0, 1 ]
+    is_junction_est: [ 0, 1 ]
 
 blueprint:
   vehicle:
