@@ -1,6 +1,7 @@
 ### Example user template
 .idea
 *.yaml
+/docs/
 /conf/*.pth.tar
 test/exp.ipynb
 
