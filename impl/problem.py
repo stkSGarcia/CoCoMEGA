@@ -21,25 +21,8 @@ from impl.scenario.simulation_runner import run_scenarios
 mr_set = mr_set1
 
 # Define differential testing configurations.
-diff_testing = True
 reference_version = "v1"
 test_version = "v2"
-
-# Define constraints
-constraint = False
-similarity_threshold = 0.2
-penalty_factor_b, penalty_factor_c = np.e, 6.66
-
-# Define the multi-objective configurations.
-moo = True
-assert not constraint or not moo, "Variables `constraint` and `moo` cannot be `True` at the same time."
-rnsga3 = False
-ref_points = np.array([[0.1, 0.9], [0.2, 0.8]])
-n_obj = 2
-if rnsga3:
-    P = 5
-    H = int(factorial(n_obj + P - 1) / (factorial(P) * factorial(n_obj - 1)))
-    pop_size = ref_points.shape[0] * H + n_obj
 
 # Define the budget.
 budget = Budget(max_sim=CONFIG["budget"]["max_sim"],
@@ -47,14 +30,16 @@ budget = Budget(max_sim=CONFIG["budget"]["max_sim"],
                 max_gen=CONFIG["budget"]["max_gen"])
 
 # Define individuals.
-weights = (1.0, -1.0,) if moo else (1.0,)
+weights = (1.0, -1.0,) if CONFIG["search"]["multi_objective"]["enable"] else (1.0,)
 creator.create("Fitness", base.Fitness, weights=weights)
 creator.create("Solution", tuple, fitness=creator.Fitness, is_violated=False)
 creator.create("Scenario", ScenarioDefinition, fitness=creator.Fitness)
 creator.create("Perturbation", Perturbations, fitness=creator.Fitness)
 
 # Load runtime scenarios.
-if diff_testing:
+if (CONFIG["search"]["runtime_data_as_seeds"] or
+        CONFIG["search"]["constraint"]["enable"] or
+        CONFIG["search"]["multi_objective"]["enable"]):
     runtime_scenarios = []
     for data_path in Path(CONFIG["workspace"]["runtime_scenario"]).rglob("*.*"):
         with open(data_path, "rb") as f:
@@ -78,7 +63,7 @@ def _pop_scenario():
     return pop_scenario
 
 
-if diff_testing and not moo:
+if CONFIG["search"]["runtime_data_as_seeds"]:
     toolbox.register("pop_scenario", lambda: random.choices(runtime_scenarios, k=CONFIG["scenario"]["pop_size"]))
 else:
     toolbox.register("pop_scenario", _pop_scenario)
@@ -86,8 +71,15 @@ toolbox.register("pop_perturbation", tools.initRepeat, list, toolbox.perturbatio
 
 # Create a complete solution from two individuals.
 toolbox.register("collaborate", lambda scenario, perturbation: creator.Solution((scenario, perturbation)))
-if diff_testing:
-    if rnsga3:
+
+# Define the multi-objective configurations.
+if CONFIG["search"]["multi_objective"]["enable"]:
+    ref_points = np.array(CONFIG["search"]["multi_objective"]["ref_points"])
+    if CONFIG["search"]["multi_objective"]["algorithm"] == "rnsga3":
+        P = 5
+        n_obj = 2
+        H = int(factorial(n_obj + P - 1) / (factorial(P) * factorial(n_obj - 1)))
+        pop_size = ref_points.shape[0] * H + n_obj
         toolbox.register("select_scenario", selRNSGA3WithMemory(ref_points=ref_points, p=P, mu=0.1),
                          k=CONFIG["scenario"]["pop_size"])
         toolbox.register("select_perturbation", selRNSGA3WithMemory(ref_points=ref_points, p=P, mu=0.1),
@@ -174,7 +166,7 @@ def _evaluate_solutions_dt(solutions):
 
     rv_solutions, rv_sim_num = _perform_evaluation(solutions, scenarios, agent_name=reference_version)
     tv_solutions, tv_sim_num = _perform_evaluation(rv_solutions, scenarios, agent_name=test_version)
-    if moo or constraint:
+    if CONFIG["search"]["constraint"]["enable"] or CONFIG["search"]["multi_objective"]["enable"]:
         similarities = [_calculate_similarity(scenario, runtime_scenarios) for scenario in scenarios]
     for i, solution in enumerate(solutions):
         rv_fitness = getattr(solution, reference_version).fitness
@@ -189,9 +181,12 @@ def _evaluate_solutions_dt(solutions):
             else:
                 diff = np.abs(rv_fitness[0] - tv_fitness[0])
                 typ = reference_version if rv_fitness[0] > tv_fitness[0] else test_version
-        if moo or constraint:
+        if CONFIG["search"]["constraint"]["enable"] or CONFIG["search"]["multi_objective"]["enable"]:
             solution.similarity = (similarities[i * 2], similarities[i * 2 + 1])
-        solution.fitness.values = (diff, min(solution.similarity)) if moo else (diff,)
+        if CONFIG["search"]["multi_objective"]["enable"]:
+            solution.fitness.values = (diff, min(solution.similarity))
+        else:
+            solution.fitness.values = (diff,)
         solution.fitness_type = typ
         solution.is_violated = diff > 0  # TODO define violation criteria
 
@@ -293,8 +288,13 @@ def _reevaluate(solutions):
 
 
 def _penalize(fitness, similarity):
-    if similarity <= similarity_threshold: return (fitness[0],)
-    return (fitness[0] / penalty_factor_b ** (penalty_factor_c * (similarity - similarity_threshold)),)
+    if similarity <= CONFIG["search"]["constraint"]["threshold"]:
+        return (fitness[0],)
+    penalty = CONFIG["search"]["constraint"]["penalty_base"] ** (
+            CONFIG["search"]["constraint"]["penalty_amplifier"] *
+            (similarity - CONFIG["search"]["constraint"]["threshold"])
+    )
+    return (fitness[0] / penalty,)
 
 
 def _evaluate_individual(individual, complete_solutions):
@@ -308,18 +308,23 @@ def _evaluate_individual(individual, complete_solutions):
     involved = []
     for solution in complete_solutions:
         if solution[index] == individual:
-            if moo or constraint:
+            if CONFIG["search"]["constraint"]["enable"] or CONFIG["search"]["multi_objective"]["enable"]:
                 involved.append((solution.fitness.values[0], solution.similarity[index]))
             else:
                 involved.append(solution.fitness.values)
     if len(involved) > 0:
         sorted_involved = sorted(involved, key=lambda x: tuple(np.array(x) * -np.array(weights)))
-        individual.fitness.values = _penalize(sorted_involved[0], np.min(sorted_involved, axis=0)[1]) if constraint \
-            else sorted_involved[0]
+        if CONFIG["search"]["constraint"]["enable"]:
+            individual.fitness.values = _penalize(sorted_involved[0], np.min(sorted_involved, axis=0)[1])
+        else:
+            individual.fitness.values = sorted_involved[0]
     else:
         del individual.fitness.values
     return individual
 
 
-toolbox.register("evaluate_solutions", _evaluate_solutions_dt if diff_testing else _evaluate_solutions)
+if CONFIG["search"]["diff_testing"]:
+    toolbox.register("evaluate_solutions", _evaluate_solutions_dt)
+else:
+    toolbox.register("evaluate_solutions", _evaluate_solutions)
 toolbox.register("evaluate_individual", _evaluate_individual)
