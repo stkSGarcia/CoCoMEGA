@@ -52,11 +52,11 @@ def user_has_processes_in_container(container_id, username):
 
 def cleanup_containers():
     logger.info("Cleaning up Carla containers ...")
-    container_ids = subprocess.run([
-        f'docker ps -a --filter "name=^{CONFIG["docker"]["image"]}-" -q'],
-        shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True).stdout.strip().split('\n')
-
-    for container_id in container_ids:
-        if container_id and user_has_processes_in_container(container_id, os.getlogin()):
-            subprocess.run(['docker', 'stop', container_id])
-            logger.info(f"Stopped container {container_id}.")
+    command = f'docker ps -a --filter "name=^{CONFIG["docker"]["image"]}" -q | while read container; do ' \
+              'pid=$(docker inspect --format "{{{{ .State.Pid }}}}" "$container" 2>/dev/null); ' \
+              'if [ -n "$pid" ] && [ -d "/proc/$pid" ]; then ' \
+              'owner_uid=$(stat -c %u /proc/$pid/); ' \
+              'if [ "$owner_uid" -eq "$UID" ]; then ' \
+              'docker stop "$container"; ' \
+              'fi; fi; done'
+    subprocess.run(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
