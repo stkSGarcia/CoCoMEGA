@@ -667,6 +667,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             vel = actor.get_velocity()
             data[_id]["vel"] = [vel.x, vel.y, vel.z]
             data[_id]["tpe"] = 0
+            data[_id]["blueprint"] = actor.blueprint.id
 
         walkers = self._world.get_actors().filter("*walker*")
         for actor in walkers:
@@ -683,6 +684,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             vel = actor.get_velocity()
             data[_id]["vel"] = [vel.x, vel.y, vel.z]
             data[_id]["tpe"] = 1
+            data[_id]["blueprint"] = actor.blueprint.id
 
         lights = self._world.get_actors().filter("*traffic_light*")
         for actor in lights:
@@ -700,6 +702,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             data[_id]["yellow"] = actor.get_yellow_time()
             data[_id]["red"] = actor.get_red_time()
             data[_id]["tpe"] = 2
+            data[_id]["blueprint"] = actor.blueprint.id
 
             trigger = actor.trigger_volume
             box = trigger.extent
