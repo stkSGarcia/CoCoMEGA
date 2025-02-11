@@ -20,6 +20,7 @@ from torchvision import transforms
 from leaderboard.autoagents import autonomous_agent
 
 from impl.utils.carla_utils import location_to_dict, get_direction
+from impl.utils.leaderboad_utils import estimate_other_actor_data
 from timm.models import create_model
 from team_code.utils import lidar_to_histogram_features, transform_2d_points
 from team_code.planner import RoutePlanner
@@ -600,6 +601,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             surface = self._hic.run_interface(tick_data)
             tick_data["surface"] = surface
 
+        tick_data["other_actors"] = estimate_other_actor_data(traffic_meta.reshape(20, 20, 7), compass=tick_data["compass"])
         tick_data["sim_data"] = {}
         tick_data["sim_data"]["other_actors"] = self.collect_actor_data()
 
@@ -627,7 +629,6 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             },
             "direction": get_direction(CarlaDataProvider._ego_vehicle_route),
         }
-
 
         if SAVE_PATH is not None:
             self.save(tick_data)
@@ -667,7 +668,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             vel = actor.get_velocity()
             data[_id]["vel"] = [vel.x, vel.y, vel.z]
             data[_id]["tpe"] = 0
-            data[_id]["blueprint"] = actor.blueprint.id
+            data[_id]["blueprint"] = actor.type_id
 
         walkers = self._world.get_actors().filter("*walker*")
         for actor in walkers:
@@ -684,7 +685,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             vel = actor.get_velocity()
             data[_id]["vel"] = [vel.x, vel.y, vel.z]
             data[_id]["tpe"] = 1
-            data[_id]["blueprint"] = actor.blueprint.id
+            data[_id]["blueprint"] = actor.type_id
 
         lights = self._world.get_actors().filter("*traffic_light*")
         for actor in lights:
@@ -702,7 +703,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             data[_id]["yellow"] = actor.get_yellow_time()
             data[_id]["red"] = actor.get_red_time()
             data[_id]["tpe"] = 2
-            data[_id]["blueprint"] = actor.blueprint.id
+            data[_id]["blueprint"] = actor.type_id
 
             trigger = actor.trigger_volume
             box = trigger.extent

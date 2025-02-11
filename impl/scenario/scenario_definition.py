@@ -233,7 +233,7 @@ class ScenarioDefinition:
         return trajectory_def
 
     @classmethod
-    def _build_trajectory(cls, trajectory_def):
+    def _build_trajectory(cls, trajectory_def, junction_distance_limit=20):
         trajectory = []
         location = carla.Location(x=trajectory_def["start"]["x"], y=trajectory_def["start"]["y"], z=0)
         waypoint = CarlaDataProvider.get_map().get_waypoint(location)
@@ -241,30 +241,45 @@ class ScenarioDefinition:
         trajectory.append(waypoint.transform)
 
         # Find the nearest junction
+        i = 0
+        no_junction = False
         while not waypoint.is_junction:
             waypoint = waypoint.next(1.0)[0]
-        trajectory.append(waypoint.transform)
+            i += 1
+            if i % 5 == 4:
+                trajectory.append(waypoint.transform)
+            if i >= junction_distance_limit:
+                no_junction = True
+                break
+        if no_junction:
+            if trajectory_def["direction"] is not None and trajectory_def["direction"] != 'forward':
+                raise InvalidScenarioDefinitionError(
+                    f"The trajectory direction is '{trajectory_def['direction']}' but no junction found!")
+            for i in range(10):
+                trajectory.append(waypoint.transform)
+                waypoint = waypoint.next(5.0)[0]
+        else:
+            trajectory.append(waypoint.transform)
+            if trajectory_def["direction"] is not None:
+                junction = waypoint.get_junction()
+                _, exit_wps = get_junction_topology(junction)
 
-        if trajectory_def["direction"] is not None:
-            junction = waypoint.get_junction()
-            _, exit_wps = get_junction_topology(junction)
+                # Filter waypoints for the target lane direction
+                direction_mapping = {
+                    'left': 'right',
+                    'right': 'left',
+                    'forward': 'ref',
+                }
+                target_exit_wps = filter_junction_wp_direction(waypoint, exit_wps,
+                                                               direction_mapping[trajectory_def["direction"]])
 
-            # Filter waypoints for the target lane direction
-            direction_mapping = {
-                'left': 'right',
-                'right': 'left',
-                'forward': 'ref',
-            }
-            target_exit_wps = filter_junction_wp_direction(waypoint, exit_wps,
-                                                           direction_mapping[trajectory_def["direction"]])
+                if not target_exit_wps:
+                    raise InvalidScenarioDefinitionError(f"No lane found in the '{trajectory_def['direction']}' direction!")
 
-            if not target_exit_wps:
-                raise InvalidScenarioDefinitionError(f"No lane found in the '{trajectory_def['direction']}' direction!")
-
-            target_wp = get_closest_wp(wp_list=target_exit_wps, reference_wp=waypoint)
-            for i in range(5):
-                trajectory.append(target_wp.transform)
-                target_wp = target_wp.next(10)[0]
+                target_wp = get_closest_wp(wp_list=target_exit_wps, reference_wp=waypoint)
+                for i in range(5):
+                    trajectory.append(target_wp.transform)
+                    target_wp = target_wp.next(5)[0]
 
         trajectory, gps_route, route = traj_interpolation([t.location for t in trajectory])
 
@@ -481,6 +496,14 @@ class Actor(ABC):
 
     def update_region(self):
         self.region = self._BOUNDARY.get_region(self.angle)
+
+    @classmethod
+    def get_actor_index(cls, actor_blueprint):
+        try:
+            return cls._BLUEPRINTS["model"].index(actor_blueprint)
+        except ValueError:
+            logger.warning(f"No blueprint index found for '{actor_blueprint}', defaulting to 0.")
+            return 0
 
     @classmethod
     def generate_random(cls, region: Boundary.Region = None, none_pb=None):

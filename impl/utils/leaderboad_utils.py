@@ -1,11 +1,13 @@
 import os
 import yaml
 import logging
+import math
+import numpy as np
 
 from impl.config import CONFIG
 from impl.scenario.scenario_definition import ScenarioDefinition, Vehicle, Walker, Static
 from impl.utils.carla_utils import traj_interpolation, location_to_dict, compass_to_yaw
-from impl.utils.math_utils import cartesian_to_polar, vector_norm
+from impl.utils.math_utils import cartesian_to_polar, vector_norm, polar_to_cartesian
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
@@ -63,11 +65,14 @@ routes[
 
 towned_routes = {}
 for route, scenario in routes.items():
-    town = route.split('/')[1].split('_')[1]
+    town = route.split("/")[1].split("_")[1]
+    town = route.split("/")[1].split("_")[1]
 
     if town not in towned_routes:
         towned_routes[town] = {}
     towned_routes[town][route] = scenario
+
+reweight_array = np.array([1.0, 3.5, 3.5, 2.0, 3.5, 2.0, 8.0])
 
 
 def get_enviroment_confs():
@@ -78,14 +83,14 @@ def get_enviroment_confs():
     for town in towns:
         for weather in weathers:
             for route, scenario in towned_routes[town].items():
-                route_type = route.split('_')[-1][:-4]
+                route_type = route.split("_")[-1][:-4]
                 if route_type not in route_types:
                     continue
                 conf = {
                     "town": town,
                     "weather": weather,
                     "route": route,
-                    "route_name": route.split('/')[1].split('.')[0],
+                    "route_name": route.split("/")[1].split(".")[0],
                     "scenario": scenario,
                 }
                 confs.append(conf)
@@ -99,7 +104,7 @@ def make_yamls():
         conf["weather"] = weather
         file_path = os.path.join(CONFIG["data_collection"]["yaml_root"], f"weather-{weather}.yaml")
         try:
-            with open(file_path, 'w') as file:
+            with open(file_path, "w") as file:
                 yaml.dump(conf, file, default_flow_style=False, sort_keys=True)
         except Exception as e:
             logger.error(f"An error occurred while saving the YAML file {file_path}")
@@ -120,19 +125,20 @@ def vectorize_runtime_data(rt_data):
     scenario_def.stop_sign_est = rt_data["traffic"]["stop_sign"]
     scenario_def.red_light_est = rt_data["traffic"]["red_light"]
 
-
     for _id, other_actor in rt_data["sim_data"]["other_actors"].items():
         relative_position = (
-            other_actor['loc'][0] - trajectory["start"]["x"], other_actor['loc'][1] - trajectory["start"]["y"])
+            other_actor["loc"][0] - trajectory["start"]["x"], other_actor["loc"][1] - trajectory["start"]["y"])
         radius, angle = cartesian_to_polar(*relative_position)
-        yaw = other_actor['ori']['yaw']
-        if other_actor['tpe'] == 0:
-            speed = vector_norm(other_actor['vel'])
-            scenario_def.vehicles.append(Vehicle(radius=radius, angle=angle, yaw=yaw, model=0, speed=speed))
-        if other_actor['tpe'] == 1:
-            speed = vector_norm(other_actor['vel'])
-            scenario_def.walkers.append(Walker(radius=radius, angle=angle, yaw=yaw, model=0, speed=speed))
-        if other_actor['tpe'] == 2:
+        yaw = other_actor["ori"]["yaw"]
+        if other_actor["tpe"] == 0:
+            speed = vector_norm(other_actor["vel"])
+            model = Vehicle.get_actor_index(other_actor["blueprint"])
+            scenario_def.vehicles.append(Vehicle(radius=radius, angle=angle, yaw=yaw, model=model, speed=speed))
+        if other_actor["tpe"] == 1:
+            speed = vector_norm(other_actor["vel"])
+            model = Walker.get_actor_index(other_actor["blueprint"])
+            scenario_def.walkers.append(Walker(radius=radius, angle=angle, yaw=yaw, model=model, speed=speed))
+        if other_actor["tpe"] == 2:
             scenario_def.statics.append(Static(radius=radius, angle=angle, yaw=yaw, model=0))
     return scenario_def
 
@@ -144,20 +150,90 @@ def create_dataset_index(dataset_root, weathers=None, towns=None):
         Args:
             dataset_root (str): Path to the root directory of the dataset.
         """
-    index_file_path = os.path.join(dataset_root, 'dataset_index.txt')
+    index_file_path = os.path.join(dataset_root, "dataset_index.txt")
 
-    with open(index_file_path, 'w') as index_file:
+    with open(index_file_path, "w") as index_file:
         for root, dirs, files in os.walk(dataset_root):
             # Filter for directories containing relevant data frames
-            if 'rgb_front' in dirs:
-                data_weather = int(os.path.basename(os.path.dirname(root)).split('-')[-1])
-                data_town = int(root.split('/')[-1].split('_')[1][4:])
+            if "rgb_front" in dirs:
+                data_weather = int(os.path.basename(os.path.dirname(root)).split("-")[-1])
+                data_town = int(root.split("/")[-1].split("_")[1][4:])
                 if (weathers and data_weather not in weathers) or (towns and data_town not in towns): continue
                 # Count the number of frames in the directory
-                rgb_dir_path = os.path.join(root, 'rgb_front')
+                rgb_dir_path = os.path.join(root, "rgb_front")
                 frame_count = len(
                     [file for file in os.listdir(rgb_dir_path) if os.path.isfile(os.path.join(rgb_dir_path, file))])
 
                 # Write the relative path and frame count to the index file
                 relative_path = os.path.relpath(root, dataset_root)
                 index_file.write(f"{relative_path} {frame_count}\n")
+
+
+def find_peak_box(data):
+    det_data = np.zeros((22, 22, 7))
+    det_data[1:21, 1:21] = data
+    det_data[19:21, 1:21, 0] -= 0.1
+    res = []
+    for i in range(1, 21):
+        for j in range(1, 21):
+            if det_data[i, j, 0] > 0.9 or (
+                    det_data[i, j, 0] > 0.4
+                    and det_data[i, j, 0] > det_data[i, j - 1, 0]
+                    and det_data[i, j, 0] > det_data[i, j + 1, 0]
+                    and det_data[i, j, 0] > det_data[i + 1, j + 1, 0]
+                    and det_data[i, j, 0] > det_data[i - 1, j + 1, 0]
+                    and det_data[i, j, 0] > det_data[i + 1, j - 1, 0]
+                    and det_data[i, j, 0] > det_data[i + 1, j + 1, 0]
+                    and det_data[i, j, 0] > det_data[i - 1, j, 0]
+                    and det_data[i, j, 0] > det_data[i + 1, j, 0]
+            ):
+                res.append((i - 1, j - 1))
+
+    # box_info = {"big": [], "medium": [], "small": [], "tiny": []}
+    box_info = []
+
+    for instance in res:
+        i, j = instance
+        box = np.array(det_data[i + 1, j + 1, 4:6])  # Extract width and height
+
+        if box[0] > 3.0:  # Trucks, large vehicles
+            box_info.append({"poi": (i, j), "box": box, "size": "big"})
+        elif box[0] > 1.8:  # Regular cars
+            box_info.append({"poi": (i, j), "box": box, "size": "medium"})
+        elif box[0] > 0.7:  # Bikes or motorcycles
+            box_info.append({"poi": (i, j), "box": box, "size": "small"})
+        else:  # Pedestrians
+            box_info.append({"poi": (i, j), "box": box, "size": "tiny"})
+
+    return box_info
+
+
+def estimate_other_actor_data(det_data, compass):
+    actor_data = []
+    det_data = det_data * reweight_array
+    box_info = find_peak_box(det_data)
+    ego_yaw = compass_to_yaw(compass)
+
+    for data in box_info:
+        i, j = data["poi"]
+        size = data["size"]
+
+        speed = max(4, det_data[i, j, 6]) if size == "tiny" else det_data[i, j, 6]
+
+        center_x, center_y = 17.5 - i, j - 9.5
+        radius, relative_angle = cartesian_to_polar(center_x, center_y)
+
+        angle = ego_yaw + relative_angle
+        relative_x, relative_y = polar_to_cartesian(radius, angle)
+
+        yaw = det_data[i, j, 3] * 180 - 90
+
+        actor_data.append({
+            "loc": {"radius": radius, "angle": ego_yaw + relative_angle, "rel_x": relative_x, "rel_y": relative_y},
+            "ori": {"yaw": yaw},
+            "box": data["box"],
+            "vel": speed,
+            "size": size,
+        })
+
+    return actor_data

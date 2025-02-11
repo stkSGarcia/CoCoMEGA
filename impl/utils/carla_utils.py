@@ -1,5 +1,6 @@
 import logging
 import math
+import numpy as np
 
 import carla
 from impl.config import CONFIG
@@ -119,6 +120,7 @@ def traj_interpolation(trajectory):
 
     return trajectory, gps_route, route
 
+
 def get_junction(location):
     waypoint = CarlaDataProvider.get_map().get_waypoint(location)
 
@@ -149,11 +151,13 @@ def transform_to_dict(transform):
         'yaw': transform.rotation.yaw,
     }
 
+
 def dict_to_transform(_dict):
     return carla.Transform(
         location=carla.Location(x=_dict["x"], y=_dict["y"], z=_dict["z"]),
         rotation=carla.Rotation(yaw=_dict["yaw"], pitch=0, roll=0)
     )
+
 
 def location_to_dict(location):
     return {
@@ -161,6 +165,8 @@ def location_to_dict(location):
         'y': location.y,
         'z': location.z,
     }
+
+
 def dict_to_location(_dict):
     return carla.Location(x=_dict["x"], y=_dict["y"], z=_dict["z"])
 
@@ -187,8 +193,15 @@ def load_world(town):
         world = CarlaDataProvider.get_client().load_world(town)
         CarlaDataProvider.set_world(world)
 
+
 def compass_to_yaw(compass):
-    pass
+    yaw = (compass * 180 / np.pi - 90)
+    if yaw > 180:
+        yaw = yaw - 360
+    elif yaw < -180:
+        yaw = compass + 360
+    return yaw
+
 
 def get_direction(trajectory):
     direction = "forward"
