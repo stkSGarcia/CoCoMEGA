@@ -4,6 +4,7 @@ import os
 import sys
 import pickle
 import traceback
+import shutil
 from concurrent.futures import ProcessPoolExecutor
 from copy import deepcopy
 import subprocess
@@ -142,7 +143,7 @@ def run_environment(conf):
     return process.returncode
 
 
-def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False):
+def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False, additional_config=None):
     """Run a scenario defined in ScenarioDefinition.
 
     @return: The simulation result and whether the scenario was actually executed.
@@ -166,6 +167,7 @@ def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False):
     setattr(config, "port", carla_port)
     setattr(config, "trafficManagerPort", tm_port)
     setattr(config, "gpu_device", gpu_device)
+    setattr(config, "additional_config", additional_config)
     logger.debug(f"Starting simulation, scenario id: {scenario.id_}, carla instance: {config.host}:{config.port}, "
                  f"traffic manager port: {config.trafficManagerPort} on cuda device {config.gpu_device}.")
     logger.debug(scenario)
@@ -209,11 +211,14 @@ def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False):
     return result, True
 
 
-def run_scenarios(scenarios, agent_name="v1", rerun=False):
+def run_scenarios(scenarios, agent_name="v1", rerun=False, additional_confs=None):
     """Run scenarios.
 
     @return: A list of simulation results and the number of simulations.
     """
+    if additional_confs is None:
+        additional_confs = itertools.repeat(None, len(scenarios))
+    assert len(additional_confs) == len(scenarios)
     if CONFIG["simulation"]["parallel"]:
         process_configs = Manager().Queue()
         for instance in CONFIG["simulation"]["instances"]:
@@ -226,36 +231,64 @@ def run_scenarios(scenarios, agent_name="v1", rerun=False):
         with ProcessPoolExecutor(max_workers=len(CONFIG["simulation"]["instances"]),
                                  initializer=_init_carla, initargs=(process_configs,)) as executor:
             results = executor.map(run_scenario, scenarios, itertools.repeat(agent_name, len(scenarios)),
-                                   itertools.repeat(rerun, len(scenarios)))
+                                   itertools.repeat(rerun, len(scenarios)), additional_confs)
     else:
         global carla_host, carla_port, tm_port, gpu_device
         instance = CONFIG["simulation"]["instances"][0]
         carla_host, carla_port, tm_port, gpu_device = (instance["host"], instance["port"],
                                                        instance["tm_port"], instance["gpu_device"])
         results = map(run_scenario, scenarios, itertools.repeat(agent_name, len(scenarios)),
-                      itertools.repeat(rerun, len(scenarios)))
+                      itertools.repeat(rerun, len(scenarios)), additional_confs)
 
     results, is_executed = zip(*results)
     return results, is_executed.count(True)
 
 
-def run_solutions(file: str, top: int = 1, verbose=True, agent_name="v1"):
+def run_solutions(file: str, top: int = -1, verbose=True, agent_name="v1", record_video=False):
     """Run scenarios from a solution file.
 
     @param file: The solution file.
-    @param top: Number of top scenarios to run.
+    @param top: Number of top scenarios to run (-1 for all scenarios).
     """
+    solution_name = file.split("/")[-1].split(".")[0]
     with open(file, "rb") as f:
         solutions = pickle.load(f)
+    if top == -1:
+        top = len(solutions)
     solutions = tools.selBest([ind for ind in solutions if ind.is_violated], top)
+    additional_confs = None
     for i, (source, perturbations) in enumerate(solutions):
+        if record_video:
+            solution_path = os.path.join(CONFIG["workspace"]["recordings"], f"{solution_name}-{i + 1}")
+            if already_recorded(solution_path):
+                logger.info(f"Solution {solution_name}-{i + 1} is already recorded, skipping...")
+                continue
+            elif os.path.exists(solution_path):
+                # print(f"shutil.rmtree({solution_path})")
+                shutil.rmtree(solution_path)
+            additional_confs = [
+                {"recording_save_path": os.path.join(solution_path, "source")},
+                {"recording_save_path": os.path.join(solution_path, "follow-up")},
+            ]
         source.id_ = f"top{i + 1}_source"
         follow_up = deepcopy(source)
         follow_up.id_ = f"top{i + 1}_follow-up"
         perturbations.perturb(follow_up)
+        logger.info(f"Running solution {solution_name}-{i + 1}...")
         if verbose:
-            run_process = Process(target=run_scenarios, args=([source, follow_up], agent_name, True))
+            run_process = Process(target=run_scenarios, args=([source, follow_up], agent_name, True, additional_confs))
         else:
-            run_process = Process(target=run_silently, args=(run_scenarios, [source, follow_up], agent_name, True))
+            run_process = Process(target=run_silently,
+                                  args=(run_scenarios, [source, follow_up], agent_name, True, additional_confs))
         run_process.start()
         run_process.join()
+
+
+def already_recorded(solution_path):
+    try:
+        if len(os.listdir(os.path.join(solution_path, "source"))) > 0 and len(
+                os.listdir(os.path.join(solution_path, "follow-up"))) > 0:
+            return True
+    except FileNotFoundError:
+        pass
+    return False

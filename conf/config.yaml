@@ -15,6 +15,7 @@ workspace:
   runtime_scenario: runtime_scenario
   train_data: train_data
   trained_models: trained_models
+  recordings: recordings
 
 interfuser:
   repo: "../InterFuser"

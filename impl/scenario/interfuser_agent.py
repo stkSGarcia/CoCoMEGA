@@ -6,6 +6,7 @@ import time
 import pickle
 import imp
 import uuid
+import logging
 import cv2
 import carla
 
@@ -33,7 +34,9 @@ import yaml
 from impl.config import CONFIG
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
-display_agent = CONFIG['simulation']['display_agent']
+logger = logging.getLogger(__name__)
+
+display_agent = CONFIG["simulation"]["display_agent"]
 
 try:
     import pygame
@@ -166,17 +169,53 @@ def create_carla_rgb_transform(
     return transforms.Compose(tfl)
 
 
+class VideoRecorder:
+    def __init__(self, save_path):
+
+        self.save_path = save_path
+        self.video_writer = None
+        self.frame_width = 1200
+        self.frame_height = 600
+        self.fps = 30
+        self.is_recording = False
+
+        os.makedirs(self.save_path, exist_ok=True)
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        video_filename = os.path.join(self.save_path, f"interfuser_run_{timestamp}.mp4")
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        self.video_writer = cv2.VideoWriter(video_filename, fourcc, self.fps, (self.frame_width, self.frame_height))
+        self.is_recording = True
+        logger.info(f"Recording video to: {video_filename}")
+
+    def write_frame(self, frame):
+        if self.is_recording and self.video_writer is not None:
+            self.video_writer.write(frame)
+
+    def stop_recording(self):
+        if self.is_recording:
+            self.video_writer.release()
+            logger.info("Video recording stopped and saved.")
+            self.is_recording = False
+
+
 class InterfuserAgent(autonomous_agent.AutonomousAgent):
 
-    def __init__(self, path_to_conf_file):
+    def __init__(self, path_to_conf_file, additional_config):
+        self.video_recorder = None
+        self.additional_config = additional_config
         super().__init__(path_to_conf_file)
         self._vehicle = None
         self._world = None
+
 
     def setup(self, path_to_conf_file):
         self.sensor_interface._queue_timeout = 100
         if display_agent:
             self._hic = DisplayInterface()
+
+        if self.additional_config is not None and "recording_save_path" in self.additional_config:
+            self.video_recorder = VideoRecorder(self.additional_config["recording_save_path"])
+
         self.lidar_processed = list()
         self.track = autonomous_agent.Track.SENSORS
         self.step = -1
@@ -600,8 +639,13 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         if display_agent:
             surface = self._hic.run_interface(tick_data)
             tick_data["surface"] = surface
+            if self.video_recorder:
+                self.video_recorder.write_frame(surface)
+            else:
+                raise RuntimeError("Unable to record video while display_agent=false")
 
-        tick_data["other_actors"] = estimate_other_actor_data(traffic_meta.reshape(20, 20, 7), compass=tick_data["compass"])
+        tick_data["other_actors"] = estimate_other_actor_data(traffic_meta.reshape(20, 20, 7),
+                                                              compass=tick_data["compass"])
         tick_data["sim_data"] = {}
         tick_data["sim_data"]["other_actors"] = self.collect_actor_data()
 
@@ -630,8 +674,8 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             "direction": get_direction(CarlaDataProvider._ego_vehicle_route),
         }
 
-        if SAVE_PATH is not None:
-            self.save(tick_data)
+        # if SAVE_PATH is not None:
+        #     self.save(tick_data)
 
         return control
 
@@ -646,6 +690,8 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         return
 
     def destroy(self):
+        if self.video_recorder:
+            self.video_recorder.stop_recording()
         if self.ensemble:
             del self.nets
         else:
