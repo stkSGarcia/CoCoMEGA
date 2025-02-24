@@ -2,6 +2,7 @@ import logging
 import math
 import random
 from abc import ABC
+from collections.abc import Sequence
 from enum import Enum, auto
 from functools import partial
 from typing import List
@@ -25,7 +26,7 @@ class Operation(Enum):
 
 
 class Perturbation:
-    def __init__(self, category: str, boundary, operation: Operation, value, mark, enabled=True):
+    def __init__(self, category, boundary, operation: Operation, value, mark, enabled=True):
         self.category = category
         self.boundary = boundary
         self.operation = operation
@@ -42,12 +43,19 @@ class Perturbation:
             elif self.operation == Operation.REMOVE:
                 scenario.remove_actor(self.category, self.value)
             elif self.operation == Operation.REPLACE:
-                scenario.replace_actor(self.category, self.value[0], self.value[1], mark=self.mark,
+                scenario.replace_actor(self.category, self.boundary, self.value, mark=self.mark,
                                        tilt_dir=scenario.trajectory.get("direction", None))
             else:
                 raise ValueError(f"Unsupported operation: {self.operation}.")
         elif self.category in ScenarioDefinition.ATTRIBUTES:
             scenario.update_attribute(self.category, self.value)
+        elif isinstance(self.category, Sequence):
+            if self.category[0] == "ego":
+                scenario.update_ego(self.category[1], self.value)
+            elif self.category[0] in ScenarioDefinition.DYNAMIC:
+                scenario.update_actor(self.category[0], self.category[1], self.value)
+            else:
+                raise ValueError(f"Unsupported category: {self.category}.")
         else:
             raise ValueError(f"Unsupported category: {self.category}.")
 
@@ -56,15 +64,23 @@ class Perturbation:
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         if self.enabled == other.enabled and self.category == other.category and self.operation == other.operation:
             if self.category in ScenarioDefinition.DYNAMIC:
-                if self.operation == Operation.ADD:
+                if self.operation == Operation.ADD or self.operation == Operation.REPLACE:
                     return self.value.dist(other.value)
                 if self.operation == Operation.REMOVE:
                     return 0 if self.value == other.value else pow(scaling, 2)
-                elif self.operation == Operation.REPLACE:
-                    return self.value[1].dist(other.value[1])
             elif self.category in ScenarioDefinition.ATTRIBUTES:
-                return 0 if self.value == other.value else pow(scaling, 2)
+                return self._dist_values(self.value, other.value, *self.boundary[self.category], scaling)
+            elif isinstance(self.category, Sequence):
+                return self._dist_values(self.value, other.value, *self.boundary[self.category[1]], scaling)
         return pow(1.0, 2)
+
+    @staticmethod
+    def _dist_values(this, that, lower, upper, scaling):
+        if isinstance(lower, float):
+            return pow(abs(this - that) / (upper - lower), 2) if upper != lower else 0
+        elif isinstance(lower, int):
+            # TODO: within the same category.
+            return pow(scaling * (0.0 if this == that else 1.0), 2)
 
     def mate(self, other, cxpb=CONFIG["perturbation"]["cxpb"]):
         if not isinstance(other, self.__class__):
@@ -73,11 +89,10 @@ class Perturbation:
         if random.random() < cxpb:
             self.enabled, other.enabled = other.enabled, self.enabled
         if self.category in ScenarioDefinition.DYNAMIC:
-            if self.operation == Operation.ADD:
+            if self.operation == Operation.ADD or self.operation == Operation.REPLACE:
                 self.value.mate(other.value, cxpb=cxpb)
-            elif self.operation == Operation.REPLACE:
-                self.value[1].mate(other.value[1], cxpb=cxpb)
-        elif self.category in ScenarioDefinition.ATTRIBUTES:
+        elif (self.category in ScenarioDefinition.ATTRIBUTES or
+              (isinstance(self.category, Sequence)) and self.category[0] in ScenarioDefinition.DYNAMIC + ["ego"]):
             if random.random() < cxpb:
                 self.value, other.value = other.value, self.value
         else:
@@ -89,13 +104,14 @@ class Perturbation:
         if random.random() < mutpb:
             self.enabled = not self.enabled
         if self.category in ScenarioDefinition.DYNAMIC:
-            if self.operation == Operation.ADD:
+            if self.operation == Operation.ADD or self.operation == Operation.REPLACE:
                 self.value.mutate(mutpb=mutpb, eta=eta, std=std)
-            elif self.operation == Operation.REPLACE:
-                self.value[1].mutate(mutpb=mutpb, eta=eta, std=std)
         elif self.category in ScenarioDefinition.ATTRIBUTES:
             if random.random() < mutpb:
                 self.value = self.boundary.random(self.category)
+        elif isinstance(self.category, Sequence) and self.category[0] in ScenarioDefinition.DYNAMIC + ["ego"]:
+            if random.random() < mutpb:
+                self.value = self.boundary.random(self.category[1])
         else:
             raise ValueError(f"Unsupported category: {self.category}.")
 
@@ -150,7 +166,7 @@ class Perturbations(list):
 
 
 class PerturbationFactory:
-    def __init__(self, category: str, boundary, operation: Operation = Operation.REPLACE, mark=False):
+    def __init__(self, category, boundary, operation: Operation = Operation.REPLACE, mark=False):
         self.category = category
         self.boundary = boundary
         self.operation = operation
@@ -158,16 +174,16 @@ class PerturbationFactory:
 
         if category in ScenarioDefinition.DYNAMIC:
             cls = getattr(scenario_definition, category.capitalize())
-            if operation == Operation.ADD:
+            if operation == Operation.ADD or operation == Operation.REPLACE:
                 self._spawn_func = lambda: cls.generate_random(region=boundary)
             elif operation == Operation.REMOVE:
                 self._spawn_func = lambda: boundary
-            elif operation == Operation.REPLACE:
-                self._spawn_func = lambda: (boundary, cls.generate_random(region=boundary))
             else:
                 raise ValueError(f"Unsupported perturbation operation: {operation}.")
         elif category in ScenarioDefinition.ATTRIBUTES:
             self._spawn_func = lambda: boundary.random(category)
+        elif isinstance(category, Sequence):
+            self._spawn_func = lambda: boundary.random(category[1])
         else:
             raise ValueError(f"Unsupported perturbation category: {category}.")
 
@@ -336,7 +352,7 @@ class MR:
 
 class MRSet:
     def __init__(self, mrs: List[MR]):
-        # Check relations
+        # Check relations.
         assert mrs
         assert all(mr.relation == mrs[0].relation for mr in mrs)
 

@@ -284,11 +284,27 @@ class ScenarioDefinition:
     def update_attribute(self, category: str, value):
         setattr(self, category, value)
 
+    def update_ego(self, category: str, value):
+        if category == "position":
+            pass  # TODO
+        else:
+            self.ego_vehicle.update_attribute(category, value)
+
+    def update_actor(self, category: str, attribute: str, value):
+        actors = getattr(self, f"{category}s")
+        is_changed = False
+        for actor in actors:
+            if actor.mark:
+                is_changed = True
+                actor.update_attribute(attribute, value)
+        if not is_changed:
+            logger.warning(f"No marked actor in {category}.")
+
     @staticmethod
     def _random_pick_actor(actors, region: Boundary.Region = None):
         index, count = -1, 0
         for i, actor in enumerate(actors):
-            if region is None or actor.region == region:
+            if not actor.mark and (region is None or actor.region == region):
                 count += 1
                 if random.randint(1, count) == 1:
                     index = i
@@ -475,6 +491,12 @@ class Actor(ABC):
         coef = -1 if tilt_dir == "left" else (1 if tilt_dir == "right" else 0)
         self.angle += coef * CONFIG["boundary"]["tilt_degrees"]
 
+    def update_attribute(self, category: str, value):
+        old_value = getattr(self, category)
+        if value == old_value:
+            logger.warning(f"The new {category} value is identical to the original.")
+        setattr(self, category, value)
+
     def get_config(self):
         return {
             "role_name": f"{self.region.name.lower() if self.region else 'others'}{'-mark' if self.mark else ''}",
@@ -521,8 +543,8 @@ class Vehicle(Actor):
         vehicle = super().generate_random(region, none_pb)
         if "base_model" in filters:
             if isinstance(filters["base_model"], list):
-                weights = [cls._BOUNDARY["base_model"][bm][1] - cls._BOUNDARY["base_model"][bm][0] + 1 for bm in
-                           filters["base_model"]]
+                weights = [cls._BOUNDARY["base_model"][bm][1] - cls._BOUNDARY["base_model"][bm][0] + 1
+                           for bm in filters["base_model"]]
                 base_model = random.choices(filters["base_model"], weights=weights, k=1)[0]
             else:
                 base_model = filters["base_model"]
