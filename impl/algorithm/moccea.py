@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class MOCCEA(BaseAlgorithm):
+    """Multi-Objective Cooperative Co-Evolutionary Algorithm."""
     _name = "MOCCEA"
 
     def solve(self, resume=False):
@@ -85,10 +86,10 @@ class MOCCEA(BaseAlgorithm):
     def _evaluate(self, pop_scenario, pop_perturbation, evaluated_solutions):
         """Form complete solutions and evaluate their joint fitness as well as the individual fitness values.
 
-        @param pop_scenario: The population of scenarios.
-        @param pop_perturbation: The population of perturbations.
-        @param evaluated_solutions: The evaluated complete solutions.
-        @return: An archived complete solutions and the number of simulations.
+        :param pop_scenario: The population of scenarios.
+        :param pop_perturbation: The population of perturbations.
+        :param evaluated_solutions: The evaluated complete solutions.
+        :return: An archived complete solutions and the number of simulations.
         """
         # Generate complete solutions from archives.
         complete_solutions = [self.toolbox.collaborate(self.toolbox.clone(scenario), self.toolbox.clone(perturbation))
@@ -121,9 +122,9 @@ class MOCCEA(BaseAlgorithm):
     def _breed(self, population, size):
         """Perform selection, crossover and mutation on individuals.
 
-        @param population: The individuals to be bred.
-        @param size: The size of the offsprings.
-        @return: A list of offsprings.
+        :param population: The individuals to be bred.
+        :param size: The size of the offsprings.
+        :return: A list of offsprings.
         """
         assert len(population) > 0
         if size % 2 != 0:
@@ -144,7 +145,7 @@ class MOCCEA(BaseAlgorithm):
     @staticmethod
     def _tournament_DCD(individuals, k):
         """Tournament selection based on dominance (D) between two individuals, if
-        the two individuals do not interdominate the selection is made based on
+        the two individuals do not inter-dominate the selection is made based on
         crowding distance (CD). This selection requires the individuals to have a
         :attr:`crowding_dist` attribute.
 

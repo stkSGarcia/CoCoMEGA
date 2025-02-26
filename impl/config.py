@@ -1,7 +1,7 @@
-import collections
 import logging.config
 import os
 import sys
+from collections.abc import Mapping
 
 import yaml
 
@@ -9,23 +9,23 @@ logger = logging.getLogger(__name__)
 CONFIG = {}
 
 
-def load_yaml(path):
+def _load_yaml(path):
     with open(path, "r") as f:
         return yaml.safe_load(f.read())
 
 
-def merge_dict(default: dict, user: dict):
+def _merge_dict(default: dict, user: dict):
     for k, v in user.items():
         if k not in default or not isinstance(default[k], dict):
             default[k] = v
         else:
-            default[k] = merge_dict(default[k], v)
+            default[k] = _merge_dict(default[k], v)
     return default
 
 
 def _update_log_dir(dictionary):
     for k, v in dictionary.items():
-        if isinstance(v, collections.abc.Mapping):
+        if isinstance(v, Mapping):
             _update_log_dir(v)
         elif k == "filename":
             dictionary[k] = os.path.join(CONFIG["workspace"]["log"], dictionary[k])
@@ -41,11 +41,11 @@ def init_config():
     global CONFIG
     default_config_path = os.path.join(default_config_base, config_name)
     if os.path.isfile(default_config_path):
-        default_config = load_yaml(default_config_path)
+        default_config = _load_yaml(default_config_path)
     else:
         raise ValueError("Cannot find default configuration file.")
-    custom_config = load_yaml(config_name) if os.path.isfile(config_name) else {}
-    CONFIG = merge_dict(default_config, custom_config)
+    custom_config = _load_yaml(config_name) if os.path.isfile(config_name) else {}
+    CONFIG = _merge_dict(default_config, custom_config)
 
     # Create directories.
     CONFIG["workspace"]["root"] = os.path.join(os.path.dirname(os.path.dirname(__file__)), CONFIG["workspace"]["root"])
@@ -57,9 +57,9 @@ def init_config():
 
     # Log configurations.
     default_log_config_path = os.path.join(default_config_base, log_config_name)
-    default_log_config = load_yaml(default_log_config_path) if os.path.isfile(default_log_config_path) else {}
-    custom_log_config = load_yaml(log_config_name) if os.path.isfile(log_config_name) else {}
-    log_config = merge_dict(default_log_config, custom_log_config)
+    default_log_config = _load_yaml(default_log_config_path) if os.path.isfile(default_log_config_path) else {}
+    custom_log_config = _load_yaml(log_config_name) if os.path.isfile(log_config_name) else {}
+    log_config = _merge_dict(default_log_config, custom_log_config)
     if log_config:
         _update_log_dir(log_config)
         logging.config.dictConfig(log_config)
