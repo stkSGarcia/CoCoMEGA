@@ -1,6 +1,7 @@
 import logging
 import math
 import random
+import sys
 import uuid
 from abc import ABC
 from copy import deepcopy
@@ -189,6 +190,17 @@ class ScenarioDefinition:
             return cls.generate_leaderboard_scenario(scenario_type="random")
         else:
             return cls.generate_random()
+
+    @classmethod
+    def generate_random_with_marked_actors(cls):
+        scenario = cls.generate_random()
+        category = random.choice(("vehicle", "walker"))
+        actors = getattr(scenario, f"{category}s")
+        actor_cls = getattr(sys.modules[__name__], category.capitalize())
+        marked_actor = actor_cls.generate_random(region=Boundary.Region.FOCUS)
+        marked_actor.mark = True
+        actors.append(marked_actor)
+        return scenario
 
     @classmethod
     def _generate_empty_scenario(cls):
@@ -428,7 +440,7 @@ class ScenarioDefinition:
         return (f"Scenario(id={self.id_}, "
                 f"town={self.town}, "
                 f"ego_vehicle={self.ego_vehicle}, "
-                f"trajectory={self.trajectory}, "
+                # f"trajectory={self.trajectory}, "
                 f"vehicles={self.vehicles}, "
                 f"walkers={self.walkers}, "
                 f"statics={self.statics}, "

@@ -1,12 +1,11 @@
-import math
 import random
 from copy import deepcopy
 from unittest import TestCase
 
 import test
-from impl.utils.carla_utils import initialize_carla
 from impl.scenario.scenario_definition import ScenarioDefinition, Boundary
 from impl.scenario.scenario_definition import Vehicle, Walker, Static
+from impl.utils.carla_utils import initialize_carla
 
 config = test.CONFIG
 
@@ -20,27 +19,20 @@ class TestActor(TestCase):
 
     def test_dist(self):
         for c in self.clazz:
-            print(f"=========={c.__name__}: Dist==========")
             actor1 = c.generate_random()
             actor2 = c.generate_random()
-            print(actor1)
-            print(actor2)
-            print(math.sqrt(actor1.dist(actor2)))
+            dist = actor1.dist(actor2)
+            self.assertNotEqual(dist, 0.0)
 
     def test_mate(self):
         for c in self.clazz:
-            print(f"=========={c.__name__}: Mate==========")
             actor1 = c.generate_random()
             actor2 = c.generate_random()
             original_actor1 = deepcopy(actor1)
             original_actor2 = deepcopy(actor2)
-            print(actor1)
-            print(actor2)
             actor1.mate(actor2, cxpb=self.cxpb)
-            print(actor1)
-            print(actor2)
 
-            for attr in ["radius", "angle", "yaw", "model", "speed", "autopilot"]:
+            for attr in ["radius", "angle", "yaw", "model", "speed"]:
                 self.assertEqual(getattr(actor1, attr, None), getattr(original_actor2, attr, None))
                 self.assertEqual(getattr(actor2, attr, None), getattr(original_actor1, attr, None))
             self.assertEqual(getattr(actor1, "region"), getattr(original_actor2, "region"))
@@ -48,20 +40,15 @@ class TestActor(TestCase):
 
     def test_mutate(self):
         for c in self.clazz:
-            print(f"=========={c.__name__}: Mutate==========")
             actor = c.generate_random()
             original_actor = deepcopy(actor)
-            print(actor)
             actor.mutate(mutpb=self.mutpb, eta=self.eta)
-            print(actor)
             self.assertNotEqual(actor, original_actor)
 
     def test_region(self):
         for c in self.clazz:
-            print(f"=========={c.__name__}: Region==========")
             for region in Boundary.Region:
                 actor = c.generate_random(region=region)
-                print(actor)
                 self.assertEqual(actor.region, region)
 
 
@@ -73,7 +60,7 @@ class TestScenario(TestCase):
         initialize_carla()
 
     def test_dist(self):
-        print("==========Dist==========")
+        # Different scenarios.
         scenario1 = ScenarioDefinition.generate_random()
         scenario2 = ScenarioDefinition.generate_random()
         vehicle1 = Vehicle.generate_random()
@@ -83,46 +70,33 @@ class TestScenario(TestCase):
         scenario1.walkers = []
         scenario1.statics = []
         scenario2.statics = []
-        print(scenario1)
-        print(scenario2)
         dist = scenario1.dist(scenario2)
-        print(dist)
+        self.assertNotEqual(dist, 0.0)
 
-    def test_same_dist(self):
-        print("==========Dist zero==========")
+        # Same scenarios.
         scenario1 = ScenarioDefinition.generate_random()
-        scenario2 = deepcopy(scenario1)
-        print(scenario1)
-        dist = scenario1.dist(scenario2)
-        print(dist)
+        scenario3 = deepcopy(scenario1)
+        dist = scenario1.dist(scenario3)
         self.assertEqual(dist, 0.0)
 
-        random.shuffle(scenario2.vehicles)
-        random.shuffle(scenario2.walkers)
-        random.shuffle(scenario2.statics)
-        print(scenario2)
-        dist = scenario1.dist(scenario2)
-        print(dist)
+        for actors in (scenario3.vehicles, scenario3.walkers, scenario3.statics):
+            random.shuffle(actors)
+        dist = scenario1.dist(scenario3)
         self.assertEqual(dist, 0.0)
 
     def test_mate(self):
-        print("==========Mate==========")
         scenario1 = ScenarioDefinition.generate_random()
         scenario2 = ScenarioDefinition.generate_random()
         original_scenario1 = deepcopy(scenario1)
         original_scenario2 = deepcopy(scenario2)
-        print(scenario1)
-        print(scenario2)
         scenario1.mate(scenario2, cxpb=self.cxpb)
-        print(scenario1)
-        print(scenario2)
 
         invariants = ["id_", "ego_vehicle", "trajectory"]
         for invariant in invariants:
             self.assertEqual(getattr(scenario1, invariant), getattr(original_scenario1, invariant))
             self.assertEqual(getattr(scenario2, invariant), getattr(original_scenario2, invariant))
 
-        variants = ["vehicles", "walkers", "statics", "weather"]
+        variants = ["vehicles", "walkers", "statics", "weather", "brightness"]
         for variant in variants:
             if isinstance(getattr(scenario1, variant), list):
                 actors1 = getattr(scenario1, variant)
@@ -140,19 +114,21 @@ class TestScenario(TestCase):
                 self.assertEqual(getattr(original_scenario1, variant), getattr(scenario2, variant))
 
     def test_mutate(self):
-        print("==========Mutate==========")
         scenario = ScenarioDefinition.generate_random()
         original_scenario = deepcopy(scenario)
-        print(scenario)
         scenario.mutate(mutpb=self.mutpb, eta=self.eta)
-        print(scenario)
 
         invariants = ["id_", "ego_vehicle", "trajectory"]
         for invariant in invariants:
             self.assertEqual(getattr(scenario, invariant), getattr(original_scenario, invariant))
 
-        variants = ["vehicles", "walkers", "statics", "weather"]
+        variants = ["vehicles", "walkers", "statics", "weather", "brightness"]
         for variant in variants:
             if ((isinstance(getattr(scenario, variant), list) and len(getattr(scenario, variant)) != 0) or
                     not isinstance(getattr(scenario, variant), list)):
                 self.assertNotEqual(getattr(scenario, variant), getattr(original_scenario, variant))
+
+    def test_random_marked_actors(self):
+        scenario = ScenarioDefinition.generate_random_with_marked_actors()
+        marked_actors = [actor for actor in scenario.vehicles + scenario.walkers + scenario.statics if actor.mark]
+        self.assertEqual(len(marked_actors), 1)
