@@ -298,9 +298,33 @@ class ScenarioDefinition:
 
     def update_ego(self, category: str, value):
         if category == "position":
-            pass  # TODO
+            original = self.get_trigger_position()
+            x, y = self._next_waypoint(original["x"], original["y"], value)
+            if x is not None and y is not None:
+                try:
+                    (self.trajectory["trajectory"],
+                     self.trajectory["gps_route"],
+                     self.trajectory["route"]) = self._build_trajectory({
+                        "start": {"x": x, "y": y},
+                        "direction": self.trajectory["direction"]}
+                    )
+                    self.trajectory["start"]["x"], self.trajectory["start"]["y"] = x, y
+                except InvalidScenarioDefinitionError:
+                    logger.warning(f"Unable to change the starting position.")
+            else:
+                logger.warning(f"Unable to change the starting position.")
         else:
             self.ego_vehicle.update_attribute(category, value)
+
+    @staticmethod
+    def _next_waypoint(x, y, interval):
+        waypoint = CarlaDataProvider.get_map().get_waypoint(carla.Location(x=x, y=y, z=0))
+        new_waypoints = waypoint.next(interval)
+        if len(new_waypoints) > 0:
+            new_location = new_waypoints[0].transform.location
+            return new_location.x, new_location.y
+        else:
+            return None, None
 
     def update_actor(self, category: str, attribute: str, value):
         actors = getattr(self, f"{category}s")
@@ -440,7 +464,7 @@ class ScenarioDefinition:
         return (f"Scenario(id={self.id_}, "
                 f"town={self.town}, "
                 f"ego_vehicle={self.ego_vehicle}, "
-                # f"trajectory={self.trajectory}, "
+                f"trajectory={self.trajectory}, "
                 f"vehicles={self.vehicles}, "
                 f"walkers={self.walkers}, "
                 f"statics={self.statics}, "

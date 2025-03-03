@@ -65,16 +65,20 @@ class TestMR(TestCase):
         for category in ("speed", "model", "position"):
             scenario = ScenarioDefinition.generate_random()
             original_scenario = deepcopy(scenario)
-            original_ego = deepcopy(scenario.ego_vehicle)
+            original = deepcopy(scenario.trajectory if category == "position" else scenario.ego_vehicle)
             perturbation = PerturbationFactory(("ego", category), Boundary({
                 "speed": [0.0, 35.0],
                 "model": [0, 22],
-                "position": [10, 30],
+                "position": [100, 1000],
             })).spawn()
             perturbation.perturb(scenario)
             self.assertNotEqual(scenario, original_scenario)
-            scenario.ego_vehicle = original_ego
-            self.assertEqual(scenario, original_scenario)
+            if category == "position":
+                scenario.trajectory = original
+                self.assertEqual(scenario, original_scenario)
+            else:
+                scenario.ego_vehicle = original
+                self.assertEqual(scenario, original_scenario)
 
     def test_change_actor_attribute(self):
         for category in ("speed", "model"):

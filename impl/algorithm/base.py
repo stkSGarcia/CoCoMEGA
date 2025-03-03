@@ -12,7 +12,6 @@ from deap import base, creator, tools
 from scipy.spatial.distance import pdist, squareform
 
 from impl.config import CONFIG
-from impl.utils.visualization import Visualizer
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +114,6 @@ class BaseAlgorithm:
         statistics_path = f"statistics-{suffix}.pickle"
         with open(os.path.join(CONFIG["workspace"]["solution"], statistics_path), "wb") as f:
             pickle.dump(self.logbook, f)
-        Visualizer.visualize_in_one(self.logbook, verbose=True)
 
     def fitness_sharing(self, population, punishment=1.0, scaling=1.0):
         """Adjust the fitness using fitness sharing.

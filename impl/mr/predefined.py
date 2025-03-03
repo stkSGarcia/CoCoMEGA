@@ -9,7 +9,7 @@ steer_keep = Invariance("steer", threshold=0.1, percentage=False)
 
 ego_speed = PerturbationFactory(("ego", "speed"), Boundary({"speed": [0.0, 35.0]}))
 ego_model = PerturbationFactory(("ego", "model"), Boundary({"model": [0, 22]}))
-ego_position = PerturbationFactory(("ego", "position"), Boundary({"position": [10, 30]}))
+ego_position = PerturbationFactory(("ego", "position"), Boundary({"position": [100, 1000]}))
 
 vehicle_add_left = PerturbationFactory("vehicle", Boundary.Region.LEFT, Operation.ADD, mark=True)
 vehicle_add_focus = PerturbationFactory("vehicle", Boundary.Region.FOCUS, Operation.ADD, mark=True)

@@ -1,5 +1,6 @@
 import importlib
 import math
+from collections.abc import Sequence
 
 from impl.config import CONFIG
 
@@ -79,7 +80,8 @@ def trajectory_score(pert, pop_scen):
     total_score = 0
     for p_element in pert:
         module = importlib.import_module("impl.scenario.scenario_definition")
-        if p_element.category in module.ScenarioDefinition.ATTRIBUTES: continue
+        if (p_element.category in module.ScenarioDefinition.ATTRIBUTES or
+                isinstance(p_element.category, Sequence)): continue
         for scenario in pop_scen:
             pert_route = scenario.build_actor_trajectory(p_element.value)
             total_score += single_trajectory_score([t[0] for t in scenario.trajectory["route"]], pert_route)
