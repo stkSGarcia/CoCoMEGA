@@ -122,15 +122,24 @@ def compare_scenarios(scenario_choice, existent_scenario):
 
 
 def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot=False,
-                      random_location=False, color=None, actor_category="car", speed=10):
+                      random_location=False, color=None, actor_category="car", speed=0):
     """
     This method tries to create a new actor, returning it if successful (raises InvalidScenarioConfError otherwise).
     """
-    extra_height = 0.0
+    spawn_point = carla.Transform(anchor.transform(spawn_point.location), spawn_point.rotation) \
+        if anchor else carla.Transform(spawn_point.location, spawn_point.rotation)
+
+    initial_spawn_location = carla.Location(
+        x=spawn_point.location.x,
+        y=spawn_point.location.y,
+        z=spawn_point.location.z,
+    )
     if model.startswith('static'):
         wp = CarlaDataProvider.get_map().get_waypoint(spawn_point.location)
         if wp is not None:
-            extra_height = wp.transform.location.z
+            initial_spawn_location.z = wp.transform.location.z
+
+    extra_height = 0.0
     while True:
         try:
             blueprint = CarlaDataProvider.create_blueprint(model, rolename, color, actor_category)
@@ -144,13 +153,11 @@ def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot
             else:
                 # Incrementally lift the actor to avoid collisions with ground when spawning the actor
                 # DO NOT USE spawn_point directly, as this will modify spawn_point permanently
-                spawn_location = carla.Location(
-                    x=spawn_point.location.x,
-                    y=spawn_point.location.y,
-                    z=spawn_point.location.z + extra_height,
-                )
-                _spawn_point = carla.Transform(anchor.transform(spawn_location), spawn_point.rotation) \
-                    if anchor else carla.Transform(spawn_location, spawn_point.rotation)
+                _spawn_point = carla.Transform(carla.Location(
+                    x=initial_spawn_location.x,
+                    y=initial_spawn_location.y,
+                    z=initial_spawn_location.z + extra_height,
+                ), spawn_point.rotation)
                 actor = CarlaDataProvider._world.spawn_actor(blueprint, _spawn_point)
 
             # wait for the actor to be spawned properly before we do anything
@@ -158,6 +165,13 @@ def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot
                 CarlaDataProvider._world.tick()
             else:
                 CarlaDataProvider._world.wait_for_tick()
+
+            if speed is not None and speed > 0:
+                forward_vec = actor.get_transform().rotation.get_forward_vector()
+                velocity_vec = carla.Vector3D(forward_vec.x * speed,
+                                              forward_vec.y * speed,
+                                              forward_vec.z * speed)
+                actor.set_target_velocity(velocity_vec)
 
             if CONFIG["simulation"]["autopilot"] and autopilot and isinstance(actor, carla.Vehicle):
                 actor.set_autopilot(autopilot, CarlaDataProvider._traffic_manager_port)
@@ -173,7 +187,7 @@ def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot
             CarlaDataProvider.register_actor(actor)
             return actor
         except Exception as e:
-            if extra_height > 0.4:
+            if extra_height > 0.5:
                 logger.error(f"Error has occurred while trying to spawn actor {model} on location {spawn_point}: {e}")
                 raise InvalidScenarioDefinitionError(
                     f"An error has occurred while trying to spawn actor {model} on location {spawn_point}: {e}"
@@ -243,6 +257,7 @@ class RouteScenario(BasicScenario):
                     actor_category=actor_conf.category,
                     speed=actor_conf.speed,
                 )
+
                 self.other_actors.append(new_actor)
 
     def _update_route(self):
@@ -267,7 +282,7 @@ class RouteScenario(BasicScenario):
         # elevate_transform.location.z += 0.5
 
         ego_vehicle = request_new_actor(
-            model='vehicle.lincoln.mkz2017',
+            model=self.scenario_definition.ego_vehicle.get_config()["model"],
             spawn_point=self.route[0][0],
             anchor=None,
             rolename='hero',
@@ -275,6 +290,7 @@ class RouteScenario(BasicScenario):
             random_location=False,
             color=None,
             actor_category="car",
+            speed=self.scenario_definition.ego_vehicle.speed,
         )
 
         spectator = CarlaDataProvider.get_world().get_spectator()
@@ -438,7 +454,7 @@ class RouteScenario(BasicScenario):
         scenario_config.other_actors = list_of_actor_conf_instances
         scenario_config.trigger_points = [egoactor_trigger_position]
         scenario_config.name = 'Scenariotest'
-        scenario_config.ego_vehicles = [ActorConfigurationData('vehicle.lincoln.mkz2017',
+        scenario_config.ego_vehicles = [ActorConfigurationData(scenario_def.ego_vehicle.get_config()["model"],
                                                                ego_vehicle.get_transform(),
                                                                'hero')]
         scenario_config.agent = agent_instance
@@ -474,8 +490,9 @@ class RouteScenario(BasicScenario):
                 #     behavior.add_child(ChangeAutoPilot(other_actor, activate=True,
                 #                                        parameters={"max_speed": actor_definitions[i]["speed"]}))
                 # else:
-                behavior.add_child(AccelerateToVelocity(other_actor, throttle_value=1,
-                                                        target_velocity=actor_definitions[i]['speed']))
+                # behavior.add_child(AccelerateToVelocity(other_actor, throttle_value=1,
+                #                                         target_velocity=actor_definitions[i]['speed']))
+                pass
 
         return behavior
 
@@ -495,7 +512,6 @@ class RouteScenario(BasicScenario):
 
         collision_criterion = CollisionTest(self.ego_vehicles[0], terminate_on_failure=True)
         criteria.append(vehicle_measurement)
-
 
         return criteria
 
