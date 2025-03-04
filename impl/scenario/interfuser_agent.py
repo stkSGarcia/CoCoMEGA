@@ -200,7 +200,7 @@ class VideoRecorder:
 
 class InterfuserAgent(autonomous_agent.AutonomousAgent):
 
-    def __init__(self, path_to_conf_file, additional_config):
+    def __init__(self, path_to_conf_file, additional_config=None):
         self.video_recorder = None
         self.additional_config = additional_config
         super().__init__(path_to_conf_file)
@@ -639,7 +639,9 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         if display_agent:
             surface = self._hic.run_interface(tick_data)
             tick_data["surface"] = surface
-            if self.video_recorder:
+
+        if self.video_recorder:
+            if display_agent:
                 self.video_recorder.write_frame(surface)
             else:
                 raise RuntimeError("Unable to record video while display_agent=false")
@@ -674,8 +676,8 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             "direction": get_direction(CarlaDataProvider._ego_vehicle_route),
         }
 
-        # if SAVE_PATH is not None:
-        #     self.save(tick_data)
+        if SAVE_PATH is not None:
+            self.save(tick_data)
 
         return control
 
@@ -702,7 +704,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         vehicles = self._world.get_actors().filter("*vehicle*")
         for actor in vehicles:
             loc = actor.get_location()
-            if loc.distance(self._vehicle.get_location()) > 50:
+            if loc.distance(self._vehicle.get_location()) == 0 or loc.distance(self._vehicle.get_location()) > 50:
                 continue
             _id = actor.id
             data[_id] = {}

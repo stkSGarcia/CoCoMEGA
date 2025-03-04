@@ -417,7 +417,8 @@ def visualize_comparison(files: Dict[str, List[str]], max_percentile=0.75,
     if show: plt.show()
 
 
-def visualize_violation(source, follow_up, mr_set, offset=3, verbose=False, show=False):
+def visualize_violation(source, follow_up, mr_set, offset=3, verbose=False, show=False,
+                        save_path=os.path.join(CONFIG["workspace"]["visualization"], "violation.png")):
     """Plot the extent of violation between the source results
     and follow-up results based on the given metamorphic relations.
 
@@ -495,7 +496,7 @@ def visualize_violation(source, follow_up, mr_set, offset=3, verbose=False, show
                          "--", color=color, zorder=1)
 
     fig.tight_layout()
-    fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], "violation.png"))
+    fig.savefig(save_path)
     if show: plt.show()
 
 

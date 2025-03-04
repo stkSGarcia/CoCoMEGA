@@ -129,17 +129,18 @@ def vectorize_runtime_data(rt_data):
         relative_position = (
             other_actor["loc"][0] - trajectory["start"]["x"], other_actor["loc"][1] - trajectory["start"]["y"])
         radius, angle = cartesian_to_polar(*relative_position)
+        relative_angle = angle - rt_data["sim_data"]["trajectory"]["start"]["yaw"]
         yaw = other_actor["ori"]["yaw"]
         if other_actor["tpe"] == 0:
             speed = vector_norm(other_actor["vel"])
             model = Vehicle.get_actor_index(other_actor["blueprint"])
-            scenario_def.vehicles.append(Vehicle(radius=radius, angle=angle, yaw=yaw, model=model, speed=speed))
+            scenario_def.vehicles.append(Vehicle(radius=radius, angle=relative_angle, yaw=yaw, model=model, speed=speed))
         if other_actor["tpe"] == 1:
             speed = vector_norm(other_actor["vel"])
             model = Walker.get_actor_index(other_actor["blueprint"])
-            scenario_def.walkers.append(Walker(radius=radius, angle=angle, yaw=yaw, model=model, speed=speed))
+            scenario_def.walkers.append(Walker(radius=radius, angle=relative_angle, yaw=yaw, model=model, speed=speed))
         if other_actor["tpe"] == 2:
-            scenario_def.statics.append(Static(radius=radius, angle=angle, yaw=yaw, model=0))
+            scenario_def.statics.append(Static(radius=radius, angle=relative_angle, yaw=yaw, model=0))
     return scenario_def
 
 

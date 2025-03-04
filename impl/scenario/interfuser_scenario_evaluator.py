@@ -20,7 +20,6 @@ import importlib
 import os
 import sys
 import numpy as np
-import pygame
 import signal
 import logging
 import carla
@@ -334,9 +333,6 @@ class ScenarioEvaluator(object):
 
         logger.info("\033[1m> Running the scenario\033[0m")
 
-        if save_snapshot:
-            self.capture_snapshot()
-
         # Run the scenario
         try:
             self.manager.run_scenario()
@@ -380,36 +376,6 @@ class ScenarioEvaluator(object):
             logger.error(f"\n\033[91mFailed to stop the scenario: {e}")
             # traceback.print_exc()
             raise StoppingScenarioFailedError(f"\n\033[91mFailed to stop the scenario: {e}")
-
-    def capture_snapshot(self):
-        camera_bp = self.world.get_blueprint_library().find('sensor.camera.rgb')
-        camera = self.world.spawn_actor(camera_bp, self.world.get_spectator().get_transform())
-        if not CONFIG["simulation"]["display_agent"]:
-            display_width, display_height = 1200, 600
-            display = pygame.display.set_mode((display_width, display_height))
-
-        def process_image(image):
-            array = np.frombuffer(image.raw_data, dtype=np.uint8)
-            array = array.reshape((image.height, image.width, 4))
-            array = array[:, :, :3]
-            array = array[:, :, ::-1]
-            surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
-            if not CONFIG["simulation"]["display_agent"]:
-                display.blit(surface, (0, 0))
-            pygame.display.flip()
-            out_dir = os.path.join(CONFIG["workspace"]["sim_result"], "snapshots")
-            if not os.path.exists(out_dir):
-                os.mkdir(out_dir)
-            pygame.image.save(surface, os.path.join(out_dir, f"{self.scenario_definition.id_}.png"))
-            camera.stop()
-
-        camera.listen(process_image)
-        self.world.tick()
-        time.sleep(0.5)
-        pygame.event.pump()
-        camera.destroy()
-        if not CONFIG["simulation"]["display_agent"]:
-            pygame.quit()
 
     def run(self, args):
         """

@@ -217,7 +217,7 @@ def run_scenarios(scenarios, agent_name="v1", rerun=False, additional_confs=None
     @return: A list of simulation results and the number of simulations.
     """
     if additional_confs is None:
-        additional_confs = itertools.repeat(None, len(scenarios))
+        additional_confs = list(itertools.repeat(None, len(scenarios)))
     assert len(additional_confs) == len(scenarios)
     if CONFIG["simulation"]["parallel"]:
         process_configs = Manager().Queue()
@@ -264,7 +264,6 @@ def run_solutions(file: str, top: int = -1, verbose=True, agent_name="v1", recor
                 logger.info(f"Solution {solution_name}-{i + 1} is already recorded, skipping...")
                 continue
             elif os.path.exists(solution_path):
-                # print(f"shutil.rmtree({solution_path})")
                 shutil.rmtree(solution_path)
             additional_confs = [
                 {"recording_save_path": os.path.join(solution_path, "source")},
