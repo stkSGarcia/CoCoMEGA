@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 class MOSA(BaseAlgorithm):
+    """NOT used, to be removed."""
+
     def __init__(self,
                  objectives,
                  pop_size,
@@ -22,8 +24,8 @@ class MOSA(BaseAlgorithm):
                  seed=None):
         """Constructor.
 
-        @param objectives: Objectives to optimize.
-        @param pop_size: The size of the population.
+        :param objectives: Objectives to optimize.
+        :param pop_size: The size of the population.
         """
         super().__init__(toolbox, time_budget, max_iter, seed)
         self.objectives = objectives
@@ -87,9 +89,9 @@ class MOSA(BaseAlgorithm):
     def _update_archive(self, archive: List, population: List, uncovered_objectives: List):
         """Add individuals meeting the objectives to the archive.
 
-        @param archive: The list of archived individuals.
-        @param population: The list of individuals to be archived.
-        @param uncovered_objectives: The indices of uncovered objectives.
+        :param archive: The list of archived individuals.
+        :param population: The list of individuals to be archived.
+        :param uncovered_objectives: The indices of uncovered objectives.
         """
         for individual in population:
             for idx, (fitness, objective) in enumerate(zip(individual.fitness.values, self.objectives)):
@@ -113,9 +115,9 @@ class MOSA(BaseAlgorithm):
     def _generate_offspring(self, population: List, uncovered_objectives: List) -> List:
         """Perform selection, crossover and mutation on individuals.
 
-        @param population: The list of parent individuals.
-        @param uncovered_objectives: The indices of uncovered objectives.
-        @return: The list of offsprings.
+        :param population: The list of parent individuals.
+        :param uncovered_objectives: The indices of uncovered objectives.
+        :return: The list of offsprings.
         """
         population = self.toolbox.clone(population)
         offspring = []
@@ -133,10 +135,10 @@ class MOSA(BaseAlgorithm):
     def _tournament_selection(population: List, size: int, uncovered_objectives: List):
         """Tournament selection.
 
-        @param population: The list of individuals to be selected.
-        @param size: Tournament size.
-        @param uncovered_objectives: The indices of uncovered objectives.
-        @return: The best individual.
+        :param population: The list of individuals to be selected.
+        :param size: Tournament size.
+        :param uncovered_objectives: The indices of uncovered objectives.
+        :return: The best individual.
         """
         candidates = []
         for i in range(size):

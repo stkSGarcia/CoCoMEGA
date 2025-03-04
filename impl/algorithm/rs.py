@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class RandomSearch(BaseAlgorithm):
+    """Random Search."""
     _name = "RS"
 
     def solve(self, resume=False):
@@ -45,8 +46,8 @@ class RandomSearch(BaseAlgorithm):
             # Evaluate joint fitness.
             candidates = [ind for ind in unique_solutions if ind not in evaluated_solutions]
             logger.info(f"#complete solutions: {len(complete_solutions)}, "
-                         f"#unique solutions: {len(unique_solutions)}, "
-                         f"#candidates: {len(candidates)}.")
+                        f"#unique solutions: {len(unique_solutions)}, "
+                        f"#candidates: {len(candidates)}.")
             if len(candidates) > 0:
                 candidates, sim_num = self.toolbox.evaluate_solutions(candidates)
                 evaluated_solutions.extend(candidates)

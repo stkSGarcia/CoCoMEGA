@@ -3,7 +3,6 @@ import os
 import pickle
 import random
 import time
-from abc import abstractmethod
 from operator import attrgetter
 from typing import List
 
@@ -18,14 +17,15 @@ logger = logging.getLogger(__name__)
 
 
 class BaseAlgorithm:
+    """Base class for algorithms."""
     _name = "BASE"
 
     def __init__(self, toolbox: base.Toolbox, budget: Budget, seed=None):
         """Constructor.
 
-        @param toolbox: `base.Toolbox` that defines the problem.
-        @param budget: `Budget` that defines the searching budget.
-        @param seed: Random seed.
+        :param toolbox: `deap.base.Toolbox` that defines the problem.
+        :param budget: `Budget` that defines the searching budget.
+        :param seed: Random seed.
         """
         random.seed(seed)
         self.toolbox = toolbox
@@ -47,19 +47,21 @@ class BaseAlgorithm:
         self.logbook = tools.Logbook()
         self.logbook.header = "pop", "gen", "len", "sim", "std", "min", "avg", "max"
 
-    @abstractmethod
     def solve(self, resume=False):
-        """Run the algorithm."""
+        """Run the algorithm.
+
+        :param resume: Whether to resume from the latest checkpoint.
+        """
         logger.info(f"{self._name} started.")
         logger.info(self.budget.print_budget())
 
     def record_statistics(self, population: List, gen_num: int, pop_name: str = "", sim_num: int = None):
         """Record the statistics of the population.
 
-        @param population: The population that requires recording statistics.
-        @param gen_num: The number of generations.
-        @param pop_name: The name of the population.
-        @param sim_num: The number of simulations actually run.
+        :param population: The population that requires recording statistics.
+        :param gen_num: The number of generations.
+        :param pop_name: The name of the population.
+        :param sim_num: The number of simulations actually run.
         """
         record = self.stats.compile(population) if len(population) > 0 else {
             "avg": [np.nan, ] * self.n_obj,
@@ -70,7 +72,11 @@ class BaseAlgorithm:
         self.logbook.record(pop=pop_name, gen=gen_num, len=len(population), sim=sim_num, **record)
 
     def dump_results(self, results, evaluated_solutions):
-        """Dump results and statistics."""
+        """Dump results and statistics.
+
+        :param results: The solutions identified by the algorithm.
+        :param evaluated_solutions: All the evaluated solutions during the search.
+        """
         suffix = f"{self._name.lower()}-{str(int(round(time.time() * 1000)))}"
         with open(os.path.join(CONFIG["workspace"]["solution"], f"solutions-{suffix}.pickle"), "wb") as f:
             pickle.dump(results, f)
@@ -81,7 +87,10 @@ class BaseAlgorithm:
 
     @staticmethod
     def remove_duplicates(population):
-        """Remove duplicate individuals in the given population."""
+        """Remove duplicate individuals in the given population.
+
+        :param population: The population requiring deduplication.
+        """
         unique_individuals = []
         for ind in population:
             if ind not in unique_individuals:
@@ -92,10 +101,10 @@ class BaseAlgorithm:
     def fitness_sharing(population, punishment=1.0, scaling=1.0):
         """Adjust the fitness using fitness sharing.
 
-        @param population: The population whose fitness needs to be adjusted.
-        @param punishment: Punishment factor.
-        @param scaling: Scaling factor.
-        @return: The population with fitness adjusted.
+        :param population: The population whose fitness needs to be adjusted.
+        :param punishment: Punishment factor.
+        :param scaling: Scaling factor.
+        :return: The population with fitness adjusted.
         """
         if len(population) == 0: return
         dist_matrix = squareform(pdist(np.array(population, dtype=object).reshape((len(population), -1)),
@@ -116,9 +125,9 @@ class BaseAlgorithm:
     def fitness_clearing(population, capacity=2):
         """Adjust the fitness using fitness clearing.
 
-        @param population: The population whose fitness needs to be adjusted.
-        @param capacity: The maximum number of winners in a niche.
-        @return: The population with fitness adjusted.
+        :param population: The population whose fitness needs to be adjusted.
+        :param capacity: The maximum number of winners in a niche.
+        :return: The population with fitness adjusted.
         """
         if len(population) == 0: return
         dist_matrix = squareform(pdist(np.array(population, dtype=object).reshape((len(population), -1)),
@@ -139,7 +148,10 @@ class BaseAlgorithm:
 
     @staticmethod
     def population_diversity(population):
-        """Calculate the Pure Diversity (PD) of the given population."""
+        """Calculate the Pure Diversity (PD) of the given population.
+
+        :param population: The population to be evaluated.
+        """
         n = len(population)
         if n == 0: return 0.0
         connected = np.eye(n, dtype=bool)

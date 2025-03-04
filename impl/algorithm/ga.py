@@ -14,9 +14,17 @@ logger = logging.getLogger(__name__)
 
 
 class GeneticAlgorithm(BaseAlgorithm):
+    """Standard Genetic Algorithm."""
     _name = "GA"
 
     def __init__(self, toolbox, budget, seed=None, keep_best=False):
+        """Constructor.
+
+        :param toolbox: `deap.base.Toolbox` that defines the problem.
+        :param budget: `Budget` that defines the searching budget.
+        :param seed: Random seed.
+        :param keep_best: Whether to use an archive in the search.
+        """
         super().__init__(toolbox, budget, seed)
         self.keep_best = keep_best
 
@@ -50,8 +58,8 @@ class GeneticAlgorithm(BaseAlgorithm):
             # Evaluate joint fitness.
             candidates = [ind for ind in unique_solutions if ind not in evaluated_solutions]
             logger.info(f"#complete solutions: {len(complete_solutions)}, "
-                         f"#unique solutions: {len(unique_solutions)}, "
-                         f"#candidates: {len(candidates)}.")
+                        f"#unique solutions: {len(unique_solutions)}, "
+                        f"#candidates: {len(candidates)}.")
             if len(candidates) > 0:
                 candidates, sim_num = self.toolbox.evaluate_solutions(candidates)
                 evaluated_solutions.extend(candidates)
@@ -103,9 +111,9 @@ class GeneticAlgorithm(BaseAlgorithm):
     def _breed(self, population, size):
         """Perform selection, crossover and mutation on individuals.
 
-        @param population: The individuals to be bred.
-        @param size: The size of the offsprings.
-        @return: A list of offsprings.
+        :param population: The individuals to be bred.
+        :param size: The size of the offsprings.
+        :return: A list of offsprings.
         """
         assert len(population) > 0
         offsprings = tools.selTournament(population, k=size, tournsize=CONFIG["scenario"]["tournament"])

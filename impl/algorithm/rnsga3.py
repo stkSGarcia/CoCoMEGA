@@ -111,13 +111,12 @@ def selRNSGA3(individuals, k, ref_points, ref_dirs, best_point=None, worst_point
 
 
 def _get_ref_dirs_from_points(ref_point, ref_dirs, mu=0.1):
-    """
-    This function takes user specified reference points, and creates smaller sets of equidistant
+    """This function takes user specified reference points, and creates smaller sets of equidistant
     Das-Dennis points around the projection of user points on the Das-Dennis hyperplane.
 
     :param ref_point: List of user specified reference points.
     :param ref_dirs: List of uniformly distributed reference points.
-    :param mu: Shrinkage factor (0-1), Smaller = tigher convergence, Larger= larger convergence.
+    :param mu: Shrinkage factor (0-1), Smaller = tighter convergence, Larger= larger convergence.
     :return: Set of reference points.
     """
     n_obj = ref_point.shape[1]
@@ -159,7 +158,6 @@ def _line_plane_intersection(l0, l1, p0, p_no, epsilon=1e-6):
     reference: https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
     return a Vector or None (when the intersection can't be found).
     """
-
     l = l1 - l0
     dot = np.dot(l, p_no)
 
