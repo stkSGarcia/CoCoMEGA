@@ -110,15 +110,15 @@ budget:
   max_gen: 20  # Set`null` to make it unlimited
 
 search:
-  diff_testing: True
-  runtime_data_as_seeds: False
+  diff_testing: true
+  runtime_data_as_seeds: false
   constraint:
-    enable: False
+    enable: false
     threshold: 0.5
     penalty_base: 2.71828
     penalty_amplifier: 6.66
   multi_objective:
-    enable: False  # Do NOT enable multi-objective and constraints at the same time
+    enable: false  # Do NOT enable multi-objective and constraints at the same time
     algorithm: rnsga2  # Options: rnsga2, rnsga3
     ref_points:
       - [ 0.1, 0.9 ]
