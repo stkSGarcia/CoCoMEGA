@@ -114,6 +114,7 @@ class BaseAlgorithm:
         statistics_path = f"statistics-{suffix}.pickle"
         with open(os.path.join(CONFIG["workspace"]["solution"], statistics_path), "wb") as f:
             pickle.dump(self.logbook, f)
+        logger.info(f"Results dumped at {suffix}.")
 
     def fitness_sharing(self, population, punishment=1.0, scaling=1.0):
         """Adjust the fitness using fitness sharing.
