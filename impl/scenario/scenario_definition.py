@@ -88,7 +88,8 @@ def _dist_attrs(this, that, attrs, boundary: Boundary, scaling):
             dist += pow(abs(getattr(this, attr) - getattr(that, attr)) / (upper - lower), 2) if upper != lower else 0
         elif isinstance(lower, int):
             # TODO: within the same category.
-            dist += pow(scaling * (0.0 if getattr(this, attr) == getattr(that, attr) else 1.0), 2)
+            if hasattr(this, attr) and hasattr(that, attr):
+                dist += pow(scaling * (0.0 if getattr(this, attr) == getattr(that, attr) else 1.0), 2)
     return dist
 
 
@@ -274,7 +275,8 @@ class ScenarioDefinition:
                                                                direction_mapping[trajectory_def["direction"]])
 
                 if not target_exit_wps:
-                    raise InvalidScenarioDefinitionError(f"No lane found in the '{trajectory_def['direction']}' direction!")
+                    raise InvalidScenarioDefinitionError(
+                        f"No lane found in the '{trajectory_def['direction']}' direction!")
 
                 target_wp = get_closest_wp(wp_list=target_exit_wps, reference_wp=waypoint)
                 for i in range(5):

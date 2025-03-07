@@ -22,6 +22,7 @@ from sklearn.manifold import MDS
 
 from impl.config import CONFIG
 from impl.mr.mr import Relation
+from impl.utils.math_utils import calculate_auc_improvements, area_under_curve, calculate_ds_improvements
 from impl.utils.metrics import metrics, pairwise_distance
 
 logger = logging.getLogger(__name__)
@@ -586,6 +587,7 @@ def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_t
 
     # vda = defaultdict(lambda: dict())
     data = {}
+    mean_df = pd.DataFrame()
     for name, file_list in files.items():
         df = pd.DataFrame()
         for file in file_list:
@@ -602,7 +604,12 @@ def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_t
             values = group["distinct_solution_num"]
             ax = ax_map[gp_name]
             # vda[gp_name][name] = list(group["distinct_solution_num"])
-            ax.errorbar(distance_thresholds, values.apply(np.mean),
+            mean_val = values.apply(np.mean)
+            gp_means = pd.DataFrame({"distance_threshold": distance_thresholds, "mean_ds": mean_val})
+            gp_means["fitness_threshold"] = gp_name
+            gp_means["alg"] = name
+            mean_df = pd.concat([mean_df, gp_means], ignore_index=True)
+            ax.errorbar(distance_thresholds, mean_val,
                         yerr=values.apply(lambda row: 0.95 * np.std(row) / np.sqrt(len(row))),
                         **style_map[name], capsize=2, label=verbose_map[name])
             if box: ax.boxplot(group["distinct_solution_num"], positions=group.index.values, widths=0.05,
@@ -616,7 +623,7 @@ def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_t
             ax.yaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=1))
             ax.legend()
             ax.grid()
-
+    calculate_ds_improvements(mean_df)
     # for fitness, d in vda.items():
     #     for alg1, alg2 in (("ccea", "ga"), ("ccea", "rs"), ("ga", "rs")):
     #         treatment, control = d[alg1], d[alg2]
@@ -653,6 +660,7 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
     row_num = int(np.ceil(total_size / col_num))
     fig, axes = plt.subplots(row_num, col_num, figsize=(col_num * height * 1.2, row_num * height))
     ax_map = {gp_name: ax for ax, gp_name in zip(axes.reshape(-1), product(fitness_thresholds, distance_thresholds))}
+    auc_df = pd.DataFrame()
 
     checkpoint_files = sorted(os.listdir(directory))
     skip = {"ccea": 5, "ga": 2, "rs": 1}
@@ -688,9 +696,16 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
         for gp_name, agg_dfs in agg_df_list.items():
             agg_df = pd.concat(agg_dfs).groupby("simulation_num").agg(list)
             ax = ax_map[gp_name]
+            y = agg_df["violated_mr_num" if mrc else "distinct_solution_num"].apply(np.mean) * 100 / len(
+                mr_set.mrs)
+            auc_df = pd.concat([auc_df, pd.DataFrame([{
+                'alg': name,
+                'fitness_threshold': gp_name[0],
+                'distance_threshold': gp_name[1],
+                'auc': area_under_curve(np.array([0, *percent_ranges]), np.array([0, *y]))
+            }])], ignore_index=True)
             ax.plot(percent_ranges,
-                    agg_df["violated_mr_num" if mrc else "distinct_solution_num"].apply(np.mean) * 100 / len(
-                        mr_set.mrs),
+                    y,
                     **style_map[name], label=verbose_map[name])
             ax.set_title(
                 f"Fitness threshold ($\\theta_f={gp_name[0]}$),\nDistance threshold ($\\theta_d={gp_name[1]}$)",
@@ -702,6 +717,8 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
             ax.set_ylabel("Average $MRC$ (%)" if mrc else "Average $DS$", fontsize=text_size)
             ax.legend()
             ax.grid()
+
+    calculate_auc_improvements(auc_df)
 
     fig.tight_layout()
     fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"distinct_solutions_over_simulations.png"))
