@@ -22,7 +22,7 @@ from sklearn.manifold import MDS
 
 from impl.config import CONFIG
 from impl.mr.mr import Relation
-from impl.utils.metrics import metrics, pairwise_distance
+from impl.utils.metrics import metrics, pairwise_distance, avg_pw_from_matrix
 
 logger = logging.getLogger(__name__)
 
@@ -892,10 +892,11 @@ def visualize_archive_solution_over_generations(directory: str, files: Dict[str,
 
 def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_thresholds: List[float],
                           additional_metrics: List[str] = []):
-    column_names = (
-        "fitness_threshold", "distance_threshold", "violated_mr_num", "distinct_mr_num", *additional_metrics)
+    default_columns = ["fitness_threshold", "distance_threshold", "violated_mr_num", "distinct_mr_num", "avg_pw"]
+    additional_metrics = [metric for metric in additional_metrics if metric not in default_columns]
+    column_names = (*default_columns, *additional_metrics)
     if len(solutions) == 0:
-        return pd.DataFrame([[fitness_threshold, distance_threshold, 0, 0,
+        return pd.DataFrame([[fitness_threshold, distance_threshold, 0, 0, np.nan,
                               *[metrics[metric](solutions) for metric in additional_metrics]]
                              for fitness_threshold in fitness_thresholds
                              for distance_threshold in distance_thresholds], columns=column_names)
@@ -917,7 +918,7 @@ def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_t
         n = len(dist)
 
         if n < 2:
-            results += [[fitness_thresholds[idx], threshold, n, n,
+            results += [[fitness_thresholds[idx], threshold, n, n, np.nan,
                          *[metrics[metric](selected_solutions) for metric in additional_metrics]] for threshold in
                         distance_thresholds]
             continue
@@ -939,8 +940,9 @@ def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_t
             mr_indices = list(map(tuple, violated_mrs[list(points_to_keep)]))
             violated_mr_num = len(set(np.hstack(mr_indices)))
             distinct_mr_num = len(set(mr_indices))
+            avg_pw_value = avg_pw_from_matrix(dist, list(points_to_keep))
             final_solutions = [sol for i, sol in enumerate(selected_solutions) if i in points_to_keep]
-            results.append([fitness_thresholds[idx], threshold, violated_mr_num, distinct_mr_num,
+            results.append([fitness_thresholds[idx], threshold, violated_mr_num, distinct_mr_num, avg_pw_value,
                             *[metrics[metric](final_solutions) for metric in additional_metrics]])
     return pd.DataFrame(results, columns=column_names)
 
