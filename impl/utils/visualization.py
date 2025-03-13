@@ -908,6 +908,43 @@ def visualize_archive_solution_over_generations(directory: str, files: Dict[str,
     if show: plt.show()
 
 
+def visualize_computational_efficiency(log_file: str, solution_files: Dict[str, List[str]],
+                                       checkpoints: Dict[str, List[List[str]]], show=False):
+    """
+    Generate a boxplot comparing computational efficiency (duration in hours) across algorithms from a log file.
+
+    @param log_file: Path to the CSV log file containing 'alg', 'start_time', 'end_time' columns.
+    @param solution_files: Solution data files of different algorithms. Dict[name_of_algorithm, List[solution_file]].
+    @param checkpoints: Checkpoint files Dict[name_of_algorithm, List[list[checkpoint_file]].
+    @param show: A boolean to determine whether to show the plots or not.
+
+    """
+    df = _generate_execution_time_data(log_file, solution_files, checkpoints)
+    algorithms = list(solution_files.keys())
+    durations = [df[df['alg'] == alg]['duration_hours'] for alg in algorithms]
+    colors = [style_map[alg]['color'] for alg in algorithms]
+
+    fig = plt.figure(figsize=(8, 8))
+    box = plt.boxplot(durations, labels=algorithms, patch_artist=True, medianprops=dict(color='black'),
+                      showfliers=False)
+
+    for patch, color in zip(box['boxes'], colors):
+        patch.set_facecolor(color)
+
+    for i, (duration, color) in enumerate(zip(durations, colors), start=1):
+        plt.scatter([i] * len(duration), duration, alpha=0.7, color=color)
+
+    plt.title('Comparison of Computational Efficiency (Duration in Hours)')
+    plt.xlabel('Algorithm')
+    plt.ylabel('Duration (Hours)')
+    plt.grid(axis='y', linestyle='--')
+    plt.tight_layout()
+
+    fig.tight_layout()
+    fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"computational_efficiency.png"))
+    if show: plt.show()
+
+
 def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_thresholds: List[float],
                           additional_metrics: List[str] = []):
     column_names = (
@@ -979,3 +1016,71 @@ def _vda(treatment: List[int], control: List[int]):
     magnitude = ["negligible", "small", "medium", "large"]
     scaled_a = (a - 0.5) * 2
     return a, magnitude[bisect_left(levels, abs(scaled_a))]
+
+
+def _generate_execution_time_data(log_path: str, solution_files: Dict[str, List[str]],
+                                  checkpoints: Dict[str, List[List[str]]]):
+    log_df = _make_log_df(log_path)
+
+    sol_cp_map = pd.DataFrame()
+    for alg, cp_ranges in checkpoints.items():
+        sol_files = sorted(solution_files[alg], key=lambda f: int(f))
+        for i, cp_range in enumerate(cp_ranges):
+            start_cp, end_cp = cp_range[0], cp_range[1]
+            sol_file = sol_files[i]
+            start_cp_time = pd.to_datetime(int(start_cp.split(".")[0]), unit='ms')
+            end_cp_time = pd.to_datetime(int(end_cp.split(".")[0]), unit='ms')
+            end_time = pd.to_datetime(int(sol_file.split(".")[0].split('-')[-1]), unit='ms')
+            algo_logs = log_df[log_df["algorithm"] == alg]
+            closest_log = \
+                algo_logs[algo_logs["timestamp"] <= start_cp_time].sort_values(by="timestamp", ascending=False).iloc[0]
+            sol_cp_map = pd.concat([sol_cp_map, pd.DataFrame([{
+                'alg': alg,
+                'start_time': closest_log["timestamp"],
+                'end_time': end_time,
+                'solution': sol_file,
+                'start_cp': start_cp,
+                'start_cp_time': start_cp_time,
+                'end_cp': end_cp,
+                'end_cp_time': end_cp_time,
+                'process_id': closest_log["process_id"],
+
+            }])], ignore_index=True)
+
+    sol_cp_map['duration_hours'] = (sol_cp_map['end_time'] - sol_cp_map['start_time']).dt.total_seconds() / 3600
+    return sol_cp_map
+
+
+def _make_log_df(log_path: str):
+    with open(log_path, "r") as file:
+        logs = file.readlines()
+
+    # Convert logs to DataFrame
+    log_entries = []
+    for log in logs:
+        parts = log.strip().split(" INFO ")
+        if len(parts) < 2:
+            continue
+
+        timestamp = parts[0]
+        info = parts[1].split(" --- ")
+        if len(info) < 2:
+            continue
+
+        process_id = info[0]
+        description = info[1]
+        algo = None
+
+        if "CCEA started" in description:
+            algo = "ccea"
+        elif "Genetic" in description:
+            algo = "ga"
+        elif "Random search" in description:
+            algo = "rs"
+
+        if algo:
+            log_entries.append([pd.to_datetime(timestamp), algo, process_id])
+
+    log_df = pd.DataFrame(log_entries, columns=["timestamp", "algorithm", "process_id"])
+    log_df.sort_values(by="timestamp", inplace=True)
+    return log_df
