@@ -22,6 +22,7 @@ from sklearn.manifold import MDS
 
 from impl.config import CONFIG
 from impl.mr.mr import Relation
+from impl.utils.math_utils import calculate_auc_improvements, area_under_curve, calculate_ds_improvements
 from impl.utils.metrics import metrics, pairwise_distance, avg_pw_from_matrix
 
 logger = logging.getLogger(__name__)
@@ -606,7 +607,12 @@ def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_t
             values = group["distinct_solution_num"]
             ax = ax_map[gp_name]
             # vda[gp_name][name] = list(group["distinct_solution_num"])
-            ax.errorbar(distance_thresholds, values.apply(np.mean),
+            mean_val = values.apply(np.mean)
+            gp_means = pd.DataFrame({"distance_threshold": distance_thresholds, "mean_ds": mean_val})
+            gp_means["fitness_threshold"] = gp_name
+            gp_means["alg"] = name
+            mean_df = pd.concat([mean_df, gp_means], ignore_index=True)
+            ax.errorbar(distance_thresholds, mean_val,
                         yerr=values.apply(lambda row: 0.95 * np.std(row) / np.sqrt(len(row))),
                         **style_map[name], capsize=2, label=verbose_map[name])
             if box: ax.boxplot(group["distinct_solution_num"], positions=group.index.values, widths=0.05,
@@ -620,7 +626,7 @@ def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_t
             ax.yaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=1))
             ax.legend()
             ax.grid()
-
+    calculate_ds_improvements(mean_df)
     # for fitness, d in vda.items():
     #     for alg1, alg2 in (("ccea", "ga"), ("ccea", "rs"), ("ga", "rs")):
     #         treatment, control = d[alg1], d[alg2]
@@ -658,6 +664,7 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
     row_num = int(np.ceil(total_size / col_num))
     fig, axes = plt.subplots(row_num, col_num, figsize=(col_num * height * 1.2, row_num * height))
     ax_map = {gp_name: ax for ax, gp_name in zip(axes.reshape(-1), product(fitness_thresholds, distance_thresholds))}
+    auc_df = pd.DataFrame()
 
     checkpoint_files = sorted(os.listdir(directory))
     for name, ckp_list in files.items():
@@ -691,9 +698,16 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
         for gp_name, agg_dfs in agg_df_list.items():
             agg_df = pd.concat(agg_dfs).groupby("simulation_num").agg(list)
             ax = ax_map[gp_name]
+            y = agg_df["violated_mr_num" if mrc else "distinct_solution_num"].apply(np.mean) * 100 / len(
+                mr_set.mrs)
+            auc_df = pd.concat([auc_df, pd.DataFrame([{
+                'alg': name,
+                'fitness_threshold': gp_name[0],
+                'distance_threshold': gp_name[1],
+                'auc': area_under_curve(np.array([0, *percent_ranges]), np.array([0, *y]))
+            }])], ignore_index=True)
             ax.plot(percent_ranges,
-                    agg_df["violated_mr_num" if mrc else "distinct_solution_num"].apply(np.mean) * 100 / len(
-                        mr_set.mrs),
+                    y,
                     **style_map[name], label=verbose_map[name])
             ax.set_title(
                 f"Fitness threshold ($\\theta_f={gp_name[0]}$),\nDistance threshold ($\\theta_d={gp_name[1]}$)",
@@ -705,6 +719,8 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
             ax.set_ylabel("Average $MRC$ (%)" if mrc else "Average $DS$", fontsize=text_size)
             ax.legend()
             ax.grid()
+
+    calculate_auc_improvements(auc_df)
 
     fig.tight_layout()
     fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"distinct_solutions_over_simulations.png"))
@@ -894,6 +910,43 @@ def visualize_archive_solution_over_generations(directory: str, files: Dict[str,
     if show: plt.show()
 
 
+def visualize_computational_efficiency(log_file: str, solution_files: Dict[str, List[str]],
+                                       checkpoints: Dict[str, List[List[str]]], show=False):
+    """
+    Generate a boxplot comparing computational efficiency (duration in hours) across algorithms from a log file.
+
+    @param log_file: Path to the CSV log file containing 'alg', 'start_time', 'end_time' columns.
+    @param solution_files: Solution data files of different algorithms. Dict[name_of_algorithm, List[solution_file]].
+    @param checkpoints: Checkpoint files Dict[name_of_algorithm, List[list[checkpoint_file]].
+    @param show: A boolean to determine whether to show the plots or not.
+
+    """
+    df = _generate_execution_time_data(log_file, solution_files, checkpoints)
+    algorithms = list(solution_files.keys())
+    durations = [df[df['alg'] == alg]['duration_hours'] for alg in algorithms]
+    colors = [style_map[alg]['color'] for alg in algorithms]
+
+    fig = plt.figure(figsize=(8, 8))
+    box = plt.boxplot(durations, labels=algorithms, patch_artist=True, medianprops=dict(color='black'),
+                      showfliers=False)
+
+    for patch, color in zip(box['boxes'], colors):
+        patch.set_facecolor(color)
+
+    for i, (duration, color) in enumerate(zip(durations, colors), start=1):
+        plt.scatter([i] * len(duration), duration, alpha=0.7, color=color)
+
+    plt.title('Comparison of Computational Efficiency (Duration in Hours)')
+    plt.xlabel('Algorithm')
+    plt.ylabel('Duration (Hours)')
+    plt.grid(axis='y', linestyle='--')
+    plt.tight_layout()
+
+    fig.tight_layout()
+    fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"computational_efficiency.png"))
+    if show: plt.show()
+
+
 def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_thresholds: List[float], mr_set,
                           additional_metrics: List[str] = []):
     default_columns = ["fitness_threshold", "distance_threshold", "violated_mr_num", "distinct_mr_num", "avg_pw"]
@@ -966,3 +1019,71 @@ def _vda(treatment: List[int], control: List[int]):
     magnitude = ["negligible", "small", "medium", "large"]
     scaled_a = (a - 0.5) * 2
     return a, magnitude[bisect_left(levels, abs(scaled_a))]
+
+
+def _generate_execution_time_data(log_path: str, solution_files: Dict[str, List[str]],
+                                  checkpoints: Dict[str, List[List[str]]]):
+    log_df = _make_log_df(log_path)
+
+    sol_cp_map = pd.DataFrame()
+    for alg, cp_ranges in checkpoints.items():
+        sol_files = sorted(solution_files[alg], key=lambda f: int(f))
+        for i, cp_range in enumerate(cp_ranges):
+            start_cp, end_cp = cp_range[0], cp_range[1]
+            sol_file = sol_files[i]
+            start_cp_time = pd.to_datetime(int(start_cp.split(".")[0]), unit='ms')
+            end_cp_time = pd.to_datetime(int(end_cp.split(".")[0]), unit='ms')
+            end_time = pd.to_datetime(int(sol_file.split(".")[0].split('-')[-1]), unit='ms')
+            algo_logs = log_df[log_df["algorithm"] == alg]
+            closest_log = \
+                algo_logs[algo_logs["timestamp"] <= start_cp_time].sort_values(by="timestamp", ascending=False).iloc[0]
+            sol_cp_map = pd.concat([sol_cp_map, pd.DataFrame([{
+                'alg': alg,
+                'start_time': closest_log["timestamp"],
+                'end_time': end_time,
+                'solution': sol_file,
+                'start_cp': start_cp,
+                'start_cp_time': start_cp_time,
+                'end_cp': end_cp,
+                'end_cp_time': end_cp_time,
+                'process_id': closest_log["process_id"],
+
+            }])], ignore_index=True)
+
+    sol_cp_map['duration_hours'] = (sol_cp_map['end_time'] - sol_cp_map['start_time']).dt.total_seconds() / 3600
+    return sol_cp_map
+
+
+def _make_log_df(log_path: str):
+    with open(log_path, "r") as file:
+        logs = file.readlines()
+
+    # Convert logs to DataFrame
+    log_entries = []
+    for log in logs:
+        parts = log.strip().split(" INFO ")
+        if len(parts) < 2:
+            continue
+
+        timestamp = parts[0]
+        info = parts[1].split(" --- ")
+        if len(info) < 2:
+            continue
+
+        process_id = info[0]
+        description = info[1]
+        algo = None
+
+        if "CCEA started" in description:
+            algo = "ccea"
+        elif "Genetic" in description:
+            algo = "ga"
+        elif "Random search" in description:
+            algo = "rs"
+
+        if algo:
+            log_entries.append([pd.to_datetime(timestamp), algo, process_id])
+
+    log_df = pd.DataFrame(log_entries, columns=["timestamp", "algorithm", "process_id"])
+    log_df.sort_values(by="timestamp", inplace=True)
+    return log_df
