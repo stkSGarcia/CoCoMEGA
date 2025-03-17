@@ -928,20 +928,28 @@ def visualize_computational_efficiency(log_file: str, solution_files: Dict[str, 
     durations = [df[df['alg'] == alg]['duration_hours'] for alg in algorithms]
     colors = [style_map[alg]['color'] for alg in algorithms]
 
-    fig = plt.figure(figsize=(8, 8))
-    box = plt.boxplot(durations, labels=algorithms, patch_artist=True, medianprops=dict(color='black'),
+    height = 4
+    title_size, text_size, tick_size = height * 5, height * 4, height * 3
+    fig = plt.figure(figsize=(height * 2, height * 2))
+    box = plt.boxplot(durations, labels=[verbose_map[alg] for alg in algorithms], patch_artist=True,
+                      showmeans=True, medianprops=dict(color='black'),
+                      meanprops=dict(marker='D', markerfacecolor='black', markeredgecolor='black', alpha=0.7),
                       showfliers=False)
 
     for patch, color in zip(box['boxes'], colors):
         patch.set_facecolor(color)
+        patch.set_alpha(0.8)
 
     for i, (duration, color) in enumerate(zip(durations, colors), start=1):
         plt.scatter([i] * len(duration), duration, alpha=0.7, color=color)
 
-    plt.title('Comparison of Computational Efficiency (Duration in Hours)')
-    plt.xlabel('Algorithm')
-    plt.ylabel('Duration (Hours)')
+    # plt.title('Comparison of Computational Efficiency (Duration in Hours)', fontsize=title_size)
+    plt.xlabel('Algorithm', fontsize=text_size)
+    plt.ylabel('Duration (Hours)', fontsize=text_size)
+    plt.tick_params(labelsize=tick_size)
     plt.grid(axis='y', linestyle='--')
+    plt.legend(handles=[Line2D([0], [0], marker='D', markerfacecolor='black', markeredgecolor='black',
+                               color='w', alpha=0.7, linestyle='None', label='Mean value')], fontsize=text_size)
     plt.tight_layout()
 
     fig.tight_layout()
