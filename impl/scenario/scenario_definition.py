@@ -1,6 +1,7 @@
 import logging
 import math
 import random
+import sys
 import uuid
 from abc import ABC
 from copy import deepcopy
@@ -213,6 +214,17 @@ class ScenarioDefinition:
             return cls.generate_random()
 
     @classmethod
+    def generate_random_with_marked_actors(cls):
+        scenario = cls.generate_random()
+        category = random.choice(("vehicle", "walker"))
+        actors = getattr(scenario, f"{category}s")
+        actor_cls = getattr(sys.modules[__name__], category.capitalize())
+        marked_actor = actor_cls.generate_random(region=Boundary.Region.FOCUS)
+        marked_actor.mark = True
+        actors.append(marked_actor)
+        return scenario
+
+    @classmethod
     def _generate_empty_scenario(cls):
         scenario = cls()
         scenario.ego_vehicle = Vehicle.generate_random()
@@ -346,11 +358,51 @@ class ScenarioDefinition:
     def update_attribute(self, category: str, value):
         setattr(self, category, value)
 
+    def update_ego(self, category: str, value):
+        if category == "position":
+            original = self.get_trigger_position()
+            x, y = self._next_waypoint(original["x"], original["y"], value)
+            if x is not None and y is not None:
+                try:
+                    (self.trajectory["trajectory"],
+                     self.trajectory["gps_route"],
+                     self.trajectory["route"]) = self._build_trajectory({
+                        "start": {"x": x, "y": y},
+                        "direction": self.trajectory["direction"]}
+                    )
+                    self.trajectory["start"]["x"], self.trajectory["start"]["y"] = x, y
+                except InvalidScenarioDefinitionError:
+                    logger.warning(f"Unable to change the starting position.")
+            else:
+                logger.warning(f"Unable to change the starting position.")
+        else:
+            self.ego_vehicle.update_attribute(category, value)
+
+    @staticmethod
+    def _next_waypoint(x, y, interval):
+        waypoint = CarlaDataProvider.get_map().get_waypoint(carla.Location(x=x, y=y, z=0))
+        new_waypoints = waypoint.next(interval)
+        if len(new_waypoints) > 0:
+            new_location = new_waypoints[0].transform.location
+            return new_location.x, new_location.y
+        else:
+            return None, None
+
+    def update_actor(self, category: str, attribute: str, value):
+        actors = getattr(self, f"{category}s")
+        is_changed = False
+        for actor in actors:
+            if actor.mark:
+                is_changed = True
+                actor.update_attribute(attribute, value)
+        if not is_changed:
+            logger.warning(f"No marked actor in {category}.")
+
     @staticmethod
     def _random_pick_actor(actors, region: Boundary.Region = None):
         index, count = -1, 0
         for i, actor in enumerate(actors):
-            if region is None or actor.region == region:
+            if not actor.mark and (region is None or actor.region == region):
                 count += 1
                 if random.randint(1, count) == 1:
                     index = i
@@ -545,6 +597,12 @@ class Actor(ABC):
         coef = -1 if tilt_dir == "left" else (1 if tilt_dir == "right" else 0)
         self.angle += coef * CONFIG["boundary"]["tilt_degrees"]
 
+    def update_attribute(self, category: str, value):
+        old_value = getattr(self, category)
+        if value == old_value:
+            logger.warning(f"The new {category} value is identical to the original.")
+        setattr(self, category, value)
+
     def get_config(self):
         return {
             "role_name": f"{self.region.name.lower() if self.region else 'others'}{'-mark' if self.mark else ''}",
@@ -591,8 +649,8 @@ class Vehicle(Actor):
         vehicle = super().generate_random(region, none_pb)
         if "base_model" in filters:
             if isinstance(filters["base_model"], list):
-                weights = [cls._BOUNDARY["base_model"][bm][1] - cls._BOUNDARY["base_model"][bm][0] + 1 for bm in
-                           filters["base_model"]]
+                weights = [cls._BOUNDARY["base_model"][bm][1] - cls._BOUNDARY["base_model"][bm][0] + 1
+                           for bm in filters["base_model"]]
                 base_model = random.choices(filters["base_model"], weights=weights, k=1)[0]
             else:
                 base_model = filters["base_model"]

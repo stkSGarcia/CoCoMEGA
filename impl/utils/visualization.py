@@ -23,7 +23,7 @@ from sklearn.manifold import MDS
 from impl.config import CONFIG
 from impl.mr.mr import Relation
 from impl.utils.math_utils import calculate_auc_improvements, area_under_curve, calculate_ds_improvements
-from impl.utils.metrics import metrics, pairwise_distance
+from impl.utils.metrics import metrics, pairwise_distance, avg_pw_from_matrix
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +36,7 @@ verbose_map = {
     "arc_scen": "Archive—Scenario",
     "arc_pert": "Archive—Perturbation",
     "ccea": "CoCoMEGA",
+    "ccea-d": "CoCoMEGA\d",
     "rs": "RS",
     "ga": "SGA",
     "gawa": "SGA with Archives",
@@ -47,9 +48,12 @@ verbose_map = {
 
 style_map = {
     "ccea": {"color": "C1", "marker": "o"},
+    "ccea-d": {"color": "C3", "marker": "P"},
     "ga": {"color": "C2", "marker": "*"},
     "rs": {"color": "C0", "marker": "x"}
 }
+
+skip_map = {"ccea": 5, "ccea-d": 5, "ga": 2, "rs": 1}
 
 
 class Visualizer:
@@ -569,12 +573,13 @@ def visualize_diversity_distribution(file, show=False):
 
 
 def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_thresholds: List[float],
-                                          distance_thresholds: List[float], box=False, show=False):
+                                          distance_thresholds: List[float], mr_set, box=False, show=False):
     """Plot the number of distinct solutions from final archived solutions by applying fitness and distance thresholds.
 
     @param files: Solution data files of different algorithms. Dict[name_of_algorithm, List[solution_file]].
     @param fitness_thresholds: A list of fitness thresholds.
     @param distance_thresholds: A list of distance thresholds.
+    @param mr_set: The given MRs.
     @param box: Show box plots.
     @param show: A boolean to determine whether to show the plots or not.
     """
@@ -593,7 +598,7 @@ def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_t
         for file in file_list:
             with open(file, "rb") as f:
                 solutions = pickle.load(f)
-            solution_df = _filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds,
+            solution_df = _filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds, mr_set,
                                                 additional_metrics=['distinct_solution_num'])
             df = (pd.concat([df, solution_df], ignore_index=True))
 
@@ -639,7 +644,7 @@ def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_t
 
 def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str, List[List[str]]],
                                                  fitness_thresholds: List[float], distance_thresholds: List[float],
-                                                 max_sim_num: int, interval=10, mrc=False, show=False):
+                                                 max_sim_num: int, interval=10, mrc=False, mr_set=None, show=False):
     """Plot the number of distinct solutions over simulations by applying fitness and distance thresholds.
 
     @param directory: The directory of checkpoint files.
@@ -649,6 +654,7 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
     @param max_sim_num: The maximum number of simulations.
     @param interval: Width of intervals for aggregation (percentage).
     @param mrc: Show the MR coverage.
+    @param mr_set: The given MRs.
     @param show: A boolean to determine whether to show the plots or not.
     """
     percent_ranges = np.arange(interval, 101, interval)
@@ -663,7 +669,6 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
     auc_df = pd.DataFrame()
 
     checkpoint_files = sorted(os.listdir(directory))
-    skip = {"ccea": 5, "ga": 2, "rs": 1}
     for name, ckp_list in files.items():
         helper = pd.DataFrame({"simulation_num": ranges})
         agg_df_list = defaultdict(list)
@@ -672,11 +677,11 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
             df = pd.DataFrame()
             for file in file_list:
                 with open(file, "rb") as f:
-                    for _ in range(skip[name]): pickle.load(f)
+                    for _ in range(skip_map[name]): pickle.load(f)
                     solutions = pickle.load(f)
                     for _ in range(2): pickle.load(f)
                     budget = pickle.load(f)
-                ckp_df = _filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds,
+                ckp_df = _filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds, mr_set,
                                                additional_metrics=['distinct_solution_num'])
                 ckp_df["simulation_num"] = budget.sim_num
                 df = (pd.concat([df, ckp_df], ignore_index=True))
@@ -692,7 +697,6 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
                 temp = agg_df.loc[ranges]
                 agg_df_list[gp_name].append(temp)
 
-        from impl.problem import mr_set
         for gp_name, agg_dfs in agg_df_list.items():
             agg_df = pd.concat(agg_dfs).groupby("simulation_num").agg(list)
             ax = ax_map[gp_name]
@@ -728,7 +732,7 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
 def visualize_archived_solutions_by_gen(directory: str, checkpoints: Dict[str, List[List[str]]], generation_num,
                                         metric_name,
                                         fitness_thresholds: List[float],
-                                        distance_thresholds: List[float], box=False, show=False,
+                                        distance_thresholds: List[float], mr_set, box=False, show=False,
                                         legend_loc='upper right', padding={'top': 1.1, 'bottom': 0.3}):
     """Plot the number of distinct solutions from final archived solutions by applying fitness and distance thresholds.
 
@@ -742,6 +746,7 @@ def visualize_archived_solutions_by_gen(directory: str, checkpoints: Dict[str, L
         "avg_fitness" (Average Fitness)
     @param fitness_thresholds: A list of fitness thresholds.
     @param distance_thresholds: A list of distance thresholds.
+    @param mr_set: The given MRs.
     @param box: Show box plots.
     @param show: A boolean to determine whether to show the plots or not.
     @param legend_loc: Specifies the location of the legend in the plots
@@ -764,12 +769,11 @@ def visualize_archived_solutions_by_gen(directory: str, checkpoints: Dict[str, L
             else:
                 cp = run[generation_num - 1]
 
-            skip = {"ccea": 5, "ga": 2, "rs": 1}
             with open(cp, "rb") as f:
-                for _ in range(skip[alg]): pickle.load(f)
+                for _ in range(skip_map[alg]): pickle.load(f)
                 solutions = pickle.load(f)
 
-            solution_df = _filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds,
+            solution_df = _filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds, mr_set,
                                                 additional_metrics=([metric_name]))
 
             df = (pd.concat([df, solution_df], ignore_index=True))
@@ -822,7 +826,7 @@ def visualize_archived_solutions_by_gen(directory: str, checkpoints: Dict[str, L
 
 def visualize_archive_solution_over_generations(directory: str, files: Dict[str, List[List[str]]], metric_name,
                                                 fitness_thresholds: List[float], distance_thresholds: List[float],
-                                                max_gen: int, show=False, legend_loc='upper right',
+                                                mr_set, max_gen: int, show=False, legend_loc='upper right',
                                                 padding={'top': 0.6, 'bottom': 0.3}):
     """Plot the metrics over generations by applying fitness and distance thresholds.
 
@@ -835,6 +839,7 @@ def visualize_archive_solution_over_generations(directory: str, files: Dict[str,
         "avg_fitness" (Average Fitness)
     @param fitness_thresholds: A list of fitness thresholds.
     @param distance_thresholds: A list of distance thresholds.
+    @param mr_set: The given MRs.
     @param max_gen: The maximum number of generations.
     @param show: A boolean to determine whether to show the plots or not.
     @oaram legend_loc: Location of the legend in the plots.
@@ -849,7 +854,6 @@ def visualize_archive_solution_over_generations(directory: str, files: Dict[str,
     ax_map = {gp_name: ax for ax, gp_name in zip(axes.reshape(-1), product(fitness_thresholds, distance_thresholds))}
 
     checkpoint_files = sorted(os.listdir(directory))
-    skip = {"ccea": 5, "ga": 2, "rs": 1}
     data = {}
     for alg, ckp_list in files.items():
         df = pd.DataFrame()
@@ -858,9 +862,9 @@ def visualize_archive_solution_over_generations(directory: str, files: Dict[str,
             for i, file in enumerate(file_list):
                 if i == max_gen: break
                 with open(file, "rb") as f:
-                    for _ in range(skip[alg]): pickle.load(f)
+                    for _ in range(skip_map[alg]): pickle.load(f)
                     solutions = pickle.load(f)
-                ckp_df = _filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds,
+                ckp_df = _filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds, mr_set,
                                                additional_metrics=[metric_name])
                 ckp_df["alg"] = alg
                 ckp_df["run"] = run_counter
@@ -945,19 +949,19 @@ def visualize_computational_efficiency(log_file: str, solution_files: Dict[str, 
     if show: plt.show()
 
 
-def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_thresholds: List[float],
+def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_thresholds: List[float], mr_set,
                           additional_metrics: List[str] = []):
-    column_names = (
-        "fitness_threshold", "distance_threshold", "violated_mr_num", "distinct_mr_num", *additional_metrics)
+    default_columns = ["fitness_threshold", "distance_threshold", "violated_mr_num", "distinct_mr_num", "avg_pw"]
+    additional_metrics = [metric for metric in additional_metrics if metric not in default_columns]
+    column_names = (*default_columns, *additional_metrics)
     if len(solutions) == 0:
-        return pd.DataFrame([[fitness_threshold, distance_threshold, 0, 0,
+        return pd.DataFrame([[fitness_threshold, distance_threshold, 0, 0, np.nan,
                               *[metrics[metric](solutions) for metric in additional_metrics]]
                              for fitness_threshold in fitness_thresholds
                              for distance_threshold in distance_thresholds], columns=column_names)
 
     indices_to_remove = [[i for i, solution in enumerate(solutions) if solution.fitness.values[0] < threshold]
                          for threshold in fitness_thresholds]
-    from impl.problem import mr_set
     indices_of_violated_mrs = np.array(mr_set.violated_mrs([perturbations for _, perturbations in solutions]))
     dist_matrix = squareform(pairwise_distance(solutions)) if len(solutions) > 1 else np.array([[0]])
 
@@ -972,7 +976,7 @@ def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_t
         n = len(dist)
 
         if n < 2:
-            results += [[fitness_thresholds[idx], threshold, n, n,
+            results += [[fitness_thresholds[idx], threshold, n, n, np.nan,
                          *[metrics[metric](selected_solutions) for metric in additional_metrics]] for threshold in
                         distance_thresholds]
             continue
@@ -994,8 +998,9 @@ def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_t
             mr_indices = list(map(tuple, violated_mrs[list(points_to_keep)]))
             violated_mr_num = len(set(np.hstack(mr_indices)))
             distinct_mr_num = len(set(mr_indices))
+            avg_pw_value = avg_pw_from_matrix(dist, list(points_to_keep))
             final_solutions = [sol for i, sol in enumerate(selected_solutions) if i in points_to_keep]
-            results.append([fitness_thresholds[idx], threshold, violated_mr_num, distinct_mr_num,
+            results.append([fitness_thresholds[idx], threshold, violated_mr_num, distinct_mr_num, avg_pw_value,
                             *[metrics[metric](final_solutions) for metric in additional_metrics]])
     return pd.DataFrame(results, columns=column_names)
 

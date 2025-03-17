@@ -84,6 +84,7 @@ class BaseAlgorithm:
             pickle.dump(evaluated_solutions, f)
         with open(os.path.join(CONFIG["workspace"]["solution"], f"statistics-{suffix}.pickle"), "wb") as f:
             pickle.dump(self.logbook, f)
+        logger.info(f"Results dumped at {suffix}.")
 
     @staticmethod
     def remove_duplicates(population):
