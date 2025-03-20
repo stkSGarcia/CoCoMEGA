@@ -114,6 +114,10 @@ def run_environment(conf):
         "REPETITIONS": "1",
         "TEAM_AGENT": conf["agent_path"],
         "RESUME": "True",
+        "COLLECTION_DELAY_LOWER": conf.get("collection_delay_lower", None),
+        "COLLECTION_DELAY_UPPER": conf.get("collection_delay_upper", None),
+        "COLLECTION_DURATION": conf.get("collection_duration", None),
+        "COLLECTION_INTERVAL": conf.get("collection_interval", None),
         # Add RECORD_PATH if needed
         # "RECORD_PATH": "path/to/record",
     })
@@ -121,7 +125,8 @@ def run_environment(conf):
     child_env["PYTHONPATH"] = os.pathsep.join(sys.path)
 
     command = (
-        f"{sys.executable} {os.path.join(CONFIG['interfuser']['repo'], 'leaderboard/leaderboard/leaderboard_evaluator.py')}"
+        # f"{sys.executable} {os.path.join(CONFIG['interfuser']['repo'], 'leaderboard/leaderboard/leaderboard_evaluator.py')}"
+        f"{sys.executable} {os.path.join('impl', 'scenario', 'leaderboard_evaluator.py')}"
         f" --scenarios {scenarios}"
         f" --routes {routes}"
         f" --repetitions 1"

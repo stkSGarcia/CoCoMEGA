@@ -70,13 +70,22 @@ def collect_runtime_data(agent: str):
     os.makedirs(CONFIG["workspace"]["train_data"], exist_ok=True)
     os.makedirs(CONFIG["workspace"]["runtime_data"], exist_ok=True)
 
+    agent_conf = CONFIG["interfuser"].copy()
+    del agent_conf["versions"]
+    version_conf = [_c for _c in CONFIG["interfuser"]["versions"] if _c["name"] == agent][0]
+
     workspace_conf = {
         "cp_root": CONFIG["workspace"]["data_collection_checkpoint"],
         "output_root": CONFIG["workspace"]["runtime_data"]
     }
-    agent_conf = CONFIG["interfuser"].copy()
-    del agent_conf["versions"]
-    version_conf = [_c for _c in CONFIG["interfuser"]["versions"] if _c["name"] == agent][0]
+
+    exec_conf = {
+        "collection_delay_lower": str(CONFIG["runtime"]["collection_delay"][0]),
+        "collection_delay_upper": str(CONFIG["runtime"]["collection_delay"][1]),
+        "collection_duration": str(CONFIG["runtime"]["collection_duration"]),
+        "collection_interval": str(CONFIG["runtime"]["collection_interval"]),
+    }
+
     environment_confs = get_enviroment_confs()
     for i in range(len(environment_confs)):
         environment_confs[i] = {
@@ -84,6 +93,7 @@ def collect_runtime_data(agent: str):
             **agent_conf,
             **version_conf,
             **workspace_conf,
+            **exec_conf,
         }
 
     run_free_environments(environment_confs)
@@ -126,7 +136,6 @@ def train_interfuser(args):
     if args.gpu_num > gpu_count:
         raise RuntimeError(f"Requested {args.gpu_num} GPUs, but only {gpu_count} are available.")
     output_base = args.output
-
 
     logger.info(f"Training an Interfuser model on {args.gpu_num} GPUs...")
     child_env = os.environ.copy()
