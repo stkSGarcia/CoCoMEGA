@@ -2,6 +2,7 @@ import os
 import json
 import datetime
 import pathlib
+import random
 import time
 import pickle
 import imp
@@ -20,6 +21,7 @@ from easydict import EasyDict
 from torchvision import transforms
 from leaderboard.autoagents import autonomous_agent
 
+from impl.scenario.exceptions import AgentTerminationSignal
 from impl.utils.carla_utils import location_to_dict, get_direction
 from impl.utils.leaderboad_utils import estimate_other_actor_data
 from timm.models import create_model
@@ -206,7 +208,12 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         super().__init__(path_to_conf_file)
         self._vehicle = None
         self._world = None
-
+        self.collection_duration = int(os.getenv("COLLECTION_DURATION", 0))
+        self.collection_interval = int(os.getenv("COLLECTION_DELAY_UPPER", 0))
+        collection_delay_lower = os.environ.get("COLLECTION_DELAY_LOWER", None)
+        collection_delay_upper = os.environ.get("COLLECTION_DELAY_UPPER", None)
+        self.collection_delay = random.randint(int(collection_delay_lower), int(collection_delay_upper)) \
+            if collection_delay_lower is not None and collection_delay_upper is not None else None
 
     def setup(self, path_to_conf_file):
         self.sensor_interface._queue_timeout = 100
@@ -221,6 +228,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         self.step = -1
         self.wall_start = time.time()
         self.initialized = False
+        self.frame_rate = None
         self.rgb_front_transform = create_carla_rgb_transform(224)
         self.rgb_left_transform = create_carla_rgb_transform(128)
         self.rgb_right_transform = create_carla_rgb_transform(128)
@@ -296,6 +304,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         self._world = self._vehicle.get_world()
         if WEATHER:
             self._world.set_weather(carla.WeatherParameters(**CONFIG["blueprint"]["scenario"]["weather"][int(WEATHER)]))
+        self.frame_rate = 1.0 / self._world.get_settings().fixed_delta_seconds
 
     def _get_position(self, tick_data):
         gps = tick_data["gps"]
@@ -653,12 +662,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
 
         tick_data["sim_data"]["town"] = CarlaDataProvider.get_map().name
         weather = CarlaDataProvider.get_world().get_weather()
-        # weather_dict = {
-        #     key: getattr(weather, key)
-        #     for key in dir(weather)
-        #     if not key.startswith('_') and not key[0].isupper() and not callable(getattr(weather, key))
-        # }
-        # tick_data["weather"] = weather_dict
+
         tick_data["sim_data"]["weather"] = WEATHER
         tick_data["sim_data"]["brightness"] = weather.sun_altitude_angle
         ego_vehicle = CarlaDataProvider.get_hero_actor()
@@ -682,6 +686,13 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         return control
 
     def save(self, tick_data):
+        if (self.collection_interval > 0 and self.step % (self.collection_interval * self.frame_rate) != 0) \
+                or self.step < self.collection_delay * self.frame_rate:
+            return
+        if (self.collection_duration > 0) \
+                and (self.step >= (self.collection_delay + self.collection_duration) * self.frame_rate):
+            raise AgentTerminationSignal("Agent requested scenario termination!")
+
         frame = self.step // self.skip_frames
         if display_agent:
             Image.fromarray(tick_data["surface"]).save(

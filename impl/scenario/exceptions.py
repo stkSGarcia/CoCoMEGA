@@ -68,3 +68,15 @@ class EarlyTerminationException(Exception):
     def __init__(self, message):
         self.message = message
         super().__init__(self.message)
+
+
+class AgentTerminationSignal(Exception):
+    """Exception raised if agent terminates the scenario.
+
+        Attributes:
+            message -- explanation of the error
+        """
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
