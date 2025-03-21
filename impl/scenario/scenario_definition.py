@@ -367,7 +367,9 @@ class ScenarioDefinition:
                 try:
                     (self.trajectory["trajectory"],
                      self.trajectory["gps_route"],
-                     self.trajectory["route"]) = self._build_trajectory({
+                     self.trajectory["route"],
+                     self.trajectory["start"]["is_junction"]
+                     ) = self._build_trajectory({
                         "start": {"x": x, "y": y},
                         "direction": self.trajectory["direction"]}
                     )
