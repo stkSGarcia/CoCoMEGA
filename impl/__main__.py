@@ -208,19 +208,25 @@ def convert2scenarios(directory: str, n: int):
             return None
 
     scenarios = []
-    count = 0
-    for data_path in Path(directory).rglob("*.*"):
-        if count < n:
+    if n < 1:
+        for data_path in Path(directory).rglob("*.pkl"):
             scenario = vectorize(data_path)
             if scenario is None: continue
             scenarios.append(scenario)
-        else:
-            i = random.randint(0, count)
-            if i < n:
+    else:
+        count = 0
+        for data_path in Path(directory).rglob("*.pkl"):
+            if count < n:
                 scenario = vectorize(data_path)
                 if scenario is None: continue
-                scenarios[i] = scenario
-        count += 1
+                scenarios.append(scenario)
+            else:
+                i = random.randint(0, count)
+                if i < n:
+                    scenario = vectorize(data_path)
+                    if scenario is None: continue
+                    scenarios[i] = scenario
+            count += 1
 
     with open(os.path.join(CONFIG["workspace"]["runtime_scenario"],
                            f"rt_scen_{str(int(round(time.time() * 1000)))}.pickle"), "wb") as f:
