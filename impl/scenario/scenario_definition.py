@@ -299,6 +299,7 @@ class ScenarioDefinition:
     def update_ego(self, category: str, value):
         if category == "position":
             original = self.get_trigger_position()
+            load_world(self.town)
             x, y = self._next_waypoint(original["x"], original["y"], value)
             if x is not None and y is not None:
                 try:

@@ -591,6 +591,7 @@ def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_t
 
     # vda = defaultdict(lambda: dict())
     data = {}
+    mean_df = pd.DataFrame()
     for name, file_list in files.items():
         df = pd.DataFrame()
         for file in file_list:
