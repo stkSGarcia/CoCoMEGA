@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import pickle
@@ -54,6 +55,9 @@ class BaseAlgorithm:
         """
         logger.info(f"{self._name} started.")
         logger.info(self.budget.print_budget())
+        # Dump configuration.
+        with open(os.path.join(CONFIG["workspace"]["current_root"], "config.json"), "w") as f:
+            json.dump(CONFIG, f, indent=4)
 
     def record_statistics(self, population: List, gen_num: int, pop_name: str = "", sim_num: int = None):
         """Record the statistics of the population.

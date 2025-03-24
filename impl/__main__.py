@@ -16,7 +16,7 @@ from impl.algorithm.ccea import CCEA
 from impl.algorithm.ga import GeneticAlgorithm
 from impl.algorithm.moccea import MOCCEA
 from impl.algorithm.rs import RandomSearch
-from impl.config import CONFIG
+from impl.config import CONFIG, init_project_folder
 from impl.scenario.scenario_definition import ScenarioDefinition
 from impl.scenario.simulation_runner import run_scenarios, run_solutions, run_free_environments
 from impl.utils.docker_utils import cleanup_containers
@@ -39,7 +39,11 @@ def parse_list(type, delimeter):
     return parse_func
 
 
-def search(algorithm: str, resume: bool):
+def search(algorithm: str, resume: bool, folder_name: str):
+    if resume:
+        init_project_folder(folder_name, resume)
+    else:
+        init_project_folder(algorithm, resume)
     if algorithm == "ccea":
         solver = CCEA(toolbox=problem.toolbox, budget=problem.budget)
     elif algorithm == "moccea":
@@ -56,6 +60,7 @@ def search(algorithm: str, resume: bool):
 
 
 def simulate(num: int, file: str):
+    init_project_folder("sim")
     if file:
         logger.info(f"Loading solution file: {file}.")
         run_solutions(file, num)
@@ -233,21 +238,6 @@ def convert2scenarios(directory: str, n: int):
         pickle.dump(scenarios, f)
 
 
-class StoreDictKeyPair(argparse.Action):
-    def __call__(self, parser, namespace, values, option_string=None):
-        is_kv = ["=" in value for value in values]
-        if all(is_kv):
-            pairs = {}
-            for value in values:
-                k, v = value.split("=")
-                pairs[k] = v.split(",")
-            setattr(namespace, self.dest, pairs)
-        elif not any(is_kv):
-            setattr(namespace, self.dest, values)
-        else:
-            parser.error("expected consistent type of arguments")
-
-
 if __name__ == "__main__":
     # Parse command line.
     parser = argparse.ArgumentParser(
@@ -271,7 +261,8 @@ if __name__ == "__main__":
                                     "ga: standard genetic algorithm; "
                                     "gawa: genetic algorithm with archive strategy")
     parser_search.add_argument("-r", "--resume", action="store_true", help="resume the previous run")
-    parser_search.set_defaults(func=lambda args: search(args.algorithm, args.resume))
+    parser_search.add_argument("-f", "--folder", default=None, help="folder name to resume from")
+    parser_search.set_defaults(func=lambda args: search(args.algorithm, args.resume, args.folder))
 
     parser_sim = subparsers.add_parser("simulate", aliases=["sim"], help="run simulations")
     parser_sim.add_argument("-n", "--number", type=int, default=1, help="number of simulations to run")

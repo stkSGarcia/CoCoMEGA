@@ -153,17 +153,17 @@ class CCEA(BaseAlgorithm):
         for perturbation in pop_perturbation:
             self.toolbox.evaluate_individual(perturbation, archive_solution)
 
-        if CONFIG["opt"]["niching"]["strategy"] == "sharing":
+        if CONFIG["search"]["opt"]["niching"]["strategy"] == "sharing":
             self.fitness_sharing(pop_scenario,
-                                 CONFIG["opt"]["niching"]["punishment"],
-                                 CONFIG["opt"]["niching"]["scaling"])
+                                 CONFIG["search"]["opt"]["niching"]["punishment"],
+                                 CONFIG["search"]["opt"]["niching"]["scaling"])
             self.fitness_sharing(pop_perturbation,
-                                 CONFIG["opt"]["niching"]["punishment"],
-                                 CONFIG["opt"]["niching"]["scaling"])
-        elif CONFIG["opt"]["niching"]["strategy"] == "clearing":
-            self.fitness_clearing(pop_scenario, CONFIG["opt"]["niching"]["capacity"])
-            self.fitness_clearing(pop_perturbation, CONFIG["opt"]["niching"]["capacity"])
-        elif CONFIG["opt"]["niching"]["strategy"] != "none":
+                                 CONFIG["search"]["opt"]["niching"]["punishment"],
+                                 CONFIG["search"]["opt"]["niching"]["scaling"])
+        elif CONFIG["search"]["opt"]["niching"]["strategy"] == "clearing":
+            self.fitness_clearing(pop_scenario, CONFIG["search"]["opt"]["niching"]["capacity"])
+            self.fitness_clearing(pop_perturbation, CONFIG["search"]["opt"]["niching"]["capacity"])
+        elif CONFIG["search"]["opt"]["niching"]["strategy"] != "none":
             logger.warning("Unrecognized niching strategy, falling back to `none`.")
 
         return archive_solution, sim_num
@@ -179,7 +179,7 @@ class CCEA(BaseAlgorithm):
         archive = tools.selBest(population, 1)
         population.remove(archive[0])
 
-        if CONFIG["opt"]["diversity"]:
+        if CONFIG["search"]["opt"]["diversity"]:
             # Select individuals able to maximize the diversity.
             valid, invalid = [], []
             for ind in population:
@@ -218,7 +218,7 @@ class CCEA(BaseAlgorithm):
             parents = population[0].select(population)
             parents = list(map(self.toolbox.clone, parents))
             parents[0].mate(parents[1])
-            if CONFIG["opt"]["diversity"]:
+            if CONFIG["search"]["opt"]["diversity"]:
                 parents[0].mutate()
                 parents[1].mutate()
                 del parents[0].fitness.values

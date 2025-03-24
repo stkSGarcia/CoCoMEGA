@@ -1,12 +1,34 @@
+import json
 import logging.config
 import os
 import sys
+import time
+import uuid
 from collections.abc import Mapping
 
 import yaml
 
 logger = logging.getLogger(__name__)
 CONFIG = {}
+
+
+class LazyPath:
+    """Lazy directory creation."""
+
+    def __init__(self, root, relative_path):
+        self.root = root
+        self.relative_path = relative_path
+        self.full_path = os.path.join(root, relative_path)
+        self._created = False
+
+    def __str__(self):
+        if not self._created:
+            os.makedirs(self.full_path, exist_ok=True)
+            self._created = True
+        return self.full_path
+
+    def __repr__(self):
+        return repr(self.full_path)
 
 
 def _load_yaml(path):
@@ -47,13 +69,12 @@ def init_config():
     custom_config = _load_yaml(config_name) if os.path.isfile(config_name) else {}
     CONFIG = _merge_dict(default_config, custom_config)
 
-    # Create directories.
+    # Set up workspace root and other paths with lazy directory creation.
     CONFIG["workspace"]["root"] = os.path.join(os.path.dirname(os.path.dirname(__file__)), CONFIG["workspace"]["root"])
     os.makedirs(CONFIG["workspace"]["root"], exist_ok=True)
     for k, v in CONFIG["workspace"].items():
         if k == "root" or v is None: continue
-        CONFIG["workspace"][k] = os.path.join(CONFIG["workspace"]["root"], v)
-        os.makedirs(CONFIG["workspace"][k], exist_ok=True)
+        CONFIG["workspace"][k] = LazyPath(CONFIG["workspace"]["root"], v)
 
     # Log configurations.
     default_log_config_path = os.path.join(default_config_base, log_config_name)
@@ -76,3 +97,29 @@ def init_config():
         "scenario_runner",
     ]:
         sys.path.append(os.path.join(CONFIG["interfuser"]["repo"], path))
+
+
+def init_project_folder(name: str, resume=False):
+    """Create necessary folders for executions or resume from an existing project folder.
+
+    :param name: Execution name. If `resume` is `True`, this is the folder name to resume from.
+    :param resume: Whether to resume.
+    """
+    global CONFIG
+    if resume:
+        root_path = os.path.join(CONFIG["workspace"]["result"], name)
+        with open(os.path.join(root_path, "config.json"), "r") as f:
+            CONFIG = json.loads(f)
+    else:
+        root_path = os.path.join(CONFIG["workspace"]["result"],
+                                 f"{str(int(round(time.time() * 1000)))}-{name.lower()}-{uuid.uuid4().hex[:6]}")
+        os.makedirs(root_path, exist_ok=True)
+    CONFIG["workspace"]["current_root"] = root_path
+    for key, folder in (
+            ("sim_result", "results"),
+            ("checkpoint", "checkpoints"),
+            ("solution", "solutions"),
+    ):
+        folder_path = os.path.join(root_path, folder)
+        os.makedirs(folder_path, exist_ok=True)
+        CONFIG["workspace"][key] = folder_path

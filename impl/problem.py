@@ -25,9 +25,9 @@ reference_version = "v1"
 test_version = "v2"
 
 # Define the budget.
-budget = Budget(max_sim=CONFIG["budget"]["max_sim"],
-                max_time=CONFIG["budget"]["max_time"],
-                max_gen=CONFIG["budget"]["max_gen"])
+budget = Budget(max_sim=CONFIG["search"]["budget"]["max_sim"],
+                max_time=CONFIG["search"]["budget"]["max_time"],
+                max_gen=CONFIG["search"]["budget"]["max_gen"])
 
 # Define individuals.
 weights = (1.0, -1.0,) if CONFIG["search"]["multi_objective"]["enable"] else (1.0,)
