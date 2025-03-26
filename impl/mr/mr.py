@@ -12,7 +12,7 @@ import pandas as pd
 from deap import tools
 from tslearn.metrics import dtw_path
 
-from impl import config
+from impl import config as cfg
 from impl.scenario import scenario_definition
 from impl.scenario.scenario_definition import ScenarioDefinition
 
@@ -59,7 +59,7 @@ class Perturbation:
         else:
             raise ValueError(f"Unsupported category: {self.category}.")
 
-    def dist(self, other, scaling=config.CONFIG["perturbation"]["dist_scaling"]):
+    def dist(self, other, scaling=cfg.CONFIG["perturbation"]["dist_scaling"]):
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         if self.enabled == other.enabled and self.category == other.category and self.operation == other.operation:
@@ -82,7 +82,7 @@ class Perturbation:
             # TODO: within the same category.
             return pow(scaling * (0.0 if this == that else 1.0), 2)
 
-    def mate(self, other, cxpb=config.CONFIG["perturbation"]["cxpb"]):
+    def mate(self, other, cxpb=cfg.CONFIG["perturbation"]["cxpb"]):
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         if self.category != other.category or self.operation != other.operation: return
@@ -98,9 +98,9 @@ class Perturbation:
         else:
             raise ValueError(f"Unsupported category: {self.category}.")
 
-    def mutate(self, mutpb=config.CONFIG["perturbation"]["mutpb"],
-               eta=config.CONFIG["perturbation"]["mut_eta"],
-               std=config.CONFIG["perturbation"]["mut_std"]):
+    def mutate(self, mutpb=cfg.CONFIG["perturbation"]["mutpb"],
+               eta=cfg.CONFIG["perturbation"]["mut_eta"],
+               std=cfg.CONFIG["perturbation"]["mut_std"]):
         if random.random() < mutpb:
             self.enabled = not self.enabled
         if self.category in ScenarioDefinition.DYNAMIC:
@@ -136,7 +136,7 @@ class Perturbations(list):
         for perturbation in self:
             perturbation.perturb(scenario)
 
-    def dist(self, other, scaling=config.CONFIG["perturbation"]["dist_scaling"]):
+    def dist(self, other, scaling=cfg.CONFIG["perturbation"]["dist_scaling"]):
         # if not isinstance(other, self.__class__):
         if str(type(other)) != str(type(self)):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
@@ -147,17 +147,17 @@ class Perturbations(list):
 
     @staticmethod
     def select(population, k=2):
-        return tools.selTournament(population, k=k, tournsize=config.CONFIG["perturbation"]["tournament"])
+        return tools.selTournament(population, k=k, tournsize=cfg.CONFIG["perturbation"]["tournament"])
 
-    def mate(self, other, cxpb=config.CONFIG["perturbation"]["cxpb"]):
+    def mate(self, other, cxpb=cfg.CONFIG["perturbation"]["cxpb"]):
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         for this, that in zip(self, other):
             this.mate(that, cxpb=cxpb)
 
-    def mutate(self, mutpb=config.CONFIG["perturbation"]["mutpb"],
-               eta=config.CONFIG["perturbation"]["mut_eta"],
-               std=config.CONFIG["perturbation"]["mut_std"]):
+    def mutate(self, mutpb=cfg.CONFIG["perturbation"]["mutpb"],
+               eta=cfg.CONFIG["perturbation"]["mut_eta"],
+               std=cfg.CONFIG["perturbation"]["mut_std"]):
         for perturbation in self:
             perturbation.mutate(mutpb=mutpb, eta=eta, std=std)
 
@@ -224,7 +224,7 @@ class Relation(ABC):
         The `float` value denotes the extent to which this relation is violated.
         """
         labels = Relation.convert_labels(labels)
-        _, df = Relation.dtw_dataframe(source, follow_up, self.field, labels) if config.CONFIG["violation"]["dtw"] \
+        _, df = Relation.dtw_dataframe(source, follow_up, self.field, labels) if cfg.CONFIG["violation"]["dtw"] \
             else Relation.pairwise_dataframe(source, follow_up, self.field, labels)
         critical_intervals = Relation.critical_intervals(df, labels)
         df = df.loc[critical_intervals]
@@ -249,7 +249,7 @@ class Relation(ABC):
         @param labels: Labels determining the perturbed objects.
         @return: A tuple of the DTW path and the generated `DataFrame`.
         """
-        if config.CONFIG["violation"]["strategy"] == "position":
+        if cfg.CONFIG["violation"]["strategy"] == "position":
             func, columns = partial(dtw_path), ["position_x", "position_y"]
         else:
             func, columns = partial(dtw_path, global_constraint="sakoe_chiba", sakoe_chiba_radius=5), field
@@ -291,7 +291,7 @@ class Relation(ABC):
         @return: A sequence of indices that indicate the critical intervals.
         """
         return dataframe.index[(dataframe[labels].min(axis=1) if len(labels) > 0 else dataframe[Relation._d])
-                               < config.CONFIG["violation"]["max_ego_distance"]]
+                               < cfg.CONFIG["violation"]["max_ego_distance"]]
 
     def __eq__(self, other):
         return (isinstance(other, self.__class__) and

@@ -11,7 +11,7 @@ from pathlib import Path
 import argformat
 import torch
 
-from impl import config
+from impl import config as cfg
 from impl import problem
 from impl.algorithm.ccea import CCEA
 from impl.algorithm.ga import GeneticAlgorithm
@@ -41,9 +41,9 @@ def parse_list(type, delimeter):
 
 def search(algorithm: str, resume: bool, folder_name: str):
     if resume:
-        config.init_project_folder(folder_name, resume)
+        cfg.init_project_folder(folder_name, resume)
     else:
-        config.init_project_folder(algorithm, resume)
+        cfg.init_project_folder(algorithm, resume)
     if algorithm == "ccea":
         solver = CCEA(toolbox=problem.toolbox, budget=problem.budget)
     elif algorithm == "moccea":
@@ -60,7 +60,7 @@ def search(algorithm: str, resume: bool, folder_name: str):
 
 
 def simulate(num: int, file: str):
-    config.init_project_folder("sim")
+    cfg.init_project_folder("sim")
     if file:
         logger.info(f"Loading solution file: {file}.")
         run_solutions(file, num)
@@ -72,23 +72,23 @@ def simulate(num: int, file: str):
 def collect_runtime_data(agent: str):
     logger.info(f"Running free simulation environment for agent {agent} to collect runtime data...")
 
-    os.makedirs(config.CONFIG["workspace"]["train_data"], exist_ok=True)
-    os.makedirs(config.CONFIG["workspace"]["runtime_data"], exist_ok=True)
+    os.makedirs(cfg.CONFIG["workspace"]["train_data"], exist_ok=True)
+    os.makedirs(cfg.CONFIG["workspace"]["runtime_data"], exist_ok=True)
 
-    agent_conf = config.CONFIG["interfuser"].copy()
+    agent_conf = cfg.CONFIG["interfuser"].copy()
     del agent_conf["versions"]
-    version_conf = [_c for _c in config.CONFIG["interfuser"]["versions"] if _c["name"] == agent][0]
+    version_conf = [_c for _c in cfg.CONFIG["interfuser"]["versions"] if _c["name"] == agent][0]
 
     workspace_conf = {
-        "cp_root": config.CONFIG["workspace"]["data_collection_checkpoint"],
-        "output_root": config.CONFIG["workspace"]["runtime_data"]
+        "cp_root": cfg.CONFIG["workspace"]["data_collection_checkpoint"],
+        "output_root": cfg.CONFIG["workspace"]["runtime_data"]
     }
 
     exec_conf = {
-        "collection_delay_lower": str(config.CONFIG["runtime"]["collection_delay"][0]),
-        "collection_delay_upper": str(config.CONFIG["runtime"]["collection_delay"][1]),
-        "collection_duration": str(config.CONFIG["runtime"]["collection_duration"]),
-        "collection_interval": str(config.CONFIG["runtime"]["collection_interval"]),
+        "collection_delay_lower": str(cfg.CONFIG["runtime"]["collection_delay"][0]),
+        "collection_delay_upper": str(cfg.CONFIG["runtime"]["collection_delay"][1]),
+        "collection_duration": str(cfg.CONFIG["runtime"]["collection_duration"]),
+        "collection_interval": str(cfg.CONFIG["runtime"]["collection_interval"]),
     }
 
     environment_confs = get_enviroment_confs()
@@ -107,12 +107,12 @@ def collect_runtime_data(agent: str):
 def generate_train_data():
     logger.info(f"Generating training data...")
 
-    os.makedirs(config.CONFIG["workspace"]["data_gen_checkpoint"], exist_ok=True)
-    os.makedirs(config.CONFIG["workspace"]["train_data"], exist_ok=True)
+    os.makedirs(cfg.CONFIG["workspace"]["data_gen_checkpoint"], exist_ok=True)
+    os.makedirs(cfg.CONFIG["workspace"]["train_data"], exist_ok=True)
 
     workspace_conf = {
-        "cp_root": config.CONFIG["workspace"]["data_gen_checkpoint"],
-        "output_root": config.CONFIG["workspace"]["train_data"]
+        "cp_root": cfg.CONFIG["workspace"]["data_gen_checkpoint"],
+        "output_root": cfg.CONFIG["workspace"]["train_data"]
     }
     environment_confs = get_enviroment_confs()
     make_yamls()
@@ -122,9 +122,9 @@ def generate_train_data():
             **environment_confs[i],
             **workspace_conf,
             **{
-                "agent_path": os.path.join(config.CONFIG["interfuser"]["repo"],
+                "agent_path": os.path.join(cfg.CONFIG["interfuser"]["repo"],
                                            "leaderboard", "team_code", "auto_pilot.py"),
-                "agent_config": os.path.join(config.CONFIG["data_collection"]["yaml_root"], f"weather-{weather}.yaml"),
+                "agent_config": os.path.join(cfg.CONFIG["data_collection"]["yaml_root"], f"weather-{weather}.yaml"),
             }
         }
     run_free_environments(environment_confs)
@@ -132,12 +132,11 @@ def generate_train_data():
 
 def train_interfuser(args):
     logger.info(f"Creating dataset index...")
-    create_dataset_index(config.CONFIG["workspace"]["train_data"],
+    create_dataset_index(cfg.CONFIG["workspace"]["train_data"],
                          weathers=args.train_weathers + args.val_weathers,
                          towns=args.train_towns + args.val_towns,
                          )
-    logger.info(
-        f"Dataset index created at {os.path.join(config.CONFIG['workspace']['train_data'], 'dataset_index.txt')}")
+    logger.info(f"Dataset index created at {os.path.join(cfg.CONFIG['workspace']['train_data'], 'dataset_index.txt')}")
 
     gpu_count = torch.cuda.device_count()
     if args.gpu_num > gpu_count:
@@ -148,15 +147,15 @@ def train_interfuser(args):
     child_env = os.environ.copy()
     child_env.update({
         "GPU_NUM": str(args.gpu_num),  # TODO test
-        "DATASET_ROOT": str(config.CONFIG["workspace"]["train_data"]),
+        "DATASET_ROOT": str(cfg.CONFIG["workspace"]["train_data"]),
     })
     child_env["PYTHONPATH"] = os.pathsep.join(sys.path)
 
     distributed_command = f"-m torch.distributed.launch --nproc_per_node={args.gpu_num}" if args.gpu_num > 1 else ""
     command = (
         f"{sys.executable} {distributed_command}"
-        f" {os.path.join(config.CONFIG['interfuser']['repo'], 'interfuser', 'train.py')}"
-        f" {config.CONFIG['workspace']['train_data']}"
+        f" {os.path.join(cfg.CONFIG['interfuser']['repo'], 'interfuser', 'train.py')}"
+        f" {cfg.CONFIG['workspace']['train_data']}"
         f" --dataset carla"
         f" --train-towns {' '.join([str(c) for c in args.train_towns])}"
         f" --val-towns {' '.join([str(c) for c in args.val_towns])}"
@@ -235,7 +234,7 @@ def convert2scenarios(directory: str, n: int):
                     scenarios[i] = scenario
             count += 1
 
-    with open(os.path.join(config.CONFIG["workspace"]["runtime_scenario"],
+    with open(os.path.join(cfg.CONFIG["workspace"]["runtime_scenario"],
                            f"rt_scen_{str(int(round(time.time() * 1000)))}.pickle"), "wb") as f:
         pickle.dump(scenarios, f)
 
@@ -282,55 +281,55 @@ if __name__ == "__main__":
     parser_train = subparsers.add_parser("train", help="Train an Interfuser agent using generated data.")
 
     parser_train.add_argument("--gpu-num", type=int,
-                              default=config.CONFIG["training"]["gpu_num"],
+                              default=cfg.CONFIG["training"]["gpu_num"],
                               help="Number of GPUS for training.")
     parser_train.add_argument("--train-weathers", type=parse_list(int, ","),
-                              default=config.CONFIG["training"]["train_weathers"],
+                              default=cfg.CONFIG["training"]["train_weathers"],
                               help="List of weathers for training, e.g. '0,1,2,3'")
     parser_train.add_argument("--train-towns", type=parse_list(int, ","),
-                              default=config.CONFIG["training"]["train_towns"],
+                              default=cfg.CONFIG["training"]["train_towns"],
                               help="List of towns for training, e.g. '1,2,3'")
     parser_train.add_argument("--val-weathers", type=parse_list(int, ","),
-                              default=config.CONFIG["training"]["val_weathers"],
+                              default=cfg.CONFIG["training"]["val_weathers"],
                               help="List of weathers for validation, e.g. '0,1,2,3'")
     parser_train.add_argument("--val-towns", type=parse_list(int, ","),
-                              default=config.CONFIG["training"]["val_towns"],
+                              default=cfg.CONFIG["training"]["val_towns"],
                               help="List of towns for validation, e.g. '1,2,3'")
     parser_train.add_argument("--model", type=str,
                               default="interfuser_baseline",
                               help="Model to train, default: 'interfuser_baseline'")
     parser_train.add_argument("--epochs", type=int,
-                              default=config.CONFIG["training"]["epochs"],
+                              default=cfg.CONFIG["training"]["epochs"],
                               help="Number of training epochs.")
     parser_train.add_argument("--warmup-epochs", type=int,
-                              default=config.CONFIG["training"]["warmup_epochs"],
+                              default=cfg.CONFIG["training"]["warmup_epochs"],
                               help="Number of warmup epochs.")
     parser_train.add_argument("--lr", type=float,
-                              default=config.CONFIG["training"]["lr"],
+                              default=cfg.CONFIG["training"]["lr"],
                               help="Learning rate.")
     parser_train.add_argument("--batch-size", type=int,
-                              default=config.CONFIG["training"]["batch_size"],
+                              default=cfg.CONFIG["training"]["batch_size"],
                               help="Size of batches.")
     parser_train.add_argument("--eval-metric", type=str,
-                              default=config.CONFIG["training"]["eval_metric"],
+                              default=cfg.CONFIG["training"]["eval_metric"],
                               help="Evaluation metric.")
     parser_train.add_argument("--opt", type=str,
-                              default=config.CONFIG["training"]["opt"],
+                              default=cfg.CONFIG["training"]["opt"],
                               help="Optimization algorithm.")
     parser_train.add_argument("--opt-eps", type=float,
-                              default=config.CONFIG["training"]["opt_eps"],
+                              default=cfg.CONFIG["training"]["opt_eps"],
                               help="Optimization tolerance.")
     parser_train.add_argument("--weight-decay", type=float,
-                              default=config.CONFIG["training"]["weight_decay"],
+                              default=cfg.CONFIG["training"]["weight_decay"],
                               help="Weight decay regularization parameter.")
     parser_train.add_argument("--backbone-lr", type=float,
-                              default=config.CONFIG["training"]["backbone_lr"],
+                              default=cfg.CONFIG["training"]["backbone_lr"],
                               help="Learning rate of backbone models.")
     parser_train.add_argument("--output", type=str,
-                              default=config.CONFIG["workspace"]["trained_models"],
+                              default=cfg.CONFIG["workspace"]["trained_models"],
                               help="Path to training output and results.")
     parser_train.add_argument("--workers", type=int,
-                              default=config.CONFIG["training"]["workers"],
+                              default=cfg.CONFIG["training"]["workers"],
                               help="How many training processes to use.")
     group = parser_train.add_mutually_exclusive_group()
     group.add_argument("--resume", action="store_true",

@@ -13,7 +13,7 @@ from deap import tools
 from scipy.spatial.distance import cdist
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
-from impl import config
+from impl import config as cfg
 from impl.scenario.LeaderboardFactory import LeaderBoardFactory
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
 from impl.utils.carla_utils import get_junction_topology, filter_junction_wp_direction, get_closest_wp, load_world, \
@@ -25,9 +25,9 @@ logger = logging.getLogger(__name__)
 
 class Boundary(dict):
     class Region(Enum):
-        LEFT = config.CONFIG["boundary"]["region"]["left"]
-        FOCUS = config.CONFIG["boundary"]["region"]["focus"]
-        RIGHT = config.CONFIG["boundary"]["region"]["right"]
+        LEFT = cfg.CONFIG["boundary"]["region"]["left"]
+        FOCUS = cfg.CONFIG["boundary"]["region"]["focus"]
+        RIGHT = cfg.CONFIG["boundary"]["region"]["right"]
 
         def __repr__(self):
             return self.name
@@ -150,9 +150,9 @@ def _mutate_attrs(this, attrs, boundary: Boundary, mutpb, eta, std):
 class ScenarioDefinition:
     ATTRIBUTES = ["weather", "brightness", "stop_sign_est", "red_light_est", "is_junction_est"]
     DYNAMIC = ["vehicle", "walker", "static"]
-    _BLUEPRINTS = config.CONFIG["blueprint"]["scenario"]
-    _BOUNDARY = Boundary(config.CONFIG["boundary"]["env"])
-    _TRAJECTORY = config.CONFIG["trajectory"]
+    _BLUEPRINTS = cfg.CONFIG["blueprint"]["scenario"]
+    _BOUNDARY = Boundary(cfg.CONFIG["boundary"]["env"])
+    _TRAJECTORY = cfg.CONFIG["trajectory"]
 
     def __new__(cls, instance=None):
         if isinstance(instance, cls):
@@ -194,9 +194,9 @@ class ScenarioDefinition:
     def generate_random(cls):
         scenario = cls._generate_empty_scenario()
         scenario.set_trajectory(cls._random_predefined_trajectory())
-        scenario.vehicles = Vehicle.generate_random_actors(config.CONFIG["scenario"]["init_pb"]["vehicle"])
-        scenario.walkers = Walker.generate_random_actors(config.CONFIG["scenario"]["init_pb"]["walker"])
-        scenario.statics = Static.generate_random_actors(config.CONFIG["scenario"]["init_pb"]["static"])
+        scenario.vehicles = Vehicle.generate_random_actors(cfg.CONFIG["scenario"]["init_pb"]["vehicle"])
+        scenario.walkers = Walker.generate_random_actors(cfg.CONFIG["scenario"]["init_pb"]["walker"])
+        scenario.statics = Static.generate_random_actors(cfg.CONFIG["scenario"]["init_pb"]["static"])
         return scenario
 
     @classmethod
@@ -208,7 +208,7 @@ class ScenarioDefinition:
 
     @classmethod
     def generate_random_or_leaderboard(cls):
-        if random.random() < config.CONFIG["scenario"]["leaderboard_pb"]:
+        if random.random() < cfg.CONFIG["scenario"]["leaderboard_pb"]:
             return cls.generate_leaderboard_scenario(scenario_type="random")
         else:
             return cls.generate_random()
@@ -417,7 +417,7 @@ class ScenarioDefinition:
                       if not actor.mark and (region is None or actor.region == region)]
         return sorted(candidates, key=lambda x: x[1].radius)[0][0] if candidates else -1
 
-    def dist(self, other, scaling=config.CONFIG["scenario"]["dist_scaling"]):
+    def dist(self, other, scaling=cfg.CONFIG["scenario"]["dist_scaling"]):
         # if not isinstance(other, self.__class__):
         if str(type(other)) != str(type(self)):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
@@ -427,7 +427,7 @@ class ScenarioDefinition:
             if len(actors) == 0 and len(other_actors) == 0:
                 continue
             elif len(actors) == 0 or len(other_actors) == 0:
-                dist += max(len(actors), len(other_actors)) * pow(config.CONFIG["scenario"]["dist_scaling"], 2)
+                dist += max(len(actors), len(other_actors)) * pow(cfg.CONFIG["scenario"]["dist_scaling"], 2)
             else:
                 dist_matrix = cdist(np.array(actors, dtype=object).reshape((-1, 1)),
                                     np.array(other_actors, dtype=object).reshape((-1, 1)),
@@ -437,9 +437,9 @@ class ScenarioDefinition:
 
     @staticmethod
     def select(population, k=2):
-        return tools.selTournament(population, k=k, tournsize=config.CONFIG["scenario"]["tournament"])
+        return tools.selTournament(population, k=k, tournsize=cfg.CONFIG["scenario"]["tournament"])
 
-    def mate(self, other, cxpb=config.CONFIG["scenario"]["cxpb"]):
+    def mate(self, other, cxpb=cfg.CONFIG["scenario"]["cxpb"]):
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         _mate_attrs(self, other, ScenarioDefinition.ATTRIBUTES, cxpb=cxpb)
@@ -447,28 +447,28 @@ class ScenarioDefinition:
         _mate_actors(self.walkers, other.walkers, cxpb=cxpb)
         _mate_actors(self.statics, other.statics, cxpb=cxpb)
 
-    def mutate(self, mutpb=config.CONFIG["scenario"]["mutpb"],
-               eta=config.CONFIG["scenario"]["mut_eta"],
-               std=config.CONFIG["scenario"]["mut_std"]):
+    def mutate(self, mutpb=cfg.CONFIG["scenario"]["mutpb"],
+               eta=cfg.CONFIG["scenario"]["mut_eta"],
+               std=cfg.CONFIG["scenario"]["mut_std"]):
         _mutate_attrs(self, ScenarioDefinition.ATTRIBUTES, ScenarioDefinition._BOUNDARY, mutpb=mutpb, eta=eta, std=std)
         for actor in self.vehicles + self.walkers + self.statics:
             actor.mutate(mutpb=mutpb, eta=eta, std=std)
-        if random.random() < config.CONFIG["scenario"]["mut_del"]:
+        if random.random() < cfg.CONFIG["scenario"]["mut_del"]:
             times = 1
-            while random.random() < config.CONFIG["scenario"]["mutpb"] ** times:
+            while random.random() < cfg.CONFIG["scenario"]["mutpb"] ** times:
                 actors = random.choice([self.vehicles, self.walkers, self.statics])
                 index = ScenarioDefinition._random_pick_actor(actors)
                 if index >= 0: del actors[index]
                 times += 1
         else:
             for actors, cls in zip([self.vehicles, self.walkers, self.statics], [Vehicle, Walker, Static]):
-                limit = config.CONFIG["scenario"]["max_actors"] - len(actors)
-                if limit > 0: actors += cls.generate_random_actors(config.CONFIG["scenario"]["mut_add"], limit)
+                limit = cfg.CONFIG["scenario"]["max_actors"] - len(actors)
+                if limit > 0: actors += cls.generate_random_actors(cfg.CONFIG["scenario"]["mut_add"], limit)
 
     def correct(self):
         self.assign_new_id()
 
-    def build_actor_trajectory(self, actor_def, scenario_duration=config.CONFIG["simulation"]["scenario_duration"]):
+    def build_actor_trajectory(self, actor_def, scenario_duration=cfg.CONFIG["simulation"]["scenario_duration"]):
         num_trajectory_points = 30
         spawn_point = actor_def.get_config()['spawn_point']
 
@@ -568,7 +568,7 @@ class Actor(ABC):
                       for attr in Actor._ATTRIBUTES + cls._ATTRIBUTES})
 
     @classmethod
-    def generate_random_actors(cls, probability, limit=config.CONFIG["scenario"]["max_actors"]):
+    def generate_random_actors(cls, probability, limit=cfg.CONFIG["scenario"]["max_actors"]):
         actors = []
         times = 1
         while len(actors) < limit and random.random() < probability ** times:
@@ -576,12 +576,12 @@ class Actor(ABC):
             times += 1
         return actors
 
-    def dist(self, other, scaling=config.CONFIG["scenario"]["dist_scaling"]):
+    def dist(self, other, scaling=cfg.CONFIG["scenario"]["dist_scaling"]):
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         return _dist_attrs(self, other, Actor._ATTRIBUTES + self._ATTRIBUTES, self._BOUNDARY, scaling=scaling)
 
-    def mate(self, other, cxpb=config.CONFIG["scenario"]["cxpb"]):
+    def mate(self, other, cxpb=cfg.CONFIG["scenario"]["cxpb"]):
         """Mate actors in place."""
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
@@ -589,16 +589,16 @@ class Actor(ABC):
         self.update_region()
         other.update_region()
 
-    def mutate(self, mutpb=config.CONFIG["scenario"]["mutpb"],
-               eta=config.CONFIG["scenario"]["mut_eta"],
-               std=config.CONFIG["scenario"]["mut_std"]):
+    def mutate(self, mutpb=cfg.CONFIG["scenario"]["mutpb"],
+               eta=cfg.CONFIG["scenario"]["mut_eta"],
+               std=cfg.CONFIG["scenario"]["mut_std"]):
         """Mutate actors in place."""
         _mutate_attrs(self, Actor._ATTRIBUTES + self._ATTRIBUTES, self._BOUNDARY, mutpb=mutpb, eta=eta, std=std)
         self.update_region()
 
     def tilt(self, tilt_dir):
         coef = -1 if tilt_dir == "left" else (1 if tilt_dir == "right" else 0)
-        self.angle += coef * config.CONFIG["boundary"]["tilt_degrees"]
+        self.angle += coef * cfg.CONFIG["boundary"]["tilt_degrees"]
 
     def update_attribute(self, category: str, value):
         old_value = getattr(self, category)
@@ -632,8 +632,8 @@ class Actor(ABC):
 
 class Vehicle(Actor):
     _ATTRIBUTES = ["speed"]
-    _BLUEPRINTS = config.CONFIG["blueprint"]["vehicle"]
-    _BOUNDARY = Boundary(config.CONFIG["boundary"]["vehicle"])
+    _BLUEPRINTS = cfg.CONFIG["blueprint"]["vehicle"]
+    _BOUNDARY = Boundary(cfg.CONFIG["boundary"]["vehicle"])
 
     def __init__(self, radius, angle, yaw, model, speed):
         super().__init__(radius, angle, yaw, model)
@@ -667,8 +667,8 @@ class Vehicle(Actor):
 
 class Walker(Actor):
     _ATTRIBUTES = ["speed"]
-    _BLUEPRINTS = config.CONFIG["blueprint"]["walker"]
-    _BOUNDARY = Boundary(config.CONFIG["boundary"]["walker"])
+    _BLUEPRINTS = cfg.CONFIG["blueprint"]["walker"]
+    _BOUNDARY = Boundary(cfg.CONFIG["boundary"]["walker"])
 
     def __init__(self, radius, angle, yaw, model, speed):
         super().__init__(radius, angle, yaw, model)
@@ -686,5 +686,5 @@ class Walker(Actor):
 
 class Static(Actor):
     _ATTRIBUTES = []
-    _BLUEPRINTS = config.CONFIG["blueprint"]["static"]
-    _BOUNDARY = Boundary(config.CONFIG["boundary"]["static"])
+    _BLUEPRINTS = cfg.CONFIG["blueprint"]["static"]
+    _BOUNDARY = Boundary(cfg.CONFIG["boundary"]["static"])

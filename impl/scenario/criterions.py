@@ -7,7 +7,7 @@ import csv
 import os
 import math
 
-from impl import config
+from impl import config as cfg
 from impl.scenario.exceptions import EarlyTerminationException
 
 
@@ -111,7 +111,7 @@ class VehicleMeasurementTest(Criterion):
 
     def _write_to_file(self):
         keys = self.values[0].keys()
-        with open(os.path.join(config.CONFIG["workspace"]["sim_result"], f"{self.scenario_def_id}.csv"),
+        with open(os.path.join(cfg.CONFIG["workspace"]["sim_result"], f"{self.scenario_def_id}.csv"),
                   'w', newline='') as output_file:
             dict_writer = csv.DictWriter(output_file, keys)
             dict_writer.writeheader()

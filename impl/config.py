@@ -10,7 +10,7 @@ from json import JSONEncoder
 import yaml
 
 logger = logging.getLogger(__name__)
-CONFIG = {}  # Always use this variable by from impl import config; config.CONFIG
+CONFIG = {}  # Always use this variable by using `from impl import config as cfg; cfg.CONFIG`
 
 
 def _load_yaml(path):

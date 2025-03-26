@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import numpy as np
 from deap import creator, base, tools
 
-from impl import config
+from impl import config as cfg
 from impl.algorithm.base import Budget
 from impl.algorithm.rnsga2 import selRNSGA2WithMemory
 from impl.algorithm.rnsga3 import selRNSGA3WithMemory
@@ -25,23 +25,23 @@ reference_version = "v1"
 test_version = "v2"
 
 # Define the budget.
-budget = Budget(max_sim=config.CONFIG["search"]["budget"]["max_sim"],
-                max_time=config.CONFIG["search"]["budget"]["max_time"],
-                max_gen=config.CONFIG["search"]["budget"]["max_gen"])
+budget = Budget(max_sim=cfg.CONFIG["search"]["budget"]["max_sim"],
+                max_time=cfg.CONFIG["search"]["budget"]["max_time"],
+                max_gen=cfg.CONFIG["search"]["budget"]["max_gen"])
 
 # Define individuals.
-weights = (1.0, -1.0,) if config.CONFIG["search"]["multi_objective"]["enable"] else (1.0,)
+weights = (1.0, -1.0,) if cfg.CONFIG["search"]["multi_objective"]["enable"] else (1.0,)
 creator.create("Fitness", base.Fitness, weights=weights)
 creator.create("Solution", tuple, fitness=creator.Fitness, is_violated=False)
 creator.create("Scenario", ScenarioDefinition, fitness=creator.Fitness)
 creator.create("Perturbation", Perturbations, fitness=creator.Fitness)
 
 # Load runtime scenarios.
-if (config.CONFIG["search"]["runtime_data_as_seeds"] or
-        config.CONFIG["search"]["constraint"]["enable"] or
-        config.CONFIG["search"]["multi_objective"]["enable"]):
+if (cfg.CONFIG["search"]["runtime_data_as_seeds"] or
+        cfg.CONFIG["search"]["constraint"]["enable"] or
+        cfg.CONFIG["search"]["multi_objective"]["enable"]):
     runtime_scenarios = []
-    for data_path in Path(config.CONFIG["workspace"]["runtime_scenario"]).rglob("*.*"):
+    for data_path in Path(cfg.CONFIG["workspace"]["runtime_scenario"]).rglob("*.*"):
         with open(data_path, "rb") as f:
             runtime_data = pickle.load(f)
             runtime_scenarios += runtime_data
@@ -58,41 +58,41 @@ toolbox.register("perturbation", tools.initIterate, creator.Perturbation, mr_set
 def _pop_scenario():
     pop_scenario = tools.initRepeat(
         list, toolbox.scenario,
-        n=config.CONFIG["scenario"]["pop_size"] * config.CONFIG["scenario"]["init_selection_factor"],
+        n=cfg.CONFIG["scenario"]["pop_size"] * cfg.CONFIG["scenario"]["init_selection_factor"],
     )
-    if config.CONFIG["scenario"]["init_selection_factor"] > 1:
+    if cfg.CONFIG["scenario"]["init_selection_factor"] > 1:
         pop_scenario = sorted(pop_scenario, key=lambda x: x.trajectory_score(),
-                              reverse=True)[:config.CONFIG["scenario"]["pop_size"]]
+                              reverse=True)[:cfg.CONFIG["scenario"]["pop_size"]]
     return pop_scenario
 
 
-if config.CONFIG["search"]["runtime_data_as_seeds"]:
-    toolbox.register("pop_scenario", lambda: random.choices(runtime_scenarios, k=config.CONFIG["scenario"]["pop_size"]))
+if cfg.CONFIG["search"]["runtime_data_as_seeds"]:
+    toolbox.register("pop_scenario", lambda: random.choices(runtime_scenarios, k=cfg.CONFIG["scenario"]["pop_size"]))
 else:
     toolbox.register("pop_scenario", _pop_scenario)
 toolbox.register("pop_perturbation", tools.initRepeat, list, toolbox.perturbation,
-                 n=config.CONFIG["perturbation"]["pop_size"])
+                 n=cfg.CONFIG["perturbation"]["pop_size"])
 
 # Create a complete solution from two individuals.
 toolbox.register("collaborate", lambda scenario, perturbation: creator.Solution((scenario, perturbation)))
 
 # Define the multi-objective configurations.
-if config.CONFIG["search"]["multi_objective"]["enable"]:
-    ref_points = np.array(config.CONFIG["search"]["multi_objective"]["ref_points"])
-    if config.CONFIG["search"]["multi_objective"]["algorithm"] == "rnsga3":
+if cfg.CONFIG["search"]["multi_objective"]["enable"]:
+    ref_points = np.array(cfg.CONFIG["search"]["multi_objective"]["ref_points"])
+    if cfg.CONFIG["search"]["multi_objective"]["algorithm"] == "rnsga3":
         P = 5
         n_obj = 2
         H = int(factorial(n_obj + P - 1) / (factorial(P) * factorial(n_obj - 1)))
         pop_size = ref_points.shape[0] * H + n_obj
         toolbox.register("select_scenario", selRNSGA3WithMemory(ref_points=ref_points, p=P, mu=0.1),
-                         k=config.CONFIG["scenario"]["pop_size"])
+                         k=cfg.CONFIG["scenario"]["pop_size"])
         toolbox.register("select_perturbation", selRNSGA3WithMemory(ref_points=ref_points, p=P, mu=0.1),
-                         k=config.CONFIG["perturbation"]["pop_size"])
+                         k=cfg.CONFIG["perturbation"]["pop_size"])
     else:
         toolbox.register("select_scenario", selRNSGA2WithMemory(ref_points=ref_points),
-                         k=config.CONFIG["scenario"]["pop_size"])
+                         k=cfg.CONFIG["scenario"]["pop_size"])
         toolbox.register("select_perturbation", selRNSGA2WithMemory(ref_points=ref_points),
-                         k=config.CONFIG["perturbation"]["pop_size"])
+                         k=cfg.CONFIG["perturbation"]["pop_size"])
 
 
 # Define genetic operators.
@@ -122,7 +122,7 @@ def _evaluate_solutions(solutions):
     """
     scenarios = []
     reeval = []
-    agent_name = config.CONFIG["interfuser"]["versions"][0]["name"]
+    agent_name = cfg.CONFIG["interfuser"]["versions"][0]["name"]
     for solution in solutions:
         scenarios.append(solution[0])
         follow_up = toolbox.clone(solution[0])
@@ -138,7 +138,7 @@ def _evaluate_solutions(solutions):
             solution.is_violated, extent = _fitness(source, follow_up)
             if extent:
                 solution.fitness.values = extent
-                if extent[0] >= config.CONFIG["violation"]["reevaluation"]["threshold"]:
+                if extent[0] >= cfg.CONFIG["violation"]["reevaluation"]["threshold"]:
                     solution.reeval = True
                     reeval.append(solution)
                 else:
@@ -170,7 +170,7 @@ def _evaluate_solutions_dt(solutions):
 
     rv_solutions, rv_sim_num = _perform_evaluation(solutions, scenarios, agent_name=reference_version)
     tv_solutions, tv_sim_num = _perform_evaluation(rv_solutions, scenarios, agent_name=test_version)
-    if config.CONFIG["search"]["constraint"]["enable"] or config.CONFIG["search"]["multi_objective"]["enable"]:
+    if cfg.CONFIG["search"]["constraint"]["enable"] or cfg.CONFIG["search"]["multi_objective"]["enable"]:
         similarities = [_calculate_similarity(scenario, runtime_scenarios) for scenario in scenarios]
     for i, solution in enumerate(solutions):
         rv_fitness = getattr(solution, reference_version).fitness
@@ -185,9 +185,9 @@ def _evaluate_solutions_dt(solutions):
             else:
                 diff = np.abs(rv_fitness[0] - tv_fitness[0])
                 typ = reference_version if rv_fitness[0] > tv_fitness[0] else test_version
-        if config.CONFIG["search"]["constraint"]["enable"] or config.CONFIG["search"]["multi_objective"]["enable"]:
+        if cfg.CONFIG["search"]["constraint"]["enable"] or cfg.CONFIG["search"]["multi_objective"]["enable"]:
             solution.similarity = (similarities[i * 2], similarities[i * 2 + 1])
-        if config.CONFIG["search"]["multi_objective"]["enable"]:
+        if cfg.CONFIG["search"]["multi_objective"]["enable"]:
             solution.fitness.values = (diff, min(solution.similarity))
         else:
             solution.fitness.values = (diff,)
@@ -208,7 +208,7 @@ def _perform_evaluation(solutions, scenarios, agent_name):
             eval_data.is_violated, extent = _fitness(source, follow_up)
             if extent:
                 eval_data.fitness = extent
-                if extent[0] >= config.CONFIG["violation"]["reevaluation"]["threshold"]:
+                if extent[0] >= cfg.CONFIG["violation"]["reevaluation"]["threshold"]:
                     eval_data.reeval = True
                     reeval.append(solution)
                 else:
@@ -228,8 +228,8 @@ def _perform_evaluation(solutions, scenarios, agent_name):
 def _reevaluate(solutions):
     if len(solutions) == 0:
         return 0
-    repeat = config.CONFIG["violation"]["reevaluation"]["repeat"]
-    aggregation = config.CONFIG["violation"]["reevaluation"]["aggregation"]
+    repeat = cfg.CONFIG["violation"]["reevaluation"]["repeat"]
+    aggregation = cfg.CONFIG["violation"]["reevaluation"]["aggregation"]
     scenarios = []
     for solution in solutions:
         solution.eval_history = [{
@@ -292,11 +292,11 @@ def _reevaluate(solutions):
 
 
 def _penalize(fitness, similarity):
-    if similarity <= config.CONFIG["search"]["constraint"]["threshold"]:
+    if similarity <= cfg.CONFIG["search"]["constraint"]["threshold"]:
         return (fitness[0],)
-    penalty = config.CONFIG["search"]["constraint"]["penalty_base"] ** (
-            config.CONFIG["search"]["constraint"]["penalty_amplifier"] *
-            (similarity - config.CONFIG["search"]["constraint"]["threshold"])
+    penalty = cfg.CONFIG["search"]["constraint"]["penalty_base"] ** (
+            cfg.CONFIG["search"]["constraint"]["penalty_amplifier"] *
+            (similarity - cfg.CONFIG["search"]["constraint"]["threshold"])
     )
     return (fitness[0] / penalty,)
 
@@ -312,13 +312,13 @@ def _evaluate_individual(individual, complete_solutions):
     involved = []
     for solution in complete_solutions:
         if solution[index] == individual:
-            if config.CONFIG["search"]["constraint"]["enable"] or config.CONFIG["search"]["multi_objective"]["enable"]:
+            if cfg.CONFIG["search"]["constraint"]["enable"] or cfg.CONFIG["search"]["multi_objective"]["enable"]:
                 involved.append((solution.fitness.values[0], solution.similarity[index]))
             else:
                 involved.append(solution.fitness.values)
     if len(involved) > 0:
         sorted_involved = sorted(involved, key=lambda x: tuple(np.array(x) * -np.array(weights)))
-        if config.CONFIG["search"]["constraint"]["enable"]:
+        if cfg.CONFIG["search"]["constraint"]["enable"]:
             individual.fitness.values = _penalize(sorted_involved[0], np.min(sorted_involved, axis=0)[1])
         else:
             individual.fitness.values = sorted_involved[0]
@@ -327,7 +327,7 @@ def _evaluate_individual(individual, complete_solutions):
     return individual
 
 
-if config.CONFIG["search"]["diff_testing"]:
+if cfg.CONFIG["search"]["diff_testing"]:
     toolbox.register("evaluate_solutions", _evaluate_solutions_dt)
 else:
     toolbox.register("evaluate_solutions", _evaluate_solutions)

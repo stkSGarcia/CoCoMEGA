@@ -14,7 +14,7 @@ import pandas as pd
 from deap import tools
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
-from impl import config
+from impl import config as cfg
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
 from impl.scenario.scenario_definition import ScenarioDefinition
 from impl.utils.carla_utils import initialize_carla
@@ -22,9 +22,9 @@ from impl.utils.process_utils import run_silently
 
 arguments = [
     ("SCENARIOS", "scenarios",
-     os.path.join(config.CONFIG["interfuser"]["repo"], "leaderboard/data/scenarios/town05_all_scenarios.json")),
+     os.path.join(cfg.CONFIG["interfuser"]["repo"], "leaderboard/data/scenarios/town05_all_scenarios.json")),
     ("ROUTES", "routes",
-     os.path.join(config.CONFIG["interfuser"]["repo"], "leaderboard/data/training_routes/routes_town05_long.xml")),
+     os.path.join(cfg.CONFIG["interfuser"]["repo"], "leaderboard/data/training_routes/routes_town05_long.xml")),
     ("REPETITIONS", "repetitions", 1),
     ("CHALLENGE_TRACK_CODENAME", "track", "SENSORS"),
     # ("CHECKPOINT_ENDPOINT", "checkpoint", os.path.join(CONFIG["workspace"]["sim_result"], "checkpoint.json")),
@@ -60,16 +60,16 @@ def _init_carla(instance_configs):
 
 
 def run_free_environments(confs):
-    if config.CONFIG["runtime"]["parallel"]:
+    if cfg.CONFIG["runtime"]["parallel"]:
         process_configs = Manager().Queue()
-        for instance in config.CONFIG["runtime"]["instances"]:
+        for instance in cfg.CONFIG["runtime"]["instances"]:
             process_configs.put((instance["host"], instance["port"], instance["tm_port"], instance["gpu_device"]))
-        with ProcessPoolExecutor(max_workers=len(config.CONFIG["runtime"]["instances"]),
+        with ProcessPoolExecutor(max_workers=len(cfg.CONFIG["runtime"]["instances"]),
                                  initializer=_init_carla, initargs=(process_configs,)) as executor:
             results = executor.map(run_environment, confs)
     else:
         global carla_host, carla_port, tm_port, gpu_device
-        instance = config.CONFIG["runtime"]["instances"][0]
+        instance = cfg.CONFIG["runtime"]["instances"][0]
         carla_host, carla_port, tm_port, gpu_device = (instance["host"], instance["port"],
                                                        instance["tm_port"], instance["gpu_device"])
         os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_device)
@@ -88,18 +88,18 @@ def run_environment(conf):
     os.makedirs(os.path.dirname(cp_path), exist_ok=True)
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    scenarios = os.path.join(config.CONFIG["interfuser"]["repo"], "leaderboard", "data", conf["scenario"])
-    routes = os.path.join(config.CONFIG["interfuser"]["repo"], "leaderboard", "data", conf["route"])
+    scenarios = os.path.join(cfg.CONFIG["interfuser"]["repo"], "leaderboard", "data", conf["scenario"])
+    routes = os.path.join(cfg.CONFIG["interfuser"]["repo"], "leaderboard", "data", conf["route"])
 
     child_env = os.environ.copy()
 
     # Set environment variables as in the bash script
     child_env.update({
-        "DATA_ROOT": str(config.CONFIG["workspace"]["runtime_data"]),
-        "CARLA_ROOT": os.path.join(config.CONFIG["interfuser"]["repo"], "carla"),
-        "CARLA_SERVER": os.path.join(config.CONFIG["interfuser"]["repo"], "carla", "CarlaUE4.sh"),
+        "DATA_ROOT": str(cfg.CONFIG["workspace"]["runtime_data"]),
+        "CARLA_ROOT": os.path.join(cfg.CONFIG["interfuser"]["repo"], "carla"),
+        "CARLA_SERVER": os.path.join(cfg.CONFIG["interfuser"]["repo"], "carla", "CarlaUE4.sh"),
         "CARLA_WEATHER": str(conf["weather"]),
-        "LEADERBOARD_ROOT": os.path.join(config.CONFIG["interfuser"]["repo"], "leaderboard"),
+        "LEADERBOARD_ROOT": os.path.join(cfg.CONFIG["interfuser"]["repo"], "leaderboard"),
         "CHECKPOINT_ENDPOINT": cp_path,
         "SAVE_PATH": output_path,
         "TRAFFIC_SEED": "2000",
@@ -156,8 +156,7 @@ def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False, addition
     global carla_host, carla_port, tm_port, gpu_device
     assert carla_host is not None and carla_port is not None and tm_port is not None and gpu_device is not None
 
-    agent_config = [conf["agent_config"] for conf in config.CONFIG["interfuser"]["versions"]
-                    if conf["name"] == agent_name]
+    agent_config = [conf["agent_config"] for conf in cfg.CONFIG["interfuser"]["versions"] if conf["name"] == agent_name]
     if len(agent_config) == 0:
         raise ValueError(f"Agent not defined: \"{agent_name}\".")
     agent_config = agent_config[0]
@@ -179,7 +178,7 @@ def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False, addition
     logger.debug(scenario)
 
     is_successful = False
-    for _ in range(1 + CONFIG["simulation"]["retry_times"]):
+    for _ in range(1 + cfg.CONFIG["simulation"]["retry_times"]):
         evaluator = None
         try:
             evaluator = ScenarioEvaluator(scenario, config)
@@ -192,7 +191,7 @@ def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False, addition
             break
         except Exception as e:
             logger.error(f"Scenario failed: {scenario}, message: {e}.")
-            if CONFIG['debug']:
+            if cfg.CONFIG['debug']:
                 traceback.print_exc()
             is_successful = False
         finally:
@@ -200,7 +199,7 @@ def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False, addition
     if not is_successful:
         return None, False
 
-    result_path = os.path.join(CONFIG["workspace"]["sim_result"], f"{scenario.id_}.csv")
+    result_path = os.path.join(cfg.CONFIG["workspace"]["sim_result"], f"{scenario.id_}.csv")
     if not os.path.exists(result_path):
         logger.warning(f"Scenario results cannot be found: {scenario.id_}.")
         return None, False
@@ -225,22 +224,22 @@ def run_scenarios(scenarios, agent_name="v1", rerun=False, additional_confs=None
     if additional_confs is None:
         additional_confs = list(itertools.repeat(None, len(scenarios)))
     assert len(additional_confs) == len(scenarios)
-    if config.CONFIG["simulation"]["parallel"]:
+    if cfg.CONFIG["simulation"]["parallel"]:
         process_configs = Manager().Queue()
-        for instance in config.CONFIG["simulation"]["instances"]:
+        for instance in cfg.CONFIG["simulation"]["instances"]:
             process_configs.put((instance["host"], instance["port"], instance["tm_port"], instance["gpu_device"]))
         # FIXME: Traffic manager may cause memory leak.
         # https://github.com/carla-simulator/carla/issues/3584
         # https://github.com/carla-simulator/carla/issues/3540
         # https://github.com/carla-simulator/leaderboard/issues/81
         # https://github.com/carla-simulator/carla/issues/2781
-        with ProcessPoolExecutor(max_workers=len(config.CONFIG["simulation"]["instances"]),
+        with ProcessPoolExecutor(max_workers=len(cfg.CONFIG["simulation"]["instances"]),
                                  initializer=_init_carla, initargs=(process_configs,)) as executor:
             results = executor.map(run_scenario, scenarios, itertools.repeat(agent_name, len(scenarios)),
                                    itertools.repeat(rerun, len(scenarios)), additional_confs)
     else:
         global carla_host, carla_port, tm_port, gpu_device
-        instance = config.CONFIG["simulation"]["instances"][0]
+        instance = cfg.CONFIG["simulation"]["instances"][0]
         carla_host, carla_port, tm_port, gpu_device = (instance["host"], instance["port"],
                                                        instance["tm_port"], instance["gpu_device"])
         results = map(run_scenario, scenarios, itertools.repeat(agent_name, len(scenarios)),
@@ -265,7 +264,7 @@ def run_solutions(file: str, top: int = -1, verbose=True, agent_name="v1", recor
     additional_confs = None
     for i, (source, perturbations) in enumerate(solutions):
         if record_video:
-            solution_path = os.path.join(config.CONFIG["workspace"]["recordings"], f"{solution_name}-{i + 1}")
+            solution_path = os.path.join(cfg.CONFIG["workspace"]["recordings"], f"{solution_name}-{i + 1}")
             if already_recorded(solution_path):
                 logger.info(f"Solution {solution_name}-{i + 1} is already recorded, skipping...")
                 continue

@@ -7,7 +7,7 @@ from multiprocessing import Manager
 
 from deap import tools
 
-from impl import config
+from impl import config as cfg
 from impl.algorithm.base import BaseAlgorithm
 from impl.scenario import simulation_runner
 from impl.utils.trajectory import trajectory_score
@@ -23,11 +23,11 @@ class CCEA(BaseAlgorithm):
         super().solve()
         # Initialize the population or resume from the latest checkpoint.
         if resume:
-            files = sorted(os.listdir(config.CONFIG["workspace"]["checkpoint"]), reverse=True)
+            files = sorted(os.listdir(cfg.CONFIG["workspace"]["checkpoint"]), reverse=True)
             if len(files) == 0:
                 raise ValueError("No checkpoints found.")
             logger.info(f"Resuming from checkpoint: {files[0]}.")
-            with open(os.path.join(config.CONFIG["workspace"]["checkpoint"], files[0]), "rb") as f:
+            with open(os.path.join(cfg.CONFIG["workspace"]["checkpoint"], files[0]), "rb") as f:
                 pop_scenario = pickle.load(f)
                 pop_perturbation = pickle.load(f)
                 archive_scenario = pickle.load(f)
@@ -65,8 +65,8 @@ class CCEA(BaseAlgorithm):
                                    sim_num=self.budget.sim_num)
 
             # Update archive.
-            archive_scenario = self._update_archive(pop_scenario, config.CONFIG["scenario"]["archive_size"])
-            archive_perturbation = self._update_archive(pop_perturbation, config.CONFIG["perturbation"]["archive_size"])
+            archive_scenario = self._update_archive(pop_scenario, cfg.CONFIG["scenario"]["archive_size"])
+            archive_perturbation = self._update_archive(pop_perturbation, cfg.CONFIG["perturbation"]["archive_size"])
             self.record_statistics(archive_scenario, self.budget.gen_num, pop_name="arc_scen")
             self.record_statistics(archive_perturbation, self.budget.gen_num, pop_name="arc_pert")
 
@@ -75,7 +75,7 @@ class CCEA(BaseAlgorithm):
 
             perturbation_offspring_size = len(pop_perturbation) - len(archive_perturbation)
             pop_perturbation = self._breed(pop_perturbation, perturbation_offspring_size,
-                                           overproduction_factor=config.CONFIG["perturbation"]["overproduction"])
+                                           overproduction_factor=cfg.CONFIG["perturbation"]["overproduction"])
             pop_perturbation = self._shrink(pop_perturbation, perturbation_offspring_size, pop_scenario)
 
             pop_scenario += archive_scenario
@@ -85,8 +85,8 @@ class CCEA(BaseAlgorithm):
             logger.info(f"Number of simulations: {sim_num}/{self.budget.sim_num}.")
 
             # Store the current status into a checkpoint.
-            with open(os.path.join(config.CONFIG["workspace"]["checkpoint"],
-                                   f"{int(round(time.time() * 1000))}.pickle"), "wb") as f:
+            with open(os.path.join(cfg.CONFIG["workspace"]["checkpoint"], f"{int(round(time.time() * 1000))}.pickle"),
+                      "wb") as f:
                 pickle.dump(pop_scenario, f)
                 pickle.dump(pop_perturbation, f)
                 pickle.dump(archive_scenario, f)
@@ -153,17 +153,17 @@ class CCEA(BaseAlgorithm):
         for perturbation in pop_perturbation:
             self.toolbox.evaluate_individual(perturbation, archive_solution)
 
-        if config.CONFIG["search"]["opt"]["niching"]["strategy"] == "sharing":
+        if cfg.CONFIG["search"]["opt"]["niching"]["strategy"] == "sharing":
             self.fitness_sharing(pop_scenario,
-                                 config.CONFIG["search"]["opt"]["niching"]["punishment"],
-                                 config.CONFIG["search"]["opt"]["niching"]["scaling"])
+                                 cfg.CONFIG["search"]["opt"]["niching"]["punishment"],
+                                 cfg.CONFIG["search"]["opt"]["niching"]["scaling"])
             self.fitness_sharing(pop_perturbation,
-                                 config.CONFIG["search"]["opt"]["niching"]["punishment"],
-                                 config.CONFIG["search"]["opt"]["niching"]["scaling"])
-        elif config.CONFIG["search"]["opt"]["niching"]["strategy"] == "clearing":
-            self.fitness_clearing(pop_scenario, config.CONFIG["search"]["opt"]["niching"]["capacity"])
-            self.fitness_clearing(pop_perturbation, config.CONFIG["search"]["opt"]["niching"]["capacity"])
-        elif config.CONFIG["search"]["opt"]["niching"]["strategy"] != "none":
+                                 cfg.CONFIG["search"]["opt"]["niching"]["punishment"],
+                                 cfg.CONFIG["search"]["opt"]["niching"]["scaling"])
+        elif cfg.CONFIG["search"]["opt"]["niching"]["strategy"] == "clearing":
+            self.fitness_clearing(pop_scenario, cfg.CONFIG["search"]["opt"]["niching"]["capacity"])
+            self.fitness_clearing(pop_perturbation, cfg.CONFIG["search"]["opt"]["niching"]["capacity"])
+        elif cfg.CONFIG["search"]["opt"]["niching"]["strategy"] != "none":
             logger.warning("Unrecognized niching strategy, falling back to `none`.")
 
         return archive_solution, sim_num
@@ -179,7 +179,7 @@ class CCEA(BaseAlgorithm):
         archive = tools.selBest(population, 1)
         population.remove(archive[0])
 
-        if config.CONFIG["search"]["opt"]["diversity"]:
+        if cfg.CONFIG["search"]["opt"]["diversity"]:
             # Select individuals able to maximize the diversity.
             valid, invalid = [], []
             for ind in population:
@@ -218,7 +218,7 @@ class CCEA(BaseAlgorithm):
             parents = population[0].select(population)
             parents = list(map(self.toolbox.clone, parents))
             parents[0].mate(parents[1])
-            if config.CONFIG["search"]["opt"]["diversity"]:
+            if cfg.CONFIG["search"]["opt"]["diversity"]:
                 parents[0].mutate()
                 parents[1].mutate()
                 del parents[0].fitness.values
