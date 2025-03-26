@@ -35,7 +35,7 @@ from srunner.scenariomanager.scenarioatomics.atomic_criteria import CollisionTes
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import AccelerateToVelocity, ChangeAutoPilot
 
 from leaderboard.utils.route_parser import RouteParser, TRIGGER_THRESHOLD, TRIGGER_ANGLE_THRESHOLD
-from impl.config import CONFIG
+from impl import config
 from impl.scenario.scenario_definition import Walker
 from impl.utils.math_utils import polar_to_cartesian
 
@@ -168,7 +168,7 @@ def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot
                                               forward_vec.z * speed)
                 actor.set_target_velocity(velocity_vec)
 
-            if CONFIG["simulation"]["autopilot"] and autopilot and isinstance(actor, carla.Vehicle):
+            if config.CONFIG["simulation"]["autopilot"] and autopilot and isinstance(actor, carla.Vehicle):
                 actor.set_autopilot(autopilot, CarlaDataProvider._traffic_manager_port)
                 speed_limit = actor.get_speed_limit() / 3.6
                 pct = (speed_limit - speed) / speed_limit * 100
@@ -207,7 +207,7 @@ class RouteScenario(BasicScenario):
         self.route = None
         self.scenario_definition = scenario_definition
         self.agent_instance = agent_instance
-        self.timeout = CONFIG['simulation']['scenario_duration']
+        self.timeout = config.CONFIG['simulation']['scenario_duration']
         self._update_route()
         self._vehicle_lights = carla.VehicleLightState.Position | carla.VehicleLightState.LowBeam
         self.weather = carla.WeatherParameters(**self.scenario_definition.get_weather())
@@ -228,7 +228,7 @@ class RouteScenario(BasicScenario):
         """
         anchor = copy_transform(self.route[0][0])
 
-        if CONFIG["debug"]:
+        if config.CONFIG["debug"]:
             self._draw_boundary(Walker._BOUNDARY.Region.FOCUS, anchor,
                                 tilt=self.scenario_definition.trajectory.get("direction", None))
             # self._draw_boundary(Walker._BOUNDARY.Region.LEFT, anchor)
@@ -289,7 +289,7 @@ class RouteScenario(BasicScenario):
         )
 
         spectator = CarlaDataProvider.get_world().get_spectator()
-        if CONFIG["simulation"]["disable_spectator"]:
+        if config.CONFIG["simulation"]["disable_spectator"]:
             spectator.set_transform(carla.Transform(carla.Location(x=0, y=0, z=0), carla.Rotation(pitch=-90)))
         else:
             ego_trans = ego_vehicle.get_transform()
@@ -348,7 +348,7 @@ class RouteScenario(BasicScenario):
     def _draw_boundary(self, boundary, anchor, tilt=None, z=0.1):
         rads, angs = boundary.value["radius"], boundary.value["angle"]
         coef = -1 if tilt == "left" else (1 if tilt == "right" else 0)
-        angs = [ang + coef * CONFIG["boundary"]["tilt_degrees"] for ang in angs]
+        angs = [ang + coef * config.CONFIG["boundary"]["tilt_degrees"] for ang in angs]
         point_indices = [(0, 0), (0, 1), (1, 1), (1, 0)]
         points = [polar_to_cartesian(rads[i], angs[j]) for i, j in point_indices]
         for i in range(len(points)):
@@ -362,7 +362,7 @@ class RouteScenario(BasicScenario):
             )
             CarlaDataProvider._world.debug.draw_line(start_point, end_point, thickness=0.15,
                                                      color=carla.Color(225, 10, 10),
-                                                     life_time=CONFIG["simulation"]["scenario_duration"] + 1)
+                                                     life_time=config.CONFIG["simulation"]["scenario_duration"] + 1)
 
     def _draw_route(self, trajectory, z=0.1):
         for i in range(len(trajectory) - 1):
@@ -378,7 +378,7 @@ class RouteScenario(BasicScenario):
             )
             CarlaDataProvider._world.debug.draw_line(start_point, end_point, thickness=0.15,
                                                      color=carla.Color(10, 10, 225),
-                                                     life_time=CONFIG["simulation"]["scenario_duration"] + 1)
+                                                     life_time=config.CONFIG["simulation"]["scenario_duration"] + 1)
 
     def _scenario_sampling(self, potential_scenarios_definitions, random_seed=0):
         """
@@ -501,7 +501,7 @@ class RouteScenario(BasicScenario):
             actor=self.ego_vehicles[0],
             other_actors=self.other_actors,
             measures=['brake', 'throttle', 'steer', 'velocity', 'position'],
-            measurement_interval=CONFIG["simulation"]["measurement_interval"],
+            measurement_interval=config.CONFIG["simulation"]["measurement_interval"],
             scenario_def_id=self.scenario_definition.id_,
         )
 

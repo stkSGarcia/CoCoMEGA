@@ -16,11 +16,11 @@ import plotly.graph_objects as go
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
 from matplotlib.ticker import MaxNLocator, MultipleLocator
-from scipy.spatial.distance import squareform, pdist
+from scipy.spatial.distance import squareform
 from scipy.stats import rankdata
 from sklearn.manifold import MDS
 
-from impl.config import CONFIG
+from impl import config
 from impl.mr.mr import Relation
 from impl.utils.math_utils import calculate_auc_improvements, area_under_curve, calculate_ds_improvements
 from impl.utils.metrics import metrics, pairwise_distance, avg_pw_from_matrix
@@ -117,7 +117,7 @@ class Visualizer:
     @classmethod
     def plot_pert_boundary_results(cls, meta, out_dir):
         for i, row in meta.iterrows():
-            path = os.path.join(CONFIG["workspace"]["solution"], row['statistics_path'])
+            path = os.path.join(config.CONFIG["workspace"]["solution"], row['statistics_path'])
             cls.visualize_algorithm_Stats(path, name=row['name'], out_dir=out_dir)
 
     @classmethod
@@ -315,7 +315,7 @@ def visualize_in_one(data, file_name=None, plot_nan=True, verbose=False, show=Fa
 
     fig.supxlabel("Generation", fontsize=text_size)
     fig.tight_layout()
-    fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"{file_name}.png"))
+    fig.savefig(os.path.join(config.CONFIG["workspace"]["visualization"], f"{file_name}.png"))
     if show: plt.show()
 
 
@@ -418,12 +418,12 @@ def visualize_comparison(files: Dict[str, List[str]], max_percentile=0.75,
     ax1.legend(handles=legend_elements.values(), fontsize=text_size)
     fig.supxlabel("#simulations", fontsize=text_size)
     fig.tight_layout()
-    fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], "comparison.png"))
+    fig.savefig(os.path.join(config.CONFIG["workspace"]["visualization"], "comparison.png"))
     if show: plt.show()
 
 
 def visualize_violation(source, follow_up, mr_set, offset=3, verbose=False, show=False,
-                        save_path=os.path.join(CONFIG["workspace"]["visualization"], "violation.png")):
+                        save_path=os.path.join(config.CONFIG["workspace"]["visualization"], "violation.png")):
     """Plot the extent of violation between the source results
     and follow-up results based on the given metamorphic relations.
 
@@ -436,12 +436,12 @@ def visualize_violation(source, follow_up, mr_set, offset=3, verbose=False, show
     """
     labels = Relation.convert_labels(mr_set.labels)
     matches, origin_df = Relation.pairwise_dataframe(source, follow_up, mr_set.field, labels)
-    if CONFIG["violation"]["dtw"]:
+    if config.CONFIG["violation"]["dtw"]:
         matches, pair_df = Relation.dtw_dataframe(source, follow_up, mr_set.field, labels)
     else:
         pair_df = origin_df.reset_index()
 
-    row_num = 7 if verbose and CONFIG["violation"]["dtw"] else 4
+    row_num = 7 if verbose and config.CONFIG["violation"]["dtw"] else 4
     column_num, height = 6, 3
     title_size, text_size, tick_size = height * 7, height * 5, height * 4
     fig = plt.figure(figsize=(height * column_num, height * row_num))
@@ -470,7 +470,7 @@ def visualize_violation(source, follow_up, mr_set, offset=3, verbose=False, show
         for points in np.split(critical_intervals, np.where(np.diff(critical_intervals) != 1)[0] + 1):
             ax2.axvspan(points[0] - 0.5, points[-1] + 0.5, color="red", alpha=0.1)
 
-    if verbose and CONFIG["violation"]["dtw"]:
+    if verbose and config.CONFIG["violation"]["dtw"]:
         ax3 = fig.add_subplot(gs[4:, :3])
         ax3.plot(*list(zip(*matches)), "-C3", label="DTW path")
         ax3.set_title("DTW path", fontsize=title_size)
@@ -481,7 +481,7 @@ def visualize_violation(source, follow_up, mr_set, offset=3, verbose=False, show
         ax3.yaxis.set_major_locator(MaxNLocator(integer=True))
         ax3.legend(fontsize=text_size)
 
-        if CONFIG["violation"]["strategy"] == "position":
+        if config.CONFIG["violation"]["strategy"] == "position":
             ax4 = fig.add_subplot(gs[4:, 3:])
             for df, color, shift in zip((source, follow_up), ("C0", "C1"), (0, offset)):
                 x, y = (df["position_x"] - shift).to_numpy(), (df["position_y"] - shift).to_numpy()
@@ -550,7 +550,7 @@ def visualize_diversity(files: Dict[str, List[str]], show=False):
         ax.grid()
 
     fig.tight_layout()
-    fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"diversity.png"))
+    fig.savefig(os.path.join(config.CONFIG["workspace"]["visualization"], f"diversity.png"))
     if show: plt.show()
 
 
@@ -568,7 +568,7 @@ def visualize_diversity_distribution(file, show=False):
     ax.scatter3D(out[:, 0], out[:, 1], out[:, 2])
     ax.set_box_aspect((np.ptp(out[:, 0]), np.ptp(out[:, 1]), np.ptp(out[:, 2])))
     fig.tight_layout()
-    fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"{Path(file).stem}-diversity.png"))
+    fig.savefig(os.path.join(config.CONFIG["workspace"]["visualization"], f"{Path(file).stem}-diversity.png"))
     if show: plt.show()
 
 
@@ -637,7 +637,7 @@ def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_t
     #             print(f"{fitness}-{distance_thresholds[i]}: {alg1}-{alg2}: {magnitude}-{estimate}.")
 
     fig.tight_layout()
-    fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"archived_distinct_solutions.png"))
+    fig.savefig(os.path.join(config.CONFIG["workspace"]["visualization"], f"archived_distinct_solutions.png"))
     if show: plt.show()
     return data
 
@@ -725,7 +725,7 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
     calculate_auc_improvements(auc_df)
 
     fig.tight_layout()
-    fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"distinct_solutions_over_simulations.png"))
+    fig.savefig(os.path.join(config.CONFIG["workspace"]["visualization"], f"distinct_solutions_over_simulations.png"))
     if show: plt.show()
 
 
@@ -820,7 +820,7 @@ def visualize_archived_solutions_by_gen(directory: str, checkpoints: Dict[str, L
 
     fig.tight_layout()
     fig.savefig(
-        os.path.join(CONFIG["workspace"]["visualization"], f"archived_{metric_name}_by_gen{generation_num}.png"))
+        os.path.join(config.CONFIG["workspace"]["visualization"], f"archived_{metric_name}_by_gen{generation_num}.png"))
     if show: plt.show()
 
 
@@ -908,7 +908,8 @@ def visualize_archive_solution_over_generations(directory: str, files: Dict[str,
             ax.grid()
 
     fig.tight_layout()
-    fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"archived_{metric_name}_over_generetations.png"))
+    fig.savefig(os.path.join(config.CONFIG["workspace"]["visualization"],
+                             f"archived_{metric_name}_over_generetations.png"))
     if show: plt.show()
 
 
@@ -953,7 +954,7 @@ def visualize_computational_efficiency(log_file: str, solution_files: Dict[str, 
     plt.tight_layout()
 
     fig.tight_layout()
-    fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"computational_efficiency.png"))
+    fig.savefig(os.path.join(config.CONFIG["workspace"]["visualization"], f"computational_efficiency.png"))
     if show: plt.show()
 
 

@@ -6,8 +6,8 @@ from multiprocessing import Manager
 
 from deap import tools
 
+from impl import config
 from impl.algorithm.base import BaseAlgorithm
-from impl.config import CONFIG
 from impl.scenario import simulation_runner
 
 logger = logging.getLogger(__name__)
@@ -32,11 +32,11 @@ class GeneticAlgorithm(BaseAlgorithm):
         super().solve()
         # Initialize the population or resume from the latest checkpoint.
         if resume:
-            files = sorted(os.listdir(CONFIG["workspace"]["checkpoint"]), reverse=True)
+            files = sorted(os.listdir(config.CONFIG["workspace"]["checkpoint"]), reverse=True)
             if len(files) == 0:
                 raise ValueError("No checkpoints found.")
             logger.info(f"Resuming from checkpoint: {files[0]}.")
-            with open(os.path.join(CONFIG["workspace"]["checkpoint"], files[0]), "rb") as f:
+            with open(os.path.join(config.CONFIG["workspace"]["checkpoint"], files[0]), "rb") as f:
                 complete_solutions = pickle.load(f)
                 current_solutions = pickle.load(f)
                 archive_solution = pickle.load(f)
@@ -46,7 +46,7 @@ class GeneticAlgorithm(BaseAlgorithm):
                 self.logbook = pickle.load(f)
         else:
             complete_solutions = [self.toolbox.collaborate(self.toolbox.scenario(), self.toolbox.perturbation())
-                                  for _ in range(CONFIG["scenario"]["pop_size"])]
+                                  for _ in range(config.CONFIG["scenario"]["pop_size"])]
             archive_solution = []
             evaluated_solutions = []
             self.budget.initialize()
@@ -83,7 +83,7 @@ class GeneticAlgorithm(BaseAlgorithm):
             # Generate offsprings.
             if self.keep_best:
                 population = list(map(self.toolbox.clone, complete_solutions))
-                archive = tools.selBest(population, CONFIG["scenario"]["archive_size"])
+                archive = tools.selBest(population, config.CONFIG["scenario"]["archive_size"])
                 complete_solutions = self._breed(complete_solutions, len(complete_solutions) - len(archive))
                 complete_solutions += archive
             else:
@@ -94,8 +94,8 @@ class GeneticAlgorithm(BaseAlgorithm):
             logger.info(f"Number of simulations: {sim_num}/{self.budget.sim_num}.")
 
             # Store the current status into a checkpoint.
-            with open(os.path.join(CONFIG["workspace"]["checkpoint"], f"{int(round(time.time() * 1000))}.pickle"),
-                      "wb") as f:
+            with open(os.path.join(config.CONFIG["workspace"]["checkpoint"],
+                                   f"{int(round(time.time() * 1000))}.pickle"), "wb") as f:
                 pickle.dump(complete_solutions, f)
                 pickle.dump(current_solutions, f)
                 pickle.dump(archive_solution, f)
@@ -116,7 +116,7 @@ class GeneticAlgorithm(BaseAlgorithm):
         :return: A list of offsprings.
         """
         assert len(population) > 0
-        offsprings = tools.selTournament(population, k=size, tournsize=CONFIG["scenario"]["tournament"])
+        offsprings = tools.selTournament(population, k=size, tournsize=config.CONFIG["scenario"]["tournament"])
         offsprings = list(map(self.toolbox.clone, offsprings))
 
         for child1, child2 in zip(offsprings[::2], offsprings[1::2]):

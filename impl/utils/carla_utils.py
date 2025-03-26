@@ -3,7 +3,7 @@ import math
 import numpy as np
 
 import carla
-from impl.config import CONFIG
+from impl import config
 from impl.utils.docker_utils import setup_carla
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from leaderboard.utils.route_manipulation import interpolate_trajectory
@@ -14,18 +14,18 @@ logger = logging.getLogger(__name__)
 def initialize_carla(host=None, port=None, tm_port=None, gpu_device=None, seed=2000):
     try:
         # Initialize the Carla client and the world
-        conf = CONFIG["simulation"]["instances"][0]
+        conf = config.CONFIG["simulation"]["instances"][0]
         host = host or conf["host"]
         port = port or conf["port"]
         tm_port = tm_port or conf["tm_port"]
         gpu_device = gpu_device or conf["gpu_device"]
-        if CONFIG["docker"]["enabled"]:
-            setup_carla(container_name=f"{CONFIG['docker']['image']}-{port}",
+        if config.CONFIG["docker"]["enabled"]:
+            setup_carla(container_name=f"{config.CONFIG['docker']['image']}-{port}",
                         port=port,
                         gpu_device=gpu_device,
                         )
         client = carla.Client(host, port)
-        client.set_timeout(CONFIG["simulation"]["client_timeout"])
+        client.set_timeout(config.CONFIG["simulation"]["client_timeout"])
 
         CarlaDataProvider.set_client(client)
         CarlaDataProvider.set_traffic_manager_port(tm_port)

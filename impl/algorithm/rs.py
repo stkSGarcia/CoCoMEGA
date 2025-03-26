@@ -4,8 +4,8 @@ import pickle
 import time
 from multiprocessing import Manager
 
+from impl import config
 from impl.algorithm.base import BaseAlgorithm
-from impl.config import CONFIG
 from impl.scenario import simulation_runner
 
 logger = logging.getLogger(__name__)
@@ -19,11 +19,11 @@ class RandomSearch(BaseAlgorithm):
         super().solve()
         # Initialize the population or resume from the latest checkpoint.
         if resume:
-            files = sorted(os.listdir(CONFIG["workspace"]["checkpoint"]), reverse=True)
+            files = sorted(os.listdir(config.CONFIG["workspace"]["checkpoint"]), reverse=True)
             if len(files) == 0:
                 raise ValueError("No checkpoints found.")
             logger.info(f"Resuming from checkpoint: {files[0]}.")
-            with open(os.path.join(CONFIG["workspace"]["checkpoint"], files[0]), "rb") as f:
+            with open(os.path.join(config.CONFIG["workspace"]["checkpoint"], files[0]), "rb") as f:
                 current_solutions = pickle.load(f)
                 archive_solution = pickle.load(f)
                 evaluated_solutions = pickle.load(f)
@@ -38,7 +38,7 @@ class RandomSearch(BaseAlgorithm):
         while not self.budget.is_reached():
             # Randomly generate complete solutions.
             complete_solutions = [self.toolbox.collaborate(self.toolbox.scenario(), self.toolbox.perturbation())
-                                  for _ in range(CONFIG["scenario"]["pop_size"])]
+                                  for _ in range(config.CONFIG["scenario"]["pop_size"])]
 
             # Remove repetitive complete solutions.
             unique_solutions = self.remove_duplicates(complete_solutions)
@@ -71,8 +71,8 @@ class RandomSearch(BaseAlgorithm):
             logger.info(f"Number of simulations: {sim_num}/{self.budget.sim_num}.")
 
             # Store the current status into a checkpoint.
-            with open(os.path.join(CONFIG["workspace"]["checkpoint"], f"{int(round(time.time() * 1000))}.pickle"),
-                      "wb") as f:
+            with open(os.path.join(config.CONFIG["workspace"]["checkpoint"],
+                                   f"{int(round(time.time() * 1000))}.pickle"), "wb") as f:
                 pickle.dump(current_solutions, f)
                 pickle.dump(archive_solution, f)
                 pickle.dump(evaluated_solutions, f)

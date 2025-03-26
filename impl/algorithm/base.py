@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import pickle
@@ -11,8 +10,8 @@ import numpy as np
 from deap import base, creator, tools
 from scipy.spatial.distance import pdist, squareform
 
+from impl import config
 from impl.algorithm.budget import Budget
-from impl.config import CONFIG
 
 logger = logging.getLogger(__name__)
 
@@ -55,9 +54,7 @@ class BaseAlgorithm:
         """
         logger.info(f"{self._name} started.")
         logger.info(self.budget.print_budget())
-        # Dump configuration.
-        with open(os.path.join(CONFIG["workspace"]["current_root"], "config.json"), "w") as f:
-            json.dump(CONFIG, f, indent=4)
+        config.dump_config_to_json()  # Dump configurations.
 
     def record_statistics(self, population: List, gen_num: int, pop_name: str = "", sim_num: int = None):
         """Record the statistics of the population.
@@ -82,11 +79,11 @@ class BaseAlgorithm:
         :param evaluated_solutions: All the evaluated solutions during the search.
         """
         suffix = f"{self._name.lower()}-{str(int(round(time.time() * 1000)))}"
-        with open(os.path.join(CONFIG["workspace"]["solution"], f"solutions-{suffix}.pickle"), "wb") as f:
+        with open(os.path.join(config.CONFIG["workspace"]["solution"], f"solutions-{suffix}.pickle"), "wb") as f:
             pickle.dump(results, f)
-        with open(os.path.join(CONFIG["workspace"]["solution"], f"evaluated-{suffix}.pickle"), "wb") as f:
+        with open(os.path.join(config.CONFIG["workspace"]["solution"], f"evaluated-{suffix}.pickle"), "wb") as f:
             pickle.dump(evaluated_solutions, f)
-        with open(os.path.join(CONFIG["workspace"]["solution"], f"statistics-{suffix}.pickle"), "wb") as f:
+        with open(os.path.join(config.CONFIG["workspace"]["solution"], f"statistics-{suffix}.pickle"), "wb") as f:
             pickle.dump(self.logbook, f)
         logger.info(f"Results dumped at {suffix}.")
 

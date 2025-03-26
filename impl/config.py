@@ -5,30 +5,12 @@ import sys
 import time
 import uuid
 from collections.abc import Mapping
+from json import JSONEncoder
 
 import yaml
 
 logger = logging.getLogger(__name__)
-CONFIG = {}
-
-
-class LazyPath:
-    """Lazy directory creation."""
-
-    def __init__(self, root, relative_path):
-        self.root = root
-        self.relative_path = relative_path
-        self.full_path = os.path.join(root, relative_path)
-        self._created = False
-
-    def __str__(self):
-        if not self._created:
-            os.makedirs(self.full_path, exist_ok=True)
-            self._created = True
-        return self.full_path
-
-    def __repr__(self):
-        return repr(self.full_path)
+CONFIG = {}  # Always use this variable by from impl import config; config.CONFIG
 
 
 def _load_yaml(path):
@@ -70,7 +52,8 @@ def init_config():
     CONFIG = _merge_dict(default_config, custom_config)
 
     # Set up workspace root and other paths with lazy directory creation.
-    CONFIG["workspace"]["root"] = os.path.join(os.path.dirname(os.path.dirname(__file__)), CONFIG["workspace"]["root"])
+    CONFIG["workspace"]["root"] = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                               CONFIG["workspace"]["root"])
     os.makedirs(CONFIG["workspace"]["root"], exist_ok=True)
     for k, v in CONFIG["workspace"].items():
         if k == "root" or v is None: continue
@@ -105,21 +88,80 @@ def init_project_folder(name: str, resume=False):
     :param name: Execution name. If `resume` is `True`, this is the folder name to resume from.
     :param resume: Whether to resume.
     """
-    global CONFIG
     if resume:
-        root_path = os.path.join(CONFIG["workspace"]["result"], name)
-        with open(os.path.join(root_path, "config.json"), "r") as f:
-            CONFIG = json.loads(f)
+        CONFIG["workspace"]["current"] = CONFIG["workspace"]["result"].join(name)
+        load_config_from_json()
     else:
-        root_path = os.path.join(CONFIG["workspace"]["result"],
-                                 f"{str(int(round(time.time() * 1000)))}-{name.lower()}-{uuid.uuid4().hex[:6]}")
-        os.makedirs(root_path, exist_ok=True)
-    CONFIG["workspace"]["current_root"] = root_path
-    for key, folder in (
-            ("sim_result", "results"),
-            ("checkpoint", "checkpoints"),
-            ("solution", "solutions"),
-    ):
-        folder_path = os.path.join(root_path, folder)
-        os.makedirs(folder_path, exist_ok=True)
-        CONFIG["workspace"][key] = folder_path
+        CONFIG["workspace"]["current"] = CONFIG["workspace"]["result"].join(
+            f"{str(int(round(time.time() * 1000)))}-{name.lower()}-{uuid.uuid4().hex[:6]}")
+        for key, folder in (
+                ("sim_result", "results"),
+                ("checkpoint", "checkpoints"),
+                ("solution", "solutions"),
+        ):
+            CONFIG["workspace"][key] = CONFIG["workspace"]["current"].join(folder)
+
+
+class LazyPath:
+    """Lazy directory creation."""
+
+    def __init__(self, root, relative_path):
+        self.root = root
+        self.relative_path = relative_path
+        self.full_path = os.path.join(root, relative_path)
+        self._created = False
+
+    def join(self, *folders):
+        if not folders: return self
+        new_relative_path = os.path.join(self.relative_path, *folders)
+        return LazyPath(self.root, new_relative_path)
+
+    def __str__(self):
+        if not self._created:
+            os.makedirs(self.full_path, exist_ok=True)
+            self._created = True
+        return self.full_path
+
+    def __fspath__(self):
+        if not self._created:
+            os.makedirs(self.full_path, exist_ok=True)
+            self._created = True
+        return self.full_path
+
+    def __repr__(self):
+        return repr(self.full_path)
+
+
+class LazyPathEncoder(JSONEncoder):
+    """Custom JSON encoder to handle LazyPath."""
+
+    def default(self, obj):
+        if isinstance(obj, LazyPath):
+            return obj.full_path
+        return super().default(obj)
+
+
+def dump_config_to_json():
+    """Dump the configuration dictionary to a JSON file, handling LazyPath objects."""
+    with open(os.path.join(CONFIG["workspace"]["current"], "config.json"), "w") as f:
+        json.dump(CONFIG, f, cls=LazyPathEncoder, indent=4)
+
+
+def load_config_from_json():
+    """Load a configuration dictionary from a JSON file, converting workspace paths to LazyPath objects."""
+    global CONFIG
+    with open(os.path.join(CONFIG["workspace"]["current"], "config.json"), "r") as f:
+        config = json.load(f)
+
+    # Check if 'workspace' exists and process its paths.
+    if "workspace" in config and isinstance(config["workspace"], dict):
+        root = config["workspace"].get("root")
+        if root:
+            # Convert workspace paths (except 'root') to LazyPath objects.
+            for k, v in config["workspace"].items():
+                if k != "root" and v is not None and isinstance(v, str):
+                    # Compute relative path by removing the root prefix
+                    relative_path = os.path.relpath(v, root) if v.startswith(root) else v
+                    config["workspace"][k] = LazyPath(root, relative_path)
+
+    CONFIG = config

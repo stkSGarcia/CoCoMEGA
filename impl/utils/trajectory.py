@@ -2,7 +2,7 @@ import importlib
 import math
 from collections.abc import Sequence
 
-from impl.config import CONFIG
+from impl import config
 
 
 class TrajectorySolver:
@@ -100,7 +100,7 @@ def single_trajectory_score(scen_route, pert_route):
             vector_to_actor = distance_vector(pp, scen_route[i])
             angle = angle_between_vectors(forward_vector, vector_to_actor)
             if ((-30 <= angle <= 30) or (330 <= angle <= 390)) and vector_size(vector_to_actor) <= \
-                    CONFIG["violation"]["max_ego_distance"]:
+                    config.CONFIG["violation"]["max_ego_distance"]:
                 score += 1
     return score
 

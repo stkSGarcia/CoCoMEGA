@@ -18,7 +18,7 @@ import time
 import py_trees
 import carla
 
-from impl.config import CONFIG
+from impl import config
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.timer import GameTime
 from srunner.scenariomanager.watchdog import Watchdog
@@ -171,7 +171,7 @@ class ScenarioManager(object):
             if self.scenario_tree.status != py_trees.common.Status.RUNNING:
                 self._running = False
 
-            if not CONFIG["simulation"]["disable_spectator"]:
+            if not config.CONFIG["simulation"]["disable_spectator"]:
                 spectator = CarlaDataProvider.get_world().get_spectator()
                 ego_trans = self.ego_vehicles[0].get_transform()
                 spectator.set_transform(carla.Transform(ego_trans.location + carla.Location(z=50),

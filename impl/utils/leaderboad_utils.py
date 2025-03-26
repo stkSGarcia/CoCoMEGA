@@ -4,7 +4,7 @@ import logging
 import math
 import numpy as np
 
-from impl.config import CONFIG
+from impl import config
 from impl.scenario.scenario_definition import ScenarioDefinition, Vehicle, Walker, Static
 from impl.utils.carla_utils import traj_interpolation, location_to_dict, compass_to_yaw
 from impl.utils.math_utils import cartesian_to_polar, vector_norm, polar_to_cartesian
@@ -76,9 +76,9 @@ reweight_array = np.array([1.0, 3.5, 3.5, 2.0, 3.5, 2.0, 8.0])
 
 
 def get_enviroment_confs():
-    weathers = CONFIG["runtime"]["weathers"]
-    towns = CONFIG["runtime"]["towns"]
-    route_types = CONFIG["runtime"]["routes"]
+    weathers = config.CONFIG["runtime"]["weathers"]
+    towns = config.CONFIG["runtime"]["towns"]
+    route_types = config.CONFIG["runtime"]["routes"]
     confs = []
     for town in towns:
         for weather in weathers:
@@ -98,11 +98,11 @@ def get_enviroment_confs():
 
 
 def make_yamls():
-    conf = CONFIG["data_collection"].copy()
-    os.makedirs(CONFIG["data_collection"]["yaml_root"], exist_ok=True)
-    for weather in CONFIG["runtime"]["weathers"]:
+    conf = config.CONFIG["data_collection"].copy()
+    os.makedirs(config.CONFIG["data_collection"]["yaml_root"], exist_ok=True)
+    for weather in config.CONFIG["runtime"]["weathers"]:
         conf["weather"] = weather
-        file_path = os.path.join(CONFIG["data_collection"]["yaml_root"], f"weather-{weather}.yaml")
+        file_path = os.path.join(config.CONFIG["data_collection"]["yaml_root"], f"weather-{weather}.yaml")
         try:
             with open(file_path, "w") as file:
                 yaml.dump(conf, file, default_flow_style=False, sort_keys=True)
