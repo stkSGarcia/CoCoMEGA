@@ -135,11 +135,9 @@ def dump_config_to_json():
     root_path = serializable_config["workspace"]["root"]
     config_path = CONFIG["workspace"]["current"] / "config.json"
     for k, v in serializable_config["workspace"]._config.items():
-        if k == "root":
-            workspace_dict[k] = str(v)
-        elif v is None:
+        if v is None:
             workspace_dict[k] = None
         else:
-            workspace_dict[k] = v.relative_to(root_path)
+            workspace_dict[k] = str(v)
     serializable_config["workspace"] = workspace_dict
     config_path.write_text(json.dumps(serializable_config, indent=4))
