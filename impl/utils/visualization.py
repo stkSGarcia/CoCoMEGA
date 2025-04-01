@@ -737,8 +737,10 @@ def visualize_distinct_solution_over_simulations(projects: Dict[str, List[str]],
         for gp_name, agg_dfs in agg_df_list.items():
             agg_df = pd.concat(agg_dfs).groupby("simulation_num").agg(list)
             ax = ax_map[gp_name]
-            y = agg_df["violated_mr_num" if mrc else "distinct_solution_num"].apply(np.mean) * 100 / len(
-                mr_set.mrs)
+            if mrc:
+                y = agg_df["violated_mr_num"].apply(np.mean) * 100 / len(mr_set.mrs)
+            else:
+                y = agg_df["distinct_solution_num"].apply(np.mean)
             auc_df = pd.concat([auc_df, pd.DataFrame([{
                 "alg": name,
                 "fitness_threshold": gp_name[0],

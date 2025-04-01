@@ -132,12 +132,10 @@ def dump_config_to_json():
     """Dump the configuration dictionary to a JSON file."""
     serializable_config = CONFIG.copy()
     workspace_dict = {}
-    root_path = serializable_config["workspace"]["root"]
-    config_path = CONFIG["workspace"]["current"] / "config.json"
     for k, v in serializable_config["workspace"]._config.items():
         if v is None:
             workspace_dict[k] = None
         else:
             workspace_dict[k] = str(v)
     serializable_config["workspace"] = workspace_dict
-    config_path.write_text(json.dumps(serializable_config, indent=4))
+    (CONFIG["workspace"]["current"] / "config.json").write_text(json.dumps(serializable_config, indent=4))

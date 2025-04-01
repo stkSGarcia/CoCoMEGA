@@ -325,7 +325,7 @@ if __name__ == "__main__":
                               default=cfg.CONFIG["training"]["backbone_lr"],
                               help="Learning rate of backbone models.")
     parser_train.add_argument("--output", type=str,
-                              default=cfg.CONFIG["workspace"]["trained_models"],
+                              default=cfg.CONFIG["workspace"].get("trained_models"),
                               help="Path to training output and results.")
     parser_train.add_argument("--workers", type=int,
                               default=cfg.CONFIG["training"]["workers"],
