@@ -122,8 +122,9 @@ def generate_train_data():
             **environment_confs[i],
             **workspace_conf,
             **{
-                "agent_path": cfg.CONFIG["interfuser"]["repo"] / "leaderboard" / "team_code" / "auto_pilot.py",
-                "agent_config": cfg.CONFIG["data_collection"]["yaml_root"] / f"weather-{weather}.yaml",
+                "agent_path": os.path.join(cfg.CONFIG["interfuser"]["repo"],
+                                           "leaderboard", "team_code", "auto_pilot.py"),
+                "agent_config": os.path.join(cfg.CONFIG["data_collection"]["yaml_root"], f"weather-{weather}.yaml"),
             }
         }
     run_free_environments(environment_confs)
@@ -153,7 +154,7 @@ def train_interfuser(args):
     distributed_command = f"-m torch.distributed.launch --nproc_per_node={args.gpu_num}" if args.gpu_num > 1 else ""
     command = (
         f"{sys.executable} {distributed_command}"
-        f" {cfg.CONFIG['interfuser']['repo'] / 'interfuser' / 'train.py'}"
+        f" {os.path.join(cfg.CONFIG['interfuser']['repo'], 'interfuser', 'train.py')}"
         f" {cfg.CONFIG['workspace']['train_data']}"
         f" --dataset carla"
         f" --train-towns {' '.join([str(c) for c in args.train_towns])}"

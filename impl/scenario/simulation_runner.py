@@ -22,9 +22,9 @@ from impl.utils.process_utils import run_silently
 
 arguments = [
     ("SCENARIOS", "scenarios",
-     str(cfg.CONFIG["interfuser"]["repo"] / "leaderboard/data/scenarios/town05_all_scenarios.json")),
+     os.path.join(cfg.CONFIG["interfuser"]["repo"], "leaderboard/data/scenarios/town05_all_scenarios.json")),
     ("ROUTES", "routes",
-     str(cfg.CONFIG["interfuser"]["repo"] / "leaderboard/data/training_routes/routes_town05_long.xml")),
+     os.path.join(cfg.CONFIG["interfuser"]["repo"], "leaderboard/data/training_routes/routes_town05_long.xml")),
     ("REPETITIONS", "repetitions", 1),
     ("CHALLENGE_TRACK_CODENAME", "track", "SENSORS"),
     # ("CHECKPOINT_ENDPOINT", "checkpoint", os.path.join(CONFIG["workspace"]["sim_result"], "checkpoint.json")),
