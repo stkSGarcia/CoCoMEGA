@@ -41,9 +41,9 @@ def parse_list(type, delimeter):
 
 def search(algorithm: str, resume: bool, folder_name: str):
     if resume:
-        cfg.init_project_folder(folder_name, resume)
+        cfg.init_project_directory(folder_name, resume)
     else:
-        cfg.init_project_folder(algorithm, resume)
+        cfg.init_project_directory(algorithm, resume)
     if algorithm == "ccea":
         solver = CCEA(toolbox=problem.toolbox, budget=problem.budget)
     elif algorithm == "moccea":
@@ -60,7 +60,7 @@ def search(algorithm: str, resume: bool, folder_name: str):
 
 
 def simulate(num: int, file: str):
-    cfg.init_project_folder("sim")
+    cfg.init_project_directory("sim")
     if file:
         logger.info(f"Loading solution file: {file}.")
         run_solutions(file, num)
@@ -122,9 +122,8 @@ def generate_train_data():
             **environment_confs[i],
             **workspace_conf,
             **{
-                "agent_path": os.path.join(cfg.CONFIG["interfuser"]["repo"],
-                                           "leaderboard", "team_code", "auto_pilot.py"),
-                "agent_config": os.path.join(cfg.CONFIG["data_collection"]["yaml_root"], f"weather-{weather}.yaml"),
+                "agent_path": cfg.CONFIG["interfuser"]["repo"] / "leaderboard" / "team_code" / "auto_pilot.py",
+                "agent_config": cfg.CONFIG["data_collection"]["yaml_root"] / f"weather-{weather}.yaml",
             }
         }
     run_free_environments(environment_confs)
@@ -136,7 +135,7 @@ def train_interfuser(args):
                          weathers=args.train_weathers + args.val_weathers,
                          towns=args.train_towns + args.val_towns,
                          )
-    logger.info(f"Dataset index created at {os.path.join(cfg.CONFIG['workspace']['train_data'], 'dataset_index.txt')}")
+    logger.info(f"Dataset index created at {cfg.CONFIG['workspace']['train_data'] / 'dataset_index.txt'}")
 
     gpu_count = torch.cuda.device_count()
     if args.gpu_num > gpu_count:
@@ -154,7 +153,7 @@ def train_interfuser(args):
     distributed_command = f"-m torch.distributed.launch --nproc_per_node={args.gpu_num}" if args.gpu_num > 1 else ""
     command = (
         f"{sys.executable} {distributed_command}"
-        f" {os.path.join(cfg.CONFIG['interfuser']['repo'], 'interfuser', 'train.py')}"
+        f" {cfg.CONFIG['interfuser']['repo'] / 'interfuser' / 'train.py'}"
         f" {cfg.CONFIG['workspace']['train_data']}"
         f" --dataset carla"
         f" --train-towns {' '.join([str(c) for c in args.train_towns])}"
@@ -234,9 +233,8 @@ def convert2scenarios(directory: str, n: int):
                     scenarios[i] = scenario
             count += 1
 
-    with open(os.path.join(cfg.CONFIG["workspace"]["runtime_scenario"],
-                           f"rt_scen_{str(int(round(time.time() * 1000)))}.pickle"), "wb") as f:
-        pickle.dump(scenarios, f)
+    (cfg.CONFIG["workspace"]["runtime_scenario"] /
+     f"rt_scen_{str(int(round(time.time() * 1000)))}.pickle").write_bytes(pickle.dumps(scenarios))
 
 
 if __name__ == "__main__":

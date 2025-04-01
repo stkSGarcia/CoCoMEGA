@@ -22,9 +22,9 @@ from impl.utils.process_utils import run_silently
 
 arguments = [
     ("SCENARIOS", "scenarios",
-     os.path.join(cfg.CONFIG["interfuser"]["repo"], "leaderboard/data/scenarios/town05_all_scenarios.json")),
+     str(cfg.CONFIG["interfuser"]["repo"] / "leaderboard/data/scenarios/town05_all_scenarios.json")),
     ("ROUTES", "routes",
-     os.path.join(cfg.CONFIG["interfuser"]["repo"], "leaderboard/data/training_routes/routes_town05_long.xml")),
+     str(cfg.CONFIG["interfuser"]["repo"] / "leaderboard/data/training_routes/routes_town05_long.xml")),
     ("REPETITIONS", "repetitions", 1),
     ("CHALLENGE_TRACK_CODENAME", "track", "SENSORS"),
     # ("CHECKPOINT_ENDPOINT", "checkpoint", os.path.join(CONFIG["workspace"]["sim_result"], "checkpoint.json")),
@@ -199,8 +199,8 @@ def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False, addition
     if not is_successful:
         return None, False
 
-    result_path = os.path.join(cfg.CONFIG["workspace"]["sim_result"], f"{scenario.id_}.csv")
-    if not os.path.exists(result_path):
+    result_path = cfg.CONFIG["workspace"]["sim_result"] / f"{scenario.id_}.csv"
+    if not result_path.exists():
         logger.warning(f"Scenario results cannot be found: {scenario.id_}.")
         return None, False
 
@@ -264,15 +264,15 @@ def run_solutions(file: str, top: int = -1, verbose=True, agent_name="v1", recor
     additional_confs = None
     for i, (source, perturbations) in enumerate(solutions):
         if record_video:
-            solution_path = os.path.join(cfg.CONFIG["workspace"]["recordings"], f"{solution_name}-{i + 1}")
+            solution_path = cfg.CONFIG["workspace"]["recordings"] / f"{solution_name}-{i + 1}"
             if already_recorded(solution_path):
                 logger.info(f"Solution {solution_name}-{i + 1} is already recorded, skipping...")
                 continue
-            elif os.path.exists(solution_path):
+            elif solution_path.exists():
                 shutil.rmtree(solution_path)
             additional_confs = [
-                {"recording_save_path": os.path.join(solution_path, "source")},
-                {"recording_save_path": os.path.join(solution_path, "follow-up")},
+                {"recording_save_path": solution_path / "source"},
+                {"recording_save_path": solution_path / "follow-up"},
             ]
         source.id_ = f"top{i + 1}_source"
         follow_up = deepcopy(source)
@@ -290,8 +290,7 @@ def run_solutions(file: str, top: int = -1, verbose=True, agent_name="v1", recor
 
 def already_recorded(solution_path):
     try:
-        if len(os.listdir(os.path.join(solution_path, "source"))) > 0 and len(
-                os.listdir(os.path.join(solution_path, "follow-up"))) > 0:
+        if len(os.listdir(solution_path / "source")) > 0 and len(os.listdir(solution_path / "follow-up")) > 0:
             return True
     except FileNotFoundError:
         pass

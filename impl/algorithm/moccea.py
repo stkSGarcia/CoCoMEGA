@@ -1,5 +1,4 @@
 import logging
-import os
 import pickle
 import random
 import time
@@ -20,11 +19,11 @@ class MOCCEA(BaseAlgorithm):
         super().solve()
         # Initialize the population or resume from the latest checkpoint.
         if resume:
-            files = sorted(os.listdir(cfg.CONFIG["workspace"]["checkpoint"]), reverse=True)
+            files = sorted(cfg.CONFIG["workspace"]["checkpoint"].iterdir(), reverse=True)
             if len(files) == 0:
                 raise ValueError("No checkpoints found.")
             logger.info(f"Resuming from checkpoint: {files[0]}.")
-            with open(os.path.join(cfg.CONFIG["workspace"]["checkpoint"], files[0]), "rb") as f:
+            with files[0].open("rb") as f:
                 pop_scenario = pickle.load(f)
                 pop_perturbation = pickle.load(f)
                 current_solutions = pickle.load(f)
@@ -68,8 +67,7 @@ class MOCCEA(BaseAlgorithm):
             logger.info(f"Number of simulations: {sim_num}/{self.budget.sim_num}.")
 
             # Store the current status into a checkpoint.
-            with open(os.path.join(cfg.CONFIG["workspace"]["checkpoint"], f"{int(round(time.time() * 1000))}.pickle"),
-                      "wb") as f:
+            with (cfg.CONFIG["workspace"]["checkpoint"] / f"{int(round(time.time() * 1000))}.pickle").open("wb") as f:
                 pickle.dump(pop_scenario, f)
                 pickle.dump(pop_perturbation, f)
                 pickle.dump(current_solutions, f)

@@ -2,7 +2,6 @@ import pickle
 import random
 from copy import deepcopy
 from math import factorial, sqrt
-from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -41,7 +40,7 @@ if (cfg.CONFIG["search"]["runtime_data_as_seeds"] or
         cfg.CONFIG["search"]["constraint"]["enable"] or
         cfg.CONFIG["search"]["multi_objective"]["enable"]):
     runtime_scenarios = []
-    for data_path in Path(cfg.CONFIG["workspace"]["runtime_scenario"]).rglob("*.*"):
+    for data_path in cfg.CONFIG["workspace"]["runtime_scenario"].rglob("*.*"):
         with open(data_path, "rb") as f:
             runtime_data = pickle.load(f)
             runtime_scenarios += runtime_data

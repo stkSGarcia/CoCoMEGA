@@ -1,5 +1,4 @@
 import logging
-import os
 import pickle
 import random
 import time
@@ -79,12 +78,10 @@ class BaseAlgorithm:
         :param evaluated_solutions: All the evaluated solutions during the search.
         """
         suffix = f"{self._name.lower()}-{str(int(round(time.time() * 1000)))}"
-        with open(os.path.join(cfg.CONFIG["workspace"]["solution"], f"solutions-{suffix}.pickle"), "wb") as f:
-            pickle.dump(results, f)
-        with open(os.path.join(cfg.CONFIG["workspace"]["solution"], f"evaluated-{suffix}.pickle"), "wb") as f:
-            pickle.dump(evaluated_solutions, f)
-        with open(os.path.join(cfg.CONFIG["workspace"]["solution"], f"statistics-{suffix}.pickle"), "wb") as f:
-            pickle.dump(self.logbook, f)
+        (cfg.CONFIG["workspace"]["solution"] / f"solutions-{suffix}.pickle").write_bytes(pickle.dumps(results))
+        (cfg.CONFIG["workspace"]["solution"] / f"evaluated-{suffix}.pickle").write_bytes(
+            pickle.dumps(evaluated_solutions))
+        (cfg.CONFIG["workspace"]["solution"] / f"statistics-{suffix}.pickle").write_bytes(pickle.dumps(self.logbook))
         logger.info(f"Results dumped at {suffix}.")
 
     @staticmethod
