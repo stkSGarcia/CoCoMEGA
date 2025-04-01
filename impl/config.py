@@ -1,5 +1,6 @@
 import json
 import logging.config
+import os
 import sys
 import time
 import uuid
@@ -97,7 +98,7 @@ def init_config():
         "leaderboard/team_code",
         "scenario_runner",
     ]:
-        sys.path.append(str(CONFIG["interfuser"]["repo"] / path))
+        sys.path.append(os.path.join(CONFIG["interfuser"]["repo"], path))
 
 
 def init_project_directory(name: str, resume=False):
