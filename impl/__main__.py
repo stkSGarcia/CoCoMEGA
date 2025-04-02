@@ -206,8 +206,7 @@ def train_interfuser(args):
 def convert2scenarios(directory: str, n: int):
     def vectorize(path):
         try:
-            with open(path, "rb") as f:
-                runtime_data = pickle.load(f)
+            runtime_data = pickle.loads(path.read_bytes())
             return vectorize_runtime_data(runtime_data)
         except Exception as e:
             logger.error(f"Failed to vectorize runtime data from {path}, error message {e}.")

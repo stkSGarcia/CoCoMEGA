@@ -1008,7 +1008,8 @@ def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_t
 
     indices_to_remove = [[i for i, solution in enumerate(solutions) if solution.fitness.values[0] < threshold]
                          for threshold in fitness_thresholds]
-    indices_of_violated_mrs = np.array(mr_set.violated_mrs([perturbations for _, perturbations in solutions]))
+    indices_of_violated_mrs = np.array(mr_set.violated_mrs([perturbations for _, perturbations in solutions]),
+                                       dtype=object)
     dist_matrix = squareform(pairwise_distance(solutions)) if len(solutions) > 1 else np.array([[0]])
 
     results = []

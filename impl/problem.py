@@ -41,9 +41,7 @@ if (cfg.CONFIG["search"]["runtime_data_as_seeds"] or
         cfg.CONFIG["search"]["multi_objective"]["enable"]):
     runtime_scenarios = []
     for data_path in cfg.CONFIG["workspace"]["runtime_scenario"].rglob("*.*"):
-        with open(data_path, "rb") as f:
-            runtime_data = pickle.load(f)
-            runtime_scenarios += runtime_data
+        runtime_scenarios += pickle.loads(data_path.read_bytes())
     runtime_scenarios = [creator.Scenario(scenario) for scenario in runtime_scenarios]
     if len(runtime_scenarios) == 0:
         raise ValueError("No runtime scenarios found.")
