@@ -699,17 +699,17 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
         for gp_name, agg_dfs in agg_df_list.items():
             agg_df = pd.concat(agg_dfs).groupby("simulation_num").agg(list)
             ax = ax_map[gp_name]
-            y = agg_df["violated_mr_num" if mrc else "distinct_solution_num"].apply(np.mean) * 100 / len(
-                mr_set.mrs)
+            if mrc:
+                y = agg_df["violated_mr_num"].apply(np.mean) * 100 / len(mr_set.mrs)
+            else:
+                y = agg_df["distinct_solution_num"].apply(np.mean)
             auc_df = pd.concat([auc_df, pd.DataFrame([{
                 'alg': name,
                 'fitness_threshold': gp_name[0],
                 'distance_threshold': gp_name[1],
                 'auc': area_under_curve(np.array([0, *percent_ranges]), np.array([0, *y]))
             }])], ignore_index=True)
-            ax.plot(percent_ranges,
-                    y,
-                    **style_map[name], label=verbose_map[name])
+            ax.plot(percent_ranges, y, **style_map[name], label=verbose_map[name])
             ax.set_title(
                 f"Fitness threshold ($\\theta_f={gp_name[0]}$),\nDistance threshold ($\\theta_d={gp_name[1]}$)",
                 fontsize=title_size)
