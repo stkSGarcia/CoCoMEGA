@@ -176,11 +176,11 @@ def _evaluate_solutions_dt(solutions):
             diff, typ = 0, None
         else:
             if not rv_fitness:
-                diff, typ = np.abs(tv_fitness[0]), test_version
+                diff, typ = np.abs(max(0, tv_fitness[0])), test_version
             elif not tv_fitness:
-                diff, typ = np.abs(rv_fitness[0]), reference_version
+                diff, typ = np.abs(max(0, rv_fitness[0])), reference_version
             else:
-                diff = np.abs(rv_fitness[0] - tv_fitness[0])
+                diff = np.abs(max(0, rv_fitness[0]) - max(0, tv_fitness[0]))
                 typ = reference_version if rv_fitness[0] > tv_fitness[0] else test_version
         if cfg.CONFIG["search"]["constraint"]["enable"] or cfg.CONFIG["search"]["multi_objective"]["enable"]:
             solution.similarity = (similarities[i * 2], similarities[i * 2 + 1])
@@ -189,7 +189,7 @@ def _evaluate_solutions_dt(solutions):
         else:
             solution.fitness.values = (diff,)
         solution.fitness_type = typ
-        solution.is_violated = diff > 0  # TODO define violation criteria
+        solution.is_violated = diff > 0
 
     return tv_solutions, rv_sim_num + tv_sim_num
 
