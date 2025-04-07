@@ -690,11 +690,11 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         return control
 
     def save(self, tick_data):
-        if (self.collection_interval > 0 and self.step % (self.collection_interval * self.frame_rate) != 0) \
-                or self.step < self.collection_delay * self.frame_rate:
+        if ((self.collection_interval > 0) and (self.step % (self.collection_interval * self.frame_rate) != 0)) \
+                or (self.step < (self.collection_delay * self.frame_rate)):
             return
         if (self.collection_duration > 0) \
-                and (self.step >= (self.collection_delay + self.collection_duration) * self.frame_rate):
+                and (self.step >= ((self.collection_delay + self.collection_duration) * self.frame_rate)):
             raise AgentTerminationSignal("Agent requested scenario termination: Collection Timeout Reached!")
 
         if (self.collection_route_limit > 0) and (self.num_collected >= self.collection_route_limit):
