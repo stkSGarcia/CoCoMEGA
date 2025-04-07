@@ -7,7 +7,6 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from symbol import if_stmt
 
 import argformat
 import torch
