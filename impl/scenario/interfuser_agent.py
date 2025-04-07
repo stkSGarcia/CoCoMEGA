@@ -209,12 +209,15 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         self._vehicle = None
         self._world = None
         self.collection_duration = int(os.getenv("COLLECTION_DURATION", 0))
-        self.collection_interval = int(os.getenv("COLLECTION_DELAY_UPPER", 0))
+        self.collection_interval = int(os.getenv("COLLECTION_INTERVAL", 0))
         self.collection_route_limit = int(os.getenv("COLLECTION_ROUTE_LIMIT", 0))
         collection_delay_lower = os.environ.get("COLLECTION_DELAY_LOWER", None)
         collection_delay_upper = os.environ.get("COLLECTION_DELAY_UPPER", None)
         self.collection_delay = random.randint(int(collection_delay_lower), int(collection_delay_upper)) \
             if collection_delay_lower is not None and collection_delay_upper is not None else None
+
+        print(
+            f"Selected a random collection delay from [{collection_delay_lower},{collection_delay_upper}]: {self.collection_delay}")
 
         self.num_collected = 0
 
@@ -684,6 +687,10 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             "direction": get_direction(CarlaDataProvider._ego_vehicle_route),
         }
 
+        # print(f"Step: {self.step / self.frame_rate}, Delay: {self.collection_delay}, "
+        #             f"Duration Ends: {(self.collection_delay + self.collection_duration)}, "
+        #             f"Interval: {self.collection_interval}")
+
         if SAVE_PATH is not None:
             self.save(tick_data)
 
@@ -705,6 +712,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             Image.fromarray(tick_data["surface"]).save(
                 self.save_path / "meta" / ("%04d.jpg" % frame)
             )
+        # print("####################Saving runtime Data...####################")
         with open(os.path.join(self.save_path, f"tick_data_{frame:04d}.pkl"), 'wb') as _f:
             pickle.dump(tick_data, _f)
             self.num_collected += 1
