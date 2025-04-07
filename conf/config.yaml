@@ -97,6 +97,7 @@ runtime:
   collection_delay: [1, 40] # [lower, upper] (in seconds), the collection starts after a random seconds between lower and upper
   collection_duration: 10 # The duration of data collection (in seconds)
   collection_interval: 5 # The interval between each data collection (in seconds)
+  collection_route_limit: 0 # Maximum number of collected runtime data for each route (use 0 for no-limit)
   instances:
     - host: localhost
       port: 2100

@@ -87,6 +87,7 @@ def collect_runtime_data(agent: str, output: str):
         "collection_delay_upper": str(CONFIG["runtime"]["collection_delay"][1]),
         "collection_duration": str(CONFIG["runtime"]["collection_duration"]),
         "collection_interval": str(CONFIG["runtime"]["collection_interval"]),
+        "collection_route_limit": str(CONFIG["runtime"]["collection_route_limit"]),
     }
 
     environment_confs = get_enviroment_confs()

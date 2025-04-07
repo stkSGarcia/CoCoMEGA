@@ -210,12 +210,16 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         self._world = None
         self.collection_duration = int(os.getenv("COLLECTION_DURATION", 0))
         self.collection_interval = int(os.getenv("COLLECTION_DELAY_UPPER", 0))
+        self.collection_route_limit = int(os.getenv("COLLECTION_ROUTE_LIMIT", 0))
         collection_delay_lower = os.environ.get("COLLECTION_DELAY_LOWER", None)
         collection_delay_upper = os.environ.get("COLLECTION_DELAY_UPPER", None)
         self.collection_delay = random.randint(int(collection_delay_lower), int(collection_delay_upper)) \
             if collection_delay_lower is not None and collection_delay_upper is not None else None
 
+        self.num_collected = 0
+
     def setup(self, path_to_conf_file):
+
         self.sensor_interface._queue_timeout = 100
         if display_agent:
             self._hic = DisplayInterface()
@@ -691,7 +695,10 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             return
         if (self.collection_duration > 0) \
                 and (self.step >= (self.collection_delay + self.collection_duration) * self.frame_rate):
-            raise AgentTerminationSignal("Agent requested scenario termination!")
+            raise AgentTerminationSignal("Agent requested scenario termination: Collection Timeout Reached!")
+
+        if (self.collection_route_limit > 0) and (self.num_collected >= self.collection_route_limit):
+            raise AgentTerminationSignal("Agent requested scenario termination: Collection Route Limit Reached!")
 
         frame = self.step // self.skip_frames
         if display_agent:
@@ -700,6 +707,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             )
         with open(os.path.join(self.save_path, f"tick_data_{frame:04d}.pkl"), 'wb') as _f:
             pickle.dump(tick_data, _f)
+            self.num_collected += 1
         return
 
     def destroy(self):
