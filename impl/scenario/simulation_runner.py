@@ -118,6 +118,7 @@ def run_environment(conf):
         "COLLECTION_DELAY_UPPER": conf.get("collection_delay_upper", None),
         "COLLECTION_DURATION": conf.get("collection_duration", None),
         "COLLECTION_INTERVAL": conf.get("collection_interval", None),
+        "COLLECTION_ROUTE_LIMIT": conf.get("collection_route_limit", None),
         # Add RECORD_PATH if needed
         # "RECORD_PATH": "path/to/record",
     })

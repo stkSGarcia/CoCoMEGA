@@ -65,9 +65,11 @@ def simulate(num: int, file: str):
 
 
 def collect_runtime_data(agent: str, output: str):
-
     if output is None:
         output = CONFIG["workspace"]["runtime_data"]
+        cp_root = CONFIG["workspace"]["data_collection_checkpoint"]
+    else:
+        cp_root = os.path.join(output, 'checkpoints')
     logger.info(f"Running free simulation environment for agent {agent} to collect runtime data...")
 
     os.makedirs(CONFIG["workspace"]["train_data"], exist_ok=True)
@@ -78,7 +80,7 @@ def collect_runtime_data(agent: str, output: str):
     version_conf = [_c for _c in CONFIG["interfuser"]["versions"] if _c["name"] == agent][0]
 
     workspace_conf = {
-        "cp_root": CONFIG["workspace"]["data_collection_checkpoint"],
+        "cp_root": cp_root,
         "output_root": output,
     }
 
@@ -87,6 +89,7 @@ def collect_runtime_data(agent: str, output: str):
         "collection_delay_upper": str(CONFIG["runtime"]["collection_delay"][1]),
         "collection_duration": str(CONFIG["runtime"]["collection_duration"]),
         "collection_interval": str(CONFIG["runtime"]["collection_interval"]),
+        "collection_route_limit": str(CONFIG["runtime"]["collection_route_limit"]),
     }
 
     environment_confs = get_enviroment_confs()
