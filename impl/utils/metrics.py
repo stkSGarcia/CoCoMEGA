@@ -23,8 +23,10 @@ def avg_fitness(solutions):
 def avg_pw(solutions):
     return np.mean(pairwise_distance(solutions))
 
-def avg_pw_from_matrix(dist_matrix, indices):
+def avg_pw_from_matrix(dist_matrix, indices=None):
     """Computes the average pairwise distance from a precomputed distance matrix."""
+    if indices is None:
+        indices = list(range(dist_matrix.shape[0]))
     if len(indices) < 2:
         return np.nan
     subset_dist = dist_matrix[np.ix_(indices, indices)]
