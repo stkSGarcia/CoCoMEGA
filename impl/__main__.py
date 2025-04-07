@@ -64,11 +64,14 @@ def simulate(num: int, file: str):
         run_scenarios([ScenarioDefinition.generate_random_or_leaderboard() for _ in range(num)])
 
 
-def collect_runtime_data(agent: str):
+def collect_runtime_data(agent: str, output: str):
+
+    if output is None:
+        output = CONFIG["workspace"]["runtime_data"]
     logger.info(f"Running free simulation environment for agent {agent} to collect runtime data...")
 
     os.makedirs(CONFIG["workspace"]["train_data"], exist_ok=True)
-    os.makedirs(CONFIG["workspace"]["runtime_data"], exist_ok=True)
+    os.makedirs(output, exist_ok=True)
 
     agent_conf = CONFIG["interfuser"].copy()
     del agent_conf["versions"]
@@ -76,7 +79,7 @@ def collect_runtime_data(agent: str):
 
     workspace_conf = {
         "cp_root": CONFIG["workspace"]["data_collection_checkpoint"],
-        "output_root": CONFIG["workspace"]["runtime_data"]
+        "output_root": output,
     }
 
     exec_conf = {
@@ -281,7 +284,8 @@ if __name__ == "__main__":
     parser_crd = subparsers.add_parser("collect_runtime_data",
                                        help="Execute free environments to collect runtime data.")
     parser_crd.add_argument("-a", "--agent", type=str, default="v1", help="Agent version or name")
-    parser_crd.set_defaults(func=lambda args: collect_runtime_data(args.agent))
+    parser_crd.add_argument("--output", type=str, default=None, help="Path of output directory")
+    parser_crd.set_defaults(func=lambda args: collect_runtime_data(args.agent, args.output))
 
     parser_gtd = subparsers.add_parser("generate_train_data", help="Generate training data using a rule-based agent")
     parser_gtd.set_defaults(func=lambda args: generate_train_data())
