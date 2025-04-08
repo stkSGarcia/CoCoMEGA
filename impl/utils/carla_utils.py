@@ -83,7 +83,7 @@ def get_junction_topology(junction):
     return entry_wps, exit_wps
 
 
-def filter_junction_wp_direction(reference_wp, wp_list, direction='opposite'):
+def filter_junction_wp_direction(reference_yaw, wp_list, direction='opposite'):
     """
     Given a list of entry / exit wps of a junction, filters them according to a specific direction,
     returning all waypoint part of lanes that are at 'direction' with respect to the reference.
@@ -91,23 +91,25 @@ def filter_junction_wp_direction(reference_wp, wp_list, direction='opposite'):
     """
 
     filtered_wps = []
-    reference_yaw = reference_wp.transform.rotation.yaw
+    available_dirs = []
     for wp in wp_list:
         diff = (wp.transform.rotation.yaw - reference_yaw) % 360
-        if diff > 330.0:
+        if diff > 315.0 or diff < 45.0:
             wp_direction = 'ref'
-        elif diff > 225.0:
-            wp_direction = 'right'
-        elif diff > 135.0:
-            wp_direction = 'opposite'
-        elif diff > 30.0:
+            available_dirs.append('ref')
+        elif 210.0 < diff <= 315.0:
             wp_direction = 'left'
+            available_dirs.append('left')
+        elif 45.0 <= diff < 150.0:
+            wp_direction = 'right'
+            available_dirs.append('right')
         else:
-            wp_direction = 'ref'
+            wp_direction = 'opposite'
+            available_dirs.append('opposite')
 
         if wp_direction == direction:
             filtered_wps.append(wp)
-
+    # print(list(set(available_dirs)))
     return filtered_wps
 
 
@@ -121,12 +123,16 @@ def traj_interpolation(trajectory):
     return trajectory, gps_route, route
 
 
-def get_junction(location):
+def get_junction(location, distance_limit=None):
     waypoint = CarlaDataProvider.get_map().get_waypoint(location)
 
     # Find the nearest junction
+    dist = 0
     while not waypoint.is_junction:
         waypoint = waypoint.next(1.0)[0]
+        dist += 1
+        if (distance_limit is not None) and dist > distance_limit:
+            return None, None
 
     junction = waypoint.get_junction()
     return waypoint, junction
@@ -189,7 +195,7 @@ def copy_transform(transform):
 def load_world(town):
     if CarlaDataProvider.get_client() is None:
         initialize_carla()
-    if CarlaDataProvider.get_world() is None or CarlaDataProvider.get_world().get_map().name != town:
+    if CarlaDataProvider.get_world() is None or CarlaDataProvider.get_world().get_map().name.lower() != town:
         world = CarlaDataProvider.get_client().load_world(town)
         CarlaDataProvider.set_world(world)
 
@@ -219,13 +225,34 @@ def get_direction(trajectory):
 
         if reached_junction and not waypoint.is_junction:
             diff = (waypoint.transform.rotation.yaw - reference_wp.transform.rotation.yaw) % 360
-            if diff > 330.0 or diff < 30:
+            if (diff > 315.0) or (diff < 45.0):
                 direction = 'forward'
-            elif diff > 225.0:
-                direction = 'right'
-            elif diff > 135.0:
-                direction = 'opposite'
-            elif diff > 30.0:
+            elif 210.0 < diff <= 315.0:
                 direction = 'left'
+            elif 45.0 <= diff < 150.0:
+                direction = 'right'
+            else:
+                direction = 'opposite'
 
         return direction
+
+
+def get_available_directions(initial_transform):
+    directions = []
+    reference_yaw = initial_transform.rotation.yaw
+    # waypoint = CarlaDataProvider.get_map().get_waypoint(initial_transform.location)
+    _, junction = get_junction(initial_transform.location, distance_limit=50)
+    if junction is None: return ["forward"]
+
+    _, exit_wps = get_junction_topology(junction)
+
+    for wp in exit_wps:
+        diff = (wp.transform.rotation.yaw - reference_yaw) % 360
+        if (diff > 315.0) or (diff < 45.0):
+            directions.append("forward")
+        elif 210.0 < diff <= 315.0:
+            directions.append("left")
+        elif 45.0 <= diff < 150.0:
+            directions.append("right")
+
+    return list(set(directions))
