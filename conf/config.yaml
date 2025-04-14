@@ -3,14 +3,11 @@ debug: false
 workspace:
   root: out
   log: logs
+  result: results
+  visualization: visualizations
   test_result: tests
-  checkpoint: checkpoints
   data_collection_checkpoint: data_collection_checkpoints
   data_gen_checkpoint: data_gen_checkpoints
-  solution: solutions
-  visualization: visualizations
-  sim_result: results
-  sim_save: results/eval
   runtime_data: runtime_data
   runtime_scenario: runtime_scenario
   train_data: train_data
@@ -94,7 +91,7 @@ runtime:
   # 11: "HardRainSunset", 12: "SoftRainNoon", 13: "SoftRainSunset", 14: "ClearNight", 15: "CloudyNight",
   # 16: "WetNight", 17: "WetCloudyNight", 18: "SoftRainNight", 19: "MidRainyNight", 20: "HardRainNight"
   #]
-  collection_delay: [1, 20] # [lower, upper] (in seconds), the collection starts after a random seconds between lower and upper
+  collection_delay: [ 1, 20 ] # [lower, upper] (in seconds), the collection starts after a random seconds between lower and upper
   collection_duration: 10 # The duration of data collection (in seconds)
   collection_interval: 5 # The interval between each data collection (in seconds)
   collection_route_limit: 0 # Maximum number of collected runtime data for each route (use 0 for no-limit)
@@ -108,16 +105,15 @@ runtime:
       tm_port: 2602
       gpu_device: 1
 
-budget:
-  max_sim: 1000  # Set`null` to make it unlimited
-  max_time: 3600  # Set`null` to make it unlimited
-  max_gen: 20  # Set`null` to make it unlimited
-
 search:
+  budget:
+    max_sim: 500  # Set`null` to make it unlimited
+    max_gen: 100  # Set`null` to make it unlimited
+    max_time: 3600  # Set`null` to make it unlimited
   diff_testing: true
   runtime_data_as_seeds: false
   constraint:
-    enable: false
+    enable: true
     threshold: 0.5
     penalty_base: 2.71828
     penalty_amplifier: 6.66
@@ -127,6 +123,13 @@ search:
     ref_points:
       - [ 0.1, 0.9 ]
       - [ 0.2, 0.8 ]
+  opt:
+    diversity: true
+    niching:
+      strategy: clearing  # Options: none, sharing, clearing
+      punishment: 1.0
+      scaling: 1.0
+      capacity: 1
 
 scenario:
   pop_size: &pop 7
@@ -166,14 +169,6 @@ violation:
     threshold: 0.2
     repeat: 3
     aggregation: median # Options: mean, median
-
-opt:
-  niching:
-    strategy: clearing  # Options: none, sharing, clearing
-    punishment: 1.0
-    scaling: 1.0
-    capacity: 1
-  diversity: true
 
 trajectory:
   - town: Town05
