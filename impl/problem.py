@@ -172,24 +172,34 @@ def _evaluate_solutions_dt(solutions):
     for i, solution in enumerate(solutions):
         rv_fitness = getattr(solution, reference_version).fitness
         tv_fitness = getattr(solution, test_version).fitness
-        if not rv_fitness and not tv_fitness:
-            diff, typ = 0, None
+        if rv_fitness and tv_fitness:
+            solution.fitness.values = (np.abs(rv_fitness[0] - tv_fitness[0]),)
+            solution.fitness_type = reference_version if rv_fitness[0] > tv_fitness[0] else test_version
+            solution.is_violated = solution.fitness.values[0] > 0
         else:
-            if not rv_fitness:
-                diff, typ = np.abs(tv_fitness[0]), test_version
-            elif not tv_fitness:
-                diff, typ = np.abs(rv_fitness[0]), reference_version
-            else:
-                diff = np.abs(rv_fitness[0] - tv_fitness[0])
-                typ = reference_version if rv_fitness[0] > tv_fitness[0] else test_version
-        if cfg.CONFIG["search"]["constraint"]["enable"] or cfg.CONFIG["search"]["multi_objective"]["enable"]:
+            del solution.fitness.values
+            solution.fitness_type = None
+            solution.is_violated = False
+        if cfg.CONFIG["search"]["constraint"]["enable"]:
             solution.similarity = (similarities[i * 2], similarities[i * 2 + 1])
-        if cfg.CONFIG["search"]["multi_objective"]["enable"]:
-            solution.fitness.values = (diff, min(solution.similarity))
-        else:
-            solution.fitness.values = (diff,)
-        solution.fitness_type = typ
-        solution.is_violated = diff > 0
+        # if not rv_fitness and not tv_fitness:
+        #     diff, typ = 0, None
+        # else:
+        #     if not rv_fitness:
+        #         diff, typ = np.abs(tv_fitness[0]), test_version
+        #     elif not tv_fitness:
+        #         diff, typ = np.abs(rv_fitness[0]), reference_version
+        #     else:
+        #         diff = np.abs(rv_fitness[0] - tv_fitness[0])
+        #         typ = reference_version if rv_fitness[0] > tv_fitness[0] else test_version
+        # if cfg.CONFIG["search"]["constraint"]["enable"] or cfg.CONFIG["search"]["multi_objective"]["enable"]:
+        #     solution.similarity = (similarities[i * 2], similarities[i * 2 + 1])
+        # if cfg.CONFIG["search"]["multi_objective"]["enable"]:
+        #     solution.fitness.values = (diff, min(solution.similarity))
+        # else:
+        #     solution.fitness.values = (diff,)
+        # solution.fitness_type = typ
+        # solution.is_violated = diff > 0
 
     return tv_solutions, rv_sim_num + tv_sim_num
 
@@ -308,7 +318,7 @@ def _evaluate_individual(individual, complete_solutions):
     index = 0 if str(type(individual)) == str(creator.Scenario) else 1
     involved = []
     for solution in complete_solutions:
-        if solution[index] == individual:
+        if solution[index] == individual and solution.fitness.valid:
             if cfg.CONFIG["search"]["constraint"]["enable"] or cfg.CONFIG["search"]["multi_objective"]["enable"]:
                 involved.append((solution.fitness.values[0], solution.similarity[index]))
             else:

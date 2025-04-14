@@ -654,7 +654,7 @@ def visualize_archived_distinct_solutions(projects: Dict[str, List[str]], fitnes
             mean_df = pd.concat([mean_df, gp_means], ignore_index=True)
             ax.errorbar(distance_thresholds, mean_val,
                         yerr=values.apply(lambda row: 0.95 * np.std(row) / np.sqrt(len(row))),
-                        **style_map[name], capsize=2, label=verbose_map[name])
+                        **style_map[name], capsize=2, label=verbose_map[name], alpha=0.7)
             if box: ax.boxplot(group["distinct_solution_num"], positions=group.index.values, widths=0.05,
                                patch_artist=True, manage_ticks=False, whis=(0, 100),
                                boxprops=dict(facecolor=style_map[name]["color"], alpha=0.4))
@@ -665,7 +665,7 @@ def visualize_archived_distinct_solutions(projects: Dict[str, List[str]], fitnes
             ax.xaxis.set_major_locator(MultipleLocator(0.2))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=1))
             ax.legend()
-            ax.grid()
+            ax.grid("both")
     calculate_ds_improvements(mean_df)
     # for fitness, d in vda.items():
     #     for alg1, alg2 in (("ccea", "ga"), ("ccea", "rs"), ("ga", "rs")):
