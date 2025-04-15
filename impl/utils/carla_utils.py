@@ -109,7 +109,6 @@ def filter_junction_wp_direction(reference_yaw, wp_list, direction='opposite'):
 
         if wp_direction == direction:
             filtered_wps.append(wp)
-    # print(list(set(available_dirs)))
     return filtered_wps
 
 
