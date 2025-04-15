@@ -179,7 +179,7 @@ trajectory:
   towns: ["town01", "town02", "town03", "town04", "town05"]
   initial_speed_limit: 5
   predefined:
-    - town: Town05
+    - town: town05
       start:
         x: -188.04
         y: 111.89
@@ -190,7 +190,7 @@ trajectory:
         - left
         - forward
 
-    - town: Town05
+    - town: town05
       start:
         x: -184.54
         y: 111.96
@@ -201,7 +201,7 @@ trajectory:
         - right
         - forward
 
-    - town: Town05
+    - town: town05
       start:
         x: 151.5
         y: 50.0

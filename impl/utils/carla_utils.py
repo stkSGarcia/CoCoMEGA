@@ -194,7 +194,7 @@ def copy_transform(transform):
 def load_world(town):
     if CarlaDataProvider.get_client() is None:
         initialize_carla()
-    if CarlaDataProvider.get_world() is None or CarlaDataProvider.get_world().get_map().name.lower() != town:
+    if CarlaDataProvider.get_world() is None or CarlaDataProvider.get_world().get_map().name.lower() != town.lower():
         world = CarlaDataProvider.get_client().load_world(town)
         CarlaDataProvider.set_world(world)
 
