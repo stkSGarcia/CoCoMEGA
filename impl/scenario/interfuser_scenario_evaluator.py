@@ -24,7 +24,7 @@ import signal
 import logging
 import carla
 
-from impl.config import CONFIG
+from impl import config as cfg
 from impl.scenario.exceptions import StoppingScenarioFailedError, SimulationError, InvalidScenarioDefinitionError, \
     LoadingScenarioFailedError, AgentSetupFailedError
 from impl.scenario.scenario_manager import ScenarioManager
@@ -63,9 +63,9 @@ class ScenarioEvaluator(object):
     ego_vehicles = []
 
     # Tunable parameters
-    client_timeout = CONFIG["simulation"]["client_timeout"]  # in seconds
-    wait_for_world = CONFIG["simulation"]["wait_for_world"]  # in seconds
-    frame_rate = CONFIG["simulation"]["frame_rate"]  # in Hz
+    client_timeout = cfg.CONFIG["simulation"]["client_timeout"]  # in seconds
+    wait_for_world = cfg.CONFIG["simulation"]["wait_for_world"]  # in seconds
+    frame_rate = cfg.CONFIG["simulation"]["frame_rate"]  # in Hz
 
     def __init__(self, scenario_definition, args):
         """
@@ -85,7 +85,7 @@ class ScenarioEvaluator(object):
 
         self.client = CarlaDataProvider.get_client()
 
-        if CONFIG["simulation"]["autopilot"]:
+        if cfg.CONFIG["simulation"]["autopilot"]:
             self.traffic_manager = self.client.get_trafficmanager(int(args.trafficManagerPort))
 
         # dist = pkg_resources.get_distribution("carla")
@@ -142,7 +142,7 @@ class ScenarioEvaluator(object):
             settings.synchronous_mode = False
             settings.fixed_delta_seconds = None
             self.world.apply_settings(settings)
-            if CONFIG["simulation"]["autopilot"]:
+            if cfg.CONFIG["simulation"]["autopilot"]:
                 self.traffic_manager.set_synchronous_mode(False)
 
         if self.manager:
@@ -244,12 +244,12 @@ class ScenarioEvaluator(object):
 
         self.world.reset_all_traffic_lights()
 
-        if CONFIG["simulation"]["autopilot"]:
+        if cfg.CONFIG["simulation"]["autopilot"]:
             self.traffic_manager.set_hybrid_physics_mode(False)
             self.traffic_manager.set_synchronous_mode(True)
             self.traffic_manager.set_random_device_seed(int(args.trafficManagerSeed))
 
-        if not CONFIG["simulation"]["keep_world_actors"]:
+        if not cfg.CONFIG["simulation"]["keep_world_actors"]:
             # Remove all Traffic lights and signs
             for actor in self.world.get_actors():
                 if actor.is_alive and actor.type_id != "spectator":
@@ -326,7 +326,7 @@ class ScenarioEvaluator(object):
         except Exception as e:
             # The scenario is wrong -> set the ejecution to crashed and stop
             logger.error(f"\n\033[91mThe scenario could not be loaded: {e}")
-            if CONFIG['debug']:
+            if cfg.CONFIG['debug']:
                 traceback.print_exc()
             self._cleanup()
             raise LoadingScenarioFailedError(f"\n\033[91mThe scenario could not be loaded: {e}")
@@ -339,14 +339,14 @@ class ScenarioEvaluator(object):
         except AgentError as e:
             # The agent has failed -> stop the route
             logger.error(f"\n\033[91mStopping the route, the agent has crashed: {e}")
-            if CONFIG["debug"]:
+            if cfg.CONFIG["debug"]:
                 traceback.print_exc()
             self._cleanup()
             raise e
 
         except Exception as e:
             logger.error(f"\n\033[91mError during the simulation: {e}")
-            if CONFIG['debug']:
+            if cfg.CONFIG['debug']:
                 traceback.print_exc()
             self._cleanup()
             raise SimulationError(f"\n\033[91mError during the simulation: {e}")
@@ -384,7 +384,7 @@ class ScenarioEvaluator(object):
 
         for i in range(args.repetitions):
             # run
-            self._load_and_run_scenario(args, repetition_index=i, save_snapshot=CONFIG["simulation"]["save_snapshot"])
+            self._load_and_run_scenario(args, repetition_index=i, save_snapshot=cfg.CONFIG["simulation"]["save_snapshot"])
 
 
 def main():

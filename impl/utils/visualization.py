@@ -5,7 +5,6 @@ import time
 from bisect import bisect_left
 from collections import defaultdict
 from itertools import product
-from pathlib import Path
 from typing import Dict, List
 
 import matplotlib.pyplot as plt
@@ -16,11 +15,12 @@ import plotly.graph_objects as go
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
 from matplotlib.ticker import MaxNLocator, MultipleLocator
-from scipy.spatial.distance import squareform, pdist
+from scipy.spatial.distance import squareform
 from scipy.stats import rankdata
 from sklearn.manifold import MDS
 
-from impl.config import CONFIG
+from impl import config as cfg
+from impl.config import init_project_directory
 from impl.mr.mr import Relation
 from impl.utils.math_utils import calculate_auc_improvements, area_under_curve, calculate_ds_improvements
 from impl.utils.metrics import metrics, pairwise_distance, avg_pw_from_matrix
@@ -36,24 +36,27 @@ verbose_map = {
     "arc_scen": "Archive—Scenario",
     "arc_pert": "Archive—Perturbation",
     "ccea": "CoCoMEGA",
+    "ccea-c": "CoCoMEGA\c",
     "ccea-d": "CoCoMEGA\d",
     "rs": "RS",
     "ga": "SGA",
     "gawa": "SGA with Archives",
     "distinct_solution_num": "Average $DS$",
+    "ds": "$DS$",
     "avg_fit": "Average Fitness",
-    "avg_pw": "APD",
+    "avg_pw": "$APD$",
     "pure_div": "Pure Diversity",
 }
 
 style_map = {
     "ccea": {"color": "C1", "marker": "o"},
+    "ccea-c": {"color": "C3", "marker": "P"},
     "ccea-d": {"color": "C3", "marker": "P"},
     "ga": {"color": "C2", "marker": "*"},
     "rs": {"color": "C0", "marker": "x"}
 }
 
-skip_map = {"ccea": 5, "ccea-d": 5, "ga": 2, "rs": 1}
+skip_map = {"ccea": 5, "ccea-c": 5, "ccea-d": 5, "ga": 2, "rs": 1}
 
 
 class Visualizer:
@@ -117,7 +120,7 @@ class Visualizer:
     @classmethod
     def plot_pert_boundary_results(cls, meta, out_dir):
         for i, row in meta.iterrows():
-            path = os.path.join(CONFIG["workspace"]["solution"], row['statistics_path'])
+            path = os.path.join(cfg.CONFIG["workspace"]["solution"], row['statistics_path'])
             cls.visualize_algorithm_Stats(path, name=row['name'], out_dir=out_dir)
 
     @classmethod
@@ -233,23 +236,27 @@ class Visualizer:
         fig.write_image(os.path.join(out_dir, name))
 
 
-def visualize_in_one(data, file_name=None, plot_nan=True, verbose=False, show=False):
+def visualize_in_one(project, plot_nan=True, verbose=False, save_path=None, show=False):
     """Plot all statistics data in one figure.
 
-    @param data: Statistics data or data file.
-    @param file_name: Specify the file name for plots when the data is not a file path.
-    @param plot_nan: Plot NaN values.
-    @param verbose: Show plots of populations and archives.
-    @param show: A boolean to determine whether to show the plots or not.
+    :param project: Project name.
+    :param plot_nan: Plot NaN values.
+    :param verbose: Show plots of populations and archives.
+    :param save_path: The path to save the figure.
+    :param show: A boolean to determine whether to show the plots or not.
     """
-    if isinstance(data, str):
-        file_name = Path(data).stem
-        with open(data, "rb") as f:
-            data = pickle.load(f)
+    init_project_directory(project, resume=True)
+    stat_file = next(cfg.CONFIG["workspace"]["solution"].rglob("statistics*"), None)
+    if stat_file is None:
+        logger.warning(f"No statistics file found for {project}.")
+        return
+
+    data = pickle.loads(stat_file.read_bytes())
     stats = pd.DataFrame(data)
     if len(stats) == 0:
-        logger.warning('No statistics provided. Nothing to visualize.')
+        logger.warning("No statistics provided. Nothing to visualize.")
         return
+
     for metric in ("std", "min", "avg", "max"):
         stats[metric] = stats[metric].apply(lambda x: x[0])
     if plot_nan:
@@ -315,35 +322,39 @@ def visualize_in_one(data, file_name=None, plot_nan=True, verbose=False, show=Fa
 
     fig.supxlabel("Generation", fontsize=text_size)
     fig.tight_layout()
-    fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"{file_name}.png"))
+    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visual"] / f"{stat_file.stem}.png"))
     if show: plt.show()
 
 
-def visualize_comparison(files: Dict[str, List[str]], max_percentile=0.75,
+def visualize_comparison(projects: Dict[str, List[str]], max_percentile=0.75,
                          box=True, interval=15, avg_line=False,
                          trend_line=True, regression_degree=3, all_lines=False,
-                         plot_nan=True, verbose=False, show=False):
+                         plot_nan=True, verbose=False, save_path=None, show=False):
     """Plot comparisons among different algorithms.
 
-    @param files: Statistics data files of different algorithms.
-    @param max_percentile: Plot the given percentile of max fitness.
-    @param box: Show box plots.
-    @param interval: Width of intervals for aggregation.
-    @param avg_line: Show average lines.
-    @param trend_line: Show trend lines.
-    @param regression_degree: Degree of regression.
-    @param all_lines: Show original lines.
-    @param plot_nan: Plot NaN values.
-    @param verbose: Show more plots.
-    @param show: A boolean to determine whether to show the plots or not.
+    :param projects: Project names of different algorithms.
+    :param max_percentile: Plot the given percentile of max fitness.
+    :param box: Show box plots.
+    :param interval: Width of intervals for aggregation.
+    :param avg_line: Show average lines.
+    :param trend_line: Show trend lines.
+    :param regression_degree: Degree of regression.
+    :param all_lines: Show original lines.
+    :param plot_nan: Plot NaN values.
+    :param verbose: Show more plots.
+    :param save_path: The path to save the figure.
+    :param show: A boolean to determine whether to show the plots or not.
     """
     data = {}
-    for name, file_list in files.items():
+    for name, project_list in projects.items():
         full, merged, agg = defaultdict(list), {}, {}
         low, high = float("inf"), float("-inf")
-        for file in file_list:
-            with open(file, "rb") as f:
-                df = pd.DataFrame(pickle.load(f))
+        for project in project_list:
+            stat_file = next((cfg.CONFIG["workspace"]["result"] / project / "solutions").rglob("statistics*"), None)
+            if stat_file is None:
+                logger.warning(f"No statistics file found for {project}.")
+                continue
+            df = pd.DataFrame(pickle.loads(stat_file.read_bytes()))
             groups = df.groupby("pop")
             df_solution = groups.get_group("solution").sort_values("gen", ascending=True)
             df_archive = groups.get_group("archive").sort_values("gen", ascending=True)
@@ -418,30 +429,37 @@ def visualize_comparison(files: Dict[str, List[str]], max_percentile=0.75,
     ax1.legend(handles=legend_elements.values(), fontsize=text_size)
     fig.supxlabel("#simulations", fontsize=text_size)
     fig.tight_layout()
-    fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], "comparison.png"))
+    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "comparison.png"))
     if show: plt.show()
 
 
-def visualize_violation(source, follow_up, mr_set, offset=3, verbose=False, show=False,
-                        save_path=os.path.join(CONFIG["workspace"]["visualization"], "violation.png")):
+def visualize_violation(project, source, follow_up, mr_set, offset=3, verbose=False, save_path=None, show=False):
     """Plot the extent of violation between the source results
     and follow-up results based on the given metamorphic relations.
 
-    @param source: The source results.
-    @param follow_up: The follow-up results.
-    @param mr_set: The given metamorphic relations.
-    @param offset: The offset between the source and follow-up curves.
-    @param verbose: Plot the DTW path and matches of positions.
-    @param show: A boolean to determine whether to show the plots or not.
+    :param project: Project name.
+    :param source: The file name of source results.
+    :param follow_up: The file name of follow-up results.
+    :param mr_set: The given metamorphic relations.
+    :param offset: The offset between the source and follow-up curves.
+    :param verbose: Plot the DTW path and matches of positions.
+    :param save_path: The path to save the figure.
+    :param show: A boolean to determine whether to show the plots or not.
     """
+    init_project_directory(project, resume=True)
+    source = pd.read_csv((cfg.CONFIG["workspace"]["sim_result"] / source))
+    follow_up = pd.read_csv((cfg.CONFIG["workspace"]["sim_result"] / follow_up))
+    source.set_index(source.columns[0], inplace=True)
+    follow_up.set_index(follow_up.columns[0], inplace=True)
+
     labels = Relation.convert_labels(mr_set.labels)
     matches, origin_df = Relation.pairwise_dataframe(source, follow_up, mr_set.field, labels)
-    if CONFIG["violation"]["dtw"]:
+    if cfg.CONFIG["violation"]["dtw"]:
         matches, pair_df = Relation.dtw_dataframe(source, follow_up, mr_set.field, labels)
     else:
         pair_df = origin_df.reset_index()
 
-    row_num = 7 if verbose and CONFIG["violation"]["dtw"] else 4
+    row_num = 7 if verbose and cfg.CONFIG["violation"]["dtw"] else 4
     column_num, height = 6, 3
     title_size, text_size, tick_size = height * 7, height * 5, height * 4
     fig = plt.figure(figsize=(height * column_num, height * row_num))
@@ -470,7 +488,7 @@ def visualize_violation(source, follow_up, mr_set, offset=3, verbose=False, show
         for points in np.split(critical_intervals, np.where(np.diff(critical_intervals) != 1)[0] + 1):
             ax2.axvspan(points[0] - 0.5, points[-1] + 0.5, color="red", alpha=0.1)
 
-    if verbose and CONFIG["violation"]["dtw"]:
+    if verbose and cfg.CONFIG["violation"]["dtw"]:
         ax3 = fig.add_subplot(gs[4:, :3])
         ax3.plot(*list(zip(*matches)), "-C3", label="DTW path")
         ax3.set_title("DTW path", fontsize=title_size)
@@ -481,7 +499,7 @@ def visualize_violation(source, follow_up, mr_set, offset=3, verbose=False, show
         ax3.yaxis.set_major_locator(MaxNLocator(integer=True))
         ax3.legend(fontsize=text_size)
 
-        if CONFIG["violation"]["strategy"] == "position":
+        if cfg.CONFIG["violation"]["strategy"] == "position":
             ax4 = fig.add_subplot(gs[4:, 3:])
             for df, color, shift in zip((source, follow_up), ("C0", "C1"), (0, offset)):
                 x, y = (df["position_x"] - shift).to_numpy(), (df["position_y"] - shift).to_numpy()
@@ -501,23 +519,27 @@ def visualize_violation(source, follow_up, mr_set, offset=3, verbose=False, show
                          "--", color=color, zorder=1)
 
     fig.tight_layout()
-    fig.savefig(save_path)
+    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visual"] / "violation.png"))
     if show: plt.show()
 
 
-def visualize_diversity(files: Dict[str, List[str]], show=False):
+def visualize_diversity(projects: Dict[str, List[str]], save_path=None, show=False):
     """Plot the solution diversity among different algorithms.
 
-    @param files: Solution data files of different algorithms.
-    @param show: A boolean to determine whether to show the plots or not.
+    :param projects: Project names of different algorithms.
+    :param save_path: The path to save the figure.
+    :param show: A boolean to determine whether to show the plots or not.
     """
     data = (defaultdict(list), defaultdict(list), defaultdict(list))
-    for name, file_list in files.items():
-        for file in file_list:
-            with open(file, "rb") as f:
-                solutions = pickle.load(f)
+    for name, project_list in projects.items():
+        for project in project_list:
+            solution_file = next((cfg.CONFIG["workspace"]["result"] / project / "solutions").rglob("solutions*"), None)
+            if solution_file is None:
+                logger.warning(f"No solution file found for {project}.")
+                continue
+            solutions = pickle.loads(solution_file.read_bytes())
             if len(solutions) < 2:
-                logger.warning(f"No solutions or only one solution found in {file}.")
+                logger.warning(f"No solutions or only one solution found in {project}.")
                 continue
 
             dist = pairwise_distance(solutions)
@@ -550,13 +572,24 @@ def visualize_diversity(files: Dict[str, List[str]], show=False):
         ax.grid()
 
     fig.tight_layout()
-    fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"diversity.png"))
+    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "diversity.png"))
     if show: plt.show()
 
 
-def visualize_diversity_distribution(file, show=False):
-    with open(file, "rb") as f:
-        solutions = pickle.load(f)
+def visualize_diversity_distribution(project, save_path=None, show=False):
+    """Plot the solution diversity into a 3D space.
+
+    :param project: Project Name.
+    :param save_path: The path to save the figure.
+    :param show: A boolean to determine whether to show the plots or not.
+    """
+    init_project_directory(project, resume=True)
+    solution_file = next(cfg.CONFIG["workspace"]["solution"].rglob("solutions*"), None)
+    if solution_file is None:
+        logger.warning(f"No solution file found for {project}.")
+        return
+
+    solutions = pickle.loads(solution_file.read_bytes())
     if len(solutions) < 2:
         logger.warning("No solutions or only one solution found.")
         return
@@ -568,20 +601,22 @@ def visualize_diversity_distribution(file, show=False):
     ax.scatter3D(out[:, 0], out[:, 1], out[:, 2])
     ax.set_box_aspect((np.ptp(out[:, 0]), np.ptp(out[:, 1]), np.ptp(out[:, 2])))
     fig.tight_layout()
-    fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"{Path(file).stem}-diversity.png"))
+    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visual"] / f"{solution_file.stem}-diversity.png"))
     if show: plt.show()
 
 
-def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_thresholds: List[float],
-                                          distance_thresholds: List[float], mr_set, box=False, show=False):
+def visualize_archived_distinct_solutions(projects: Dict[str, List[str]], fitness_thresholds: List[float],
+                                          distance_thresholds: List[float], mr_set,
+                                          box=False, save_path=None, show=False):
     """Plot the number of distinct solutions from final archived solutions by applying fitness and distance thresholds.
 
-    @param files: Solution data files of different algorithms. Dict[name_of_algorithm, List[solution_file]].
-    @param fitness_thresholds: A list of fitness thresholds.
-    @param distance_thresholds: A list of distance thresholds.
-    @param mr_set: The given MRs.
-    @param box: Show box plots.
-    @param show: A boolean to determine whether to show the plots or not.
+    :param projects: Project names of different algorithms. Dict[name_of_algorithm, List[project_name]].
+    :param fitness_thresholds: A list of fitness thresholds.
+    :param distance_thresholds: A list of distance thresholds.
+    :param mr_set: The given MRs.
+    :param box: Show box plots.
+    :param save_path: The path to save the figure.
+    :param show: A boolean to determine whether to show the plots or not.
     """
     col_num, height = 3, 4
     title_size, text_size, tick_size = height * 4, height * 4, height * 3
@@ -593,13 +628,16 @@ def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_t
     # vda = defaultdict(lambda: dict())
     data = {}
     mean_df = pd.DataFrame()
-    for name, file_list in files.items():
+    for name, project_file in projects.items():
         df = pd.DataFrame()
-        for file in file_list:
-            with open(file, "rb") as f:
-                solutions = pickle.load(f)
+        for project in project_file:
+            solution_file = next((cfg.CONFIG["workspace"]["result"] / project / "solutions").rglob("solutions*"), None)
+            if solution_file is None:
+                logger.warning(f"No solution file found for {project}.")
+                continue
+            solutions = pickle.loads(solution_file.read_bytes())
             solution_df = _filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds, mr_set,
-                                                additional_metrics=['distinct_solution_num'])
+                                                additional_metrics=["distinct_solution_num"])
             df = (pd.concat([df, solution_df], ignore_index=True))
 
         data[name] = df
@@ -616,7 +654,7 @@ def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_t
             mean_df = pd.concat([mean_df, gp_means], ignore_index=True)
             ax.errorbar(distance_thresholds, mean_val,
                         yerr=values.apply(lambda row: 0.95 * np.std(row) / np.sqrt(len(row))),
-                        **style_map[name], capsize=2, label=verbose_map[name])
+                        **style_map[name], capsize=2, label=verbose_map[name], alpha=0.7)
             if box: ax.boxplot(group["distinct_solution_num"], positions=group.index.values, widths=0.05,
                                patch_artist=True, manage_ticks=False, whis=(0, 100),
                                boxprops=dict(facecolor=style_map[name]["color"], alpha=0.4))
@@ -627,7 +665,7 @@ def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_t
             ax.xaxis.set_major_locator(MultipleLocator(0.2))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=1))
             ax.legend()
-            ax.grid()
+            ax.grid("both")
     calculate_ds_improvements(mean_df)
     # for fitness, d in vda.items():
     #     for alg1, alg2 in (("ccea", "ga"), ("ccea", "rs"), ("ga", "rs")):
@@ -637,25 +675,27 @@ def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_t
     #             print(f"{fitness}-{distance_thresholds[i]}: {alg1}-{alg2}: {magnitude}-{estimate}.")
 
     fig.tight_layout()
-    fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"archived_distinct_solutions.png"))
+    fig.savefig(save_path if save_path else
+                (cfg.CONFIG["workspace"]["visualization"] / "archived_distinct_solutions.png"))
     if show: plt.show()
     return data
 
 
-def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str, List[List[str]]],
+def visualize_distinct_solution_over_simulations(projects: Dict[str, List[str]],
                                                  fitness_thresholds: List[float], distance_thresholds: List[float],
-                                                 max_sim_num: int, interval=10, mrc=False, mr_set=None, show=False):
+                                                 max_sim_num: int, interval=10, mrc=False, mr_set=None,
+                                                 save_path=None, show=False):
     """Plot the number of distinct solutions over simulations by applying fitness and distance thresholds.
 
-    @param directory: The directory of checkpoint files.
-    @param files: Checkpoint files. Dict[name_of_algorithm, List[Tuple(start_checkpoint, end_checkpoint)]].
-    @param fitness_thresholds: A list of fitness thresholds.
-    @param distance_thresholds: A list of distance thresholds.
-    @param max_sim_num: The maximum number of simulations.
-    @param interval: Width of intervals for aggregation (percentage).
-    @param mrc: Show the MR coverage.
-    @param mr_set: The given MRs.
-    @param show: A boolean to determine whether to show the plots or not.
+    :param projects: Project names of different algorithms. Dict[name_of_algorithm, List[project_name]].
+    :param fitness_thresholds: A list of fitness thresholds.
+    :param distance_thresholds: A list of distance thresholds.
+    :param max_sim_num: The maximum number of simulations.
+    :param interval: Width of intervals for aggregation (percentage).
+    :param mrc: Show the MR coverage.
+    :param mr_set: The given MRs.
+    :param save_path: The path to save the figure.
+    :param show: A boolean to determine whether to show the plots or not.
     """
     percent_ranges = np.arange(interval, 101, interval)
     ranges = (percent_ranges / 100 * max_sim_num).round(0).astype(int)
@@ -668,21 +708,20 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
     ax_map = {gp_name: ax for ax, gp_name in zip(axes.reshape(-1), product(fitness_thresholds, distance_thresholds))}
     auc_df = pd.DataFrame()
 
-    checkpoint_files = sorted(os.listdir(directory))
-    for name, ckp_list in files.items():
+    for name, project_list in projects.items():
         helper = pd.DataFrame({"simulation_num": ranges})
         agg_df_list = defaultdict(list)
-        for start, end in ckp_list:
-            file_list = [os.path.join(directory, f) for f in checkpoint_files if start <= f <= end]
+        for project in project_list:
+            checkpoints = sorted((cfg.CONFIG["workspace"]["result"] / project / "checkpoints").iterdir())
             df = pd.DataFrame()
-            for file in file_list:
-                with open(file, "rb") as f:
+            for checkpoint in checkpoints:
+                with checkpoint.open("rb") as f:
                     for _ in range(skip_map[name]): pickle.load(f)
                     solutions = pickle.load(f)
                     for _ in range(2): pickle.load(f)
                     budget = pickle.load(f)
                 ckp_df = _filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds, mr_set,
-                                               additional_metrics=['distinct_solution_num'])
+                                               additional_metrics=["distinct_solution_num"])
                 ckp_df["simulation_num"] = budget.sim_num
                 df = (pd.concat([df, ckp_df], ignore_index=True))
 
@@ -700,17 +739,17 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
         for gp_name, agg_dfs in agg_df_list.items():
             agg_df = pd.concat(agg_dfs).groupby("simulation_num").agg(list)
             ax = ax_map[gp_name]
-            y = agg_df["violated_mr_num" if mrc else "distinct_solution_num"].apply(np.mean) * 100 / len(
-                mr_set.mrs)
+            if mrc:
+                y = agg_df["violated_mr_num"].apply(np.mean) * 100 / len(mr_set.mrs)
+            else:
+                y = agg_df["distinct_solution_num"].apply(np.mean)
             auc_df = pd.concat([auc_df, pd.DataFrame([{
-                'alg': name,
-                'fitness_threshold': gp_name[0],
-                'distance_threshold': gp_name[1],
-                'auc': area_under_curve(np.array([0, *percent_ranges]), np.array([0, *y]))
+                "alg": name,
+                "fitness_threshold": gp_name[0],
+                "distance_threshold": gp_name[1],
+                "auc": area_under_curve(np.array([0, *percent_ranges]), np.array([0, *y]))
             }])], ignore_index=True)
-            ax.plot(percent_ranges,
-                    y,
-                    **style_map[name], label=verbose_map[name])
+            ax.plot(percent_ranges, y, **style_map[name], label=verbose_map[name])
             ax.set_title(
                 f"Fitness threshold ($\\theta_f={gp_name[0]}$),\nDistance threshold ($\\theta_d={gp_name[1]}$)",
                 fontsize=title_size)
@@ -725,32 +764,32 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
     calculate_auc_improvements(auc_df)
 
     fig.tight_layout()
-    fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"distinct_solutions_over_simulations.png"))
+    fig.savefig(save_path if save_path else
+                (cfg.CONFIG["workspace"]["visualization"] / "distinct_solutions_over_simulations.png"))
     if show: plt.show()
 
 
-def visualize_archived_solutions_by_gen(directory: str, checkpoints: Dict[str, List[List[str]]], generation_num,
-                                        metric_name,
-                                        fitness_thresholds: List[float],
-                                        distance_thresholds: List[float], mr_set, box=False, show=False,
-                                        legend_loc='upper right', padding={'top': 1.1, 'bottom': 0.3}):
+def visualize_archived_solutions_by_gen(projects: Dict[str, List[str]], generation_num, metric_name,
+                                        fitness_thresholds: List[float], distance_thresholds: List[float],
+                                        mr_set, box=False, save_path=None, show=False,
+                                        legend_loc="upper right", padding=None):
     """Plot the number of distinct solutions from final archived solutions by applying fitness and distance thresholds.
 
-    @param directory: The directory of checkpoint files.
-    @param checkpoints: Checkpoint files Dict[name_of_algorithm, List[list[checkpoint_file]].
-    @param generation_num: Generation Number. If set to K, plot the solutions found after K generations.
-    @param metric_name: The metric used for comparison. Options are
+    :param projects: Project names of different algorithms. Dict[name_of_algorithm, List[project_name]].
+    :param generation_num: Generation Number. If set to K, plot the solutions found after K generations.
+    :param metric_name: The metric used for comparison. Options are
         "ds" (Distinct Solutions)
         "avg_pw" (Average Pairwise Distance)
         "pure_div" (Pure Diversity)
-        "avg_fitness" (Average Fitness)
-    @param fitness_thresholds: A list of fitness thresholds.
-    @param distance_thresholds: A list of distance thresholds.
-    @param mr_set: The given MRs.
-    @param box: Show box plots.
-    @param show: A boolean to determine whether to show the plots or not.
-    @param legend_loc: Specifies the location of the legend in the plots
-    @oaram padding: Paddings between the extreme chart points and the axis range.
+        "avg_fit" (Average Fitness)
+    :param fitness_thresholds: A list of fitness thresholds.
+    :param distance_thresholds: A list of distance thresholds.
+    :param mr_set: The given MRs.
+    :param box: Show box plots.
+    :param save_path: The path to save the figure.
+    :param show: A boolean to determine whether to show the plots or not.
+    :param legend_loc: Specifies the location of the legend in the plots.
+    :param padding: Paddings between the extreme chart points and the axis range.
     """
     col_num, height = 3, 4
     title_size, text_size, tick_size = height * 4, height * 4, height * 3
@@ -758,18 +797,19 @@ def visualize_archived_solutions_by_gen(directory: str, checkpoints: Dict[str, L
     row_num = int(np.ceil(len(distance_thresholds) / col_num))
     fig, axes = plt.subplots(row_num, col_num, figsize=(col_num * height * 1.2, row_num * height))
     ax_map = {gp_name: ax for ax, gp_name in zip(axes.reshape(-1), distance_thresholds)}
-    checkpoint_files = sorted(os.listdir(directory))
+    if padding is None: padding = {"top": 1.1, "bottom": 0.3}
+
     data = {}
-    for alg, runs in checkpoints.items():
+    for alg, project_list in projects.items():
         df = pd.DataFrame()
-        for i, (start, end) in enumerate(runs):
-            run = [os.path.join(directory, f) for f in checkpoint_files if start <= f <= end]
+        for i, project in enumerate(project_list):
+            run = sorted((cfg.CONFIG["workspace"]["result"] / project / "checkpoints").iterdir())
             if len(run) < generation_num:
                 cp = run[-1]
             else:
                 cp = run[generation_num - 1]
 
-            with open(cp, "rb") as f:
+            with cp.open("rb") as f:
                 for _ in range(skip_map[alg]): pickle.load(f)
                 solutions = pickle.load(f)
 
@@ -805,45 +845,45 @@ def visualize_archived_solutions_by_gen(directory: str, checkpoints: Dict[str, L
             ax.set_title(f"Distance threshold ($\\theta_d={gp_name}$)", fontsize=title_size)
             ax.tick_params(labelsize=tick_size)
             ax.set_xlabel("Fitness threshold ($\\theta_f$)", fontsize=text_size)
-            ax.set_ylabel(f'${verbose_map[metric_name]}$', fontsize=text_size)
+            ax.set_ylabel(verbose_map[metric_name], fontsize=text_size)
 
             curr_y_min, curr_y_max = ax.get_ylim()
 
-            if y_max + padding['top'] > curr_y_max:
-                ax.set_ylim(top=y_max + padding['top'])
-            if y_min - padding['bottom'] < curr_y_min:
-                ax.set_ylim(bottom=y_min - padding['bottom'])
+            if y_max + padding["top"] > curr_y_max:
+                ax.set_ylim(top=y_max + padding["top"])
+            if y_min - padding["bottom"] < curr_y_min:
+                ax.set_ylim(bottom=y_min - padding["bottom"])
             ax.xaxis.set_major_locator(MultipleLocator(0.2))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=1))
             ax.legend(loc=legend_loc)
             ax.grid()
 
     fig.tight_layout()
-    fig.savefig(
-        os.path.join(CONFIG["workspace"]["visualization"], f"archived_{metric_name}_by_gen{generation_num}.png"))
+    fig.savefig(save_path if save_path else
+                (cfg.CONFIG["workspace"]["visualization"] / f"archived_{metric_name}_by_gen{generation_num}.png"))
     if show: plt.show()
 
 
-def visualize_archive_solution_over_generations(directory: str, files: Dict[str, List[List[str]]], metric_name,
+def visualize_archive_solution_over_generations(projects: Dict[str, List[str]], metric_name,
                                                 fitness_thresholds: List[float], distance_thresholds: List[float],
-                                                mr_set, max_gen: int, show=False, legend_loc='upper right',
-                                                padding={'top': 0.6, 'bottom': 0.3}):
+                                                mr_set, max_gen: int, save_path=None, show=False,
+                                                legend_loc="upper right", padding=None):
     """Plot the metrics over generations by applying fitness and distance thresholds.
 
-    @param directory: The directory of checkpoint files.
-    @param checkpoints: Checkpoint files Dict[name_of_algorithm, List[list[checkpoint_file]].
-    @param metric_name: The metric used for comparison. Options are
+    :param projects: Project names of different algorithms. Dict[name_of_algorithm, List[project_name]].
+    :param metric_name: The metric used for comparison. Options are
         "ds" (Distinct Solutions)
         "avg_pw" (Average Pairwise Distance)
         "pure_div" (Pure Diversity)
-        "avg_fitness" (Average Fitness)
-    @param fitness_thresholds: A list of fitness thresholds.
-    @param distance_thresholds: A list of distance thresholds.
-    @param mr_set: The given MRs.
-    @param max_gen: The maximum number of generations.
-    @param show: A boolean to determine whether to show the plots or not.
-    @oaram legend_loc: Location of the legend in the plots.
-    @oaram padding: Paddings between the extreme chart points and the axis range.
+        "avg_fit" (Average Fitness)
+    :param fitness_thresholds: A list of fitness thresholds.
+    :param distance_thresholds: A list of distance thresholds.
+    :param mr_set: The given MRs.
+    :param max_gen: The maximum number of generations.
+    :param save_path: The path to save the figure.
+    :param show: A boolean to determine whether to show the plots or not.
+    :param legend_loc: Location of the legend in the plots.
+    :param padding: Paddings between the extreme chart points and the axis range.
     """
     col_num, height = 3, 4
     title_size, text_size, tick_size = height * 4, height * 4, height * 3
@@ -852,16 +892,16 @@ def visualize_archive_solution_over_generations(directory: str, files: Dict[str,
     row_num = int(np.ceil(total_size / col_num))
     fig, axes = plt.subplots(row_num, col_num, figsize=(col_num * height * 1.2, row_num * height))
     ax_map = {gp_name: ax for ax, gp_name in zip(axes.reshape(-1), product(fitness_thresholds, distance_thresholds))}
+    if padding is None: padding = {"top": 0.6, "bottom": 0.3}
 
-    checkpoint_files = sorted(os.listdir(directory))
     data = {}
-    for alg, ckp_list in files.items():
+    for alg, project_list in projects.items():
         df = pd.DataFrame()
-        for run_counter, (start, end) in enumerate(ckp_list):
-            file_list = [os.path.join(directory, f) for f in checkpoint_files if start <= f <= end]
+        for run_counter, project in enumerate(project_list):
+            file_list = sorted((cfg.CONFIG["workspace"]["result"] / project / "checkpoints").iterdir())
             for i, file in enumerate(file_list):
                 if i == max_gen: break
-                with open(file, "rb") as f:
+                with file.open("rb") as f:
                     for _ in range(skip_map[alg]): pickle.load(f)
                     solutions = pickle.load(f)
                 ckp_df = _filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds, mr_set,
@@ -884,8 +924,8 @@ def visualize_archive_solution_over_generations(directory: str, files: Dict[str,
             if not y_max or y_max < chart_y_max: y_max = chart_y_max
             if not y_min or y_min > chart_y_min: y_min = chart_y_min
 
-            group[f'{metric_name}_mean'] = group[metric_name].apply(np.nanmean)
-            group = group[group[f'{metric_name}_mean'].notna()].sort_values('gen')
+            group[f"{metric_name}_mean"] = group[metric_name].apply(np.nanmean)
+            group = group[group[f"{metric_name}_mean"].notna()].sort_values("gen")
 
             ax.plot(group["gen"],
                     group[f'{metric_name}_mean'],
@@ -897,34 +937,33 @@ def visualize_archive_solution_over_generations(directory: str, files: Dict[str,
             # ax.xaxis.set_major_locator(MultipleLocator(interval))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=1))
             ax.set_xlabel("Generation", fontsize=text_size)
-            ax.set_ylabel(f'${verbose_map[metric_name]}$', fontsize=text_size)
+            ax.set_ylabel(verbose_map[metric_name], fontsize=text_size)
             curr_y_min, curr_y_max = ax.get_ylim()
-            if y_max + padding['top'] > curr_y_max:
-                ax.set_ylim(top=y_max + padding['top'])
-            if y_min - padding['bottom'] < curr_y_min:
-                ax.set_ylim(bottom=y_min - padding['bottom'])
+            if y_max + padding["top"] > curr_y_max:
+                ax.set_ylim(top=y_max + padding["top"])
+            if y_min - padding["bottom"] < curr_y_min:
+                ax.set_ylim(bottom=y_min - padding["bottom"])
 
             ax.legend(loc=legend_loc)
             ax.grid()
 
     fig.tight_layout()
-    fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"archived_{metric_name}_over_generetations.png"))
+    fig.savefig(save_path if save_path else
+                (cfg.CONFIG["workspace"]["visualization"] / f"archived_{metric_name}_over_generetations.png"))
     if show: plt.show()
 
 
-def visualize_computational_efficiency(log_file: str, solution_files: Dict[str, List[str]],
-                                       checkpoints: Dict[str, List[List[str]]], show=False):
+def visualize_computational_efficiency(log_file: str, projects: Dict[str, List[str]], save_path=None, show=False):
     """
     Generate a boxplot comparing computational efficiency (duration in hours) across algorithms from a log file.
 
-    @param log_file: Path to the CSV log file containing 'alg', 'start_time', 'end_time' columns.
-    @param solution_files: Solution data files of different algorithms. Dict[name_of_algorithm, List[solution_file]].
-    @param checkpoints: Checkpoint files Dict[name_of_algorithm, List[list[checkpoint_file]].
-    @param show: A boolean to determine whether to show the plots or not.
-
+    :param log_file: Path to the CSV log file containing 'alg', 'start_time', 'end_time' columns.
+    :param projects: Project names of different algorithms. Dict[name_of_algorithm, List[project_name]].
+    :param save_path: The path to save the figure.
+    :param show: A boolean to determine whether to show the plots or not.
     """
-    df = _generate_execution_time_data(log_file, solution_files, checkpoints)
-    algorithms = list(solution_files.keys())
+    df = _generate_execution_time_data(log_file, projects)
+    algorithms = list(projects.keys())
     durations = [df[df['alg'] == alg]['duration_hours'] for alg in algorithms]
     colors = [style_map[alg]['color'] for alg in algorithms]
 
@@ -953,13 +992,14 @@ def visualize_computational_efficiency(log_file: str, solution_files: Dict[str, 
     plt.tight_layout()
 
     fig.tight_layout()
-    fig.savefig(os.path.join(CONFIG["workspace"]["visualization"], f"computational_efficiency.png"))
+    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "computational_efficiency.png"))
     if show: plt.show()
 
 
-def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_thresholds: List[float], mr_set,
-                          additional_metrics: List[str] = []):
+def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_thresholds: List[float],
+                          mr_set, additional_metrics: List[str] = None):
     default_columns = ["fitness_threshold", "distance_threshold", "violated_mr_num", "distinct_mr_num", "avg_pw"]
+    if additional_metrics is None: additional_metrics = []
     additional_metrics = [metric for metric in additional_metrics if metric not in default_columns]
     column_names = (*default_columns, *additional_metrics)
     if len(solutions) == 0:
@@ -970,7 +1010,8 @@ def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_t
 
     indices_to_remove = [[i for i, solution in enumerate(solutions) if solution.fitness.values[0] < threshold]
                          for threshold in fitness_thresholds]
-    indices_of_violated_mrs = np.array(mr_set.violated_mrs([perturbations for _, perturbations in solutions]))
+    indices_of_violated_mrs = np.array(mr_set.violated_mrs([perturbations for _, perturbations in solutions]),
+                                       dtype=object)
     dist_matrix = squareform(pairwise_distance(solutions)) if len(solutions) > 1 else np.array([[0]])
 
     results = []
@@ -1031,22 +1072,24 @@ def _vda(treatment: List[int], control: List[int]):
     return a, magnitude[bisect_left(levels, abs(scaled_a))]
 
 
-def _generate_execution_time_data(log_path: str, solution_files: Dict[str, List[str]],
-                                  checkpoints: Dict[str, List[List[str]]]):
+def _generate_execution_time_data(log_path: str, projects: Dict[str, List[str]]):
     log_df = _make_log_df(log_path)
 
     sol_cp_map = pd.DataFrame()
-    for alg, cp_ranges in checkpoints.items():
-        sol_files = sorted(solution_files[alg], key=lambda f: int(f))
-        for i, cp_range in enumerate(cp_ranges):
-            start_cp, end_cp = cp_range[0], cp_range[1]
-            sol_file = sol_files[i]
-            start_cp_time = pd.to_datetime(int(start_cp.split(".")[0]), unit='ms')
-            end_cp_time = pd.to_datetime(int(end_cp.split(".")[0]), unit='ms')
-            end_time = pd.to_datetime(int(sol_file.split(".")[0].split('-')[-1]), unit='ms')
+    for alg, project_list in projects.items():
+        for project in project_list:
+            sol_file = next((cfg.CONFIG["workspace"]["result"] / project / "solutions").rglob("solutions*"), None)
+            checkpoints = sorted((cfg.CONFIG["workspace"]["result"] / project / "checkpoints").iterdir())
+            start_cp, end_cp = checkpoints[0], checkpoints[-1]
+            start_cp_time = pd.to_datetime(int(start_cp.stem), unit='ms')
+            end_cp_time = pd.to_datetime(int(end_cp.stem), unit='ms')
+            end_time = pd.to_datetime(int(sol_file.stem.split('-')[-1]), unit='ms')
             algo_logs = log_df[log_df["algorithm"] == alg]
-            closest_log = \
-                algo_logs[algo_logs["timestamp"] <= start_cp_time].sort_values(by="timestamp", ascending=False).iloc[0]
+            closest_log = (
+                algo_logs[algo_logs["timestamp"] <= start_cp_time]
+                .sort_values(by="timestamp", ascending=False)
+                .iloc[0]
+            )
             sol_cp_map = pd.concat([sol_cp_map, pd.DataFrame([{
                 'alg': alg,
                 'start_time': closest_log["timestamp"],
