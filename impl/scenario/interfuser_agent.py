@@ -33,12 +33,12 @@ from team_code.tracker import Tracker
 
 import math
 import yaml
-from impl.config import CONFIG
+from impl import config as cfg
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
 logger = logging.getLogger(__name__)
 
-display_agent = CONFIG["simulation"]["display_agent"]
+display_agent = cfg.CONFIG["simulation"]["display_agent"]
 
 try:
     import pygame
@@ -306,7 +306,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         self._vehicle = CarlaDataProvider.get_hero_actor()
         self._world = self._vehicle.get_world()
         if WEATHER:
-            self._world.set_weather(carla.WeatherParameters(**CONFIG["blueprint"]["scenario"]["weather"][int(WEATHER)]))
+            self._world.set_weather(carla.WeatherParameters(**cfg.CONFIG["blueprint"]["scenario"]["weather"][int(WEATHER)]))
         self.frame_rate = 1.0 / self._world.get_settings().fixed_delta_seconds
 
     def _get_position(self, tick_data):
