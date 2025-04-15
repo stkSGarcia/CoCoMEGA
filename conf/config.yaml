@@ -140,7 +140,7 @@ scenario:
     walker: 0.5
     static: 0.1
   max_actors: 4
-  init_selection_factor: 10
+  init_selection_factor: 2
   dist_scaling: 0.4
   tournament: 3
   cxpb: 0.8
@@ -171,35 +171,38 @@ violation:
     aggregation: median # Options: mean, median
 
 trajectory:
-  - town: Town05
-    start:
-      x: -188.04
-      y: 111.89
-      z: 0.0
-      yaw: -90.0
-      speed: 0
-    direction:
-      - left
-      - forward
+  towns: ["town01", "town02", "town03", "town04", "town05"]
+  initial_speed_limit: 5
+  predefined:
+    - town: Town05
+      start:
+        x: -188.04
+        y: 111.89
+        z: 0.0
+        yaw: -90.0
+        speed: 0
+      direction:
+        - left
+        - forward
 
-  - town: Town05
-    start:
-      x: -184.54
-      y: 111.96
-      z: 0.0
-      yaw: -90.0
-      speed: 0
-    direction:
-      - right
-      - forward
+    - town: Town05
+      start:
+        x: -184.54
+        y: 111.96
+        z: 0.0
+        yaw: -90.0
+        speed: 0
+      direction:
+        - right
+        - forward
 
-  - town: Town05
-    start:
-      x: 151.5
-      y: 50.0
-      z: 0.0
-      yaw: 90.0
-      speed: 0
+    - town: Town05
+      start:
+        x: 151.5
+        y: 50.0
+        z: 0.0
+        yaw: 90.0
+        speed: 0
 
 boundary:
   tilt_degrees: 15

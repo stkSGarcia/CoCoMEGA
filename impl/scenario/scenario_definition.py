@@ -17,7 +17,7 @@ from impl import config as cfg
 from impl.scenario.LeaderboardFactory import LeaderBoardFactory
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
 from impl.utils.carla_utils import get_junction_topology, filter_junction_wp_direction, get_closest_wp, load_world, \
-    traj_interpolation
+    traj_interpolation, get_available_directions
 from impl.utils.trajectory import rotate_vector, single_trajectory_score
 
 logger = logging.getLogger(__name__)
@@ -152,7 +152,7 @@ class ScenarioDefinition:
     DYNAMIC = ["vehicle", "walker", "static"]
     _BLUEPRINTS = cfg.CONFIG["blueprint"]["scenario"]
     _BOUNDARY = Boundary(cfg.CONFIG["boundary"]["env"])
-    _TRAJECTORY = cfg.CONFIG["trajectory"]
+    _TRAJECTORY = cfg.CONFIG["trajectory"]["predefined"]
 
     def __new__(cls, instance=None):
         if isinstance(instance, cls):
@@ -191,9 +191,12 @@ class ScenarioDefinition:
         self.id_ = uuid.uuid4().hex
 
     @classmethod
-    def generate_random(cls):
+    def generate_random(cls, predefined_trajectory=False):
         scenario = cls._generate_empty_scenario()
-        scenario.set_trajectory(cls._random_predefined_trajectory())
+        if predefined_trajectory:
+            scenario.set_trajectory(cls._random_predefined_trajectory())
+        else:
+            scenario.set_trajectory(cls._random_trajectory())
         scenario.vehicles = Vehicle.generate_random_actors(cfg.CONFIG["scenario"]["init_pb"]["vehicle"])
         scenario.walkers = Walker.generate_random_actors(cfg.CONFIG["scenario"]["init_pb"]["walker"])
         scenario.statics = Static.generate_random_actors(cfg.CONFIG["scenario"]["init_pb"]["static"])
@@ -246,7 +249,34 @@ class ScenarioDefinition:
         return trajectory_def
 
     @classmethod
-    def _build_trajectory(cls, trajectory_def, junction_distance_limit=20):
+    def _random_trajectory(cls):
+        while True:
+            town = random.choice(CONFIG["trajectory"]["towns"])
+            load_world(town)
+            initial_transform = CarlaDataProvider._rng.choice(CarlaDataProvider._spawn_points)
+            wp = CarlaDataProvider.get_map().get_waypoint(initial_transform.location)
+            if wp.is_junction:
+                continue
+            start_transform = initial_transform
+            start_location = start_transform.location
+            start_rotation = start_transform.rotation
+            initial_speed = random.uniform(0, CONFIG["trajectory"]["initial_speed_limit"])
+            direction = random.choice(get_available_directions(start_transform))
+            trajectory_def = {
+                "town": town,
+                "start": {
+                    "x": start_location.x,
+                    "y": start_location.y,
+                    "z": start_location.z,
+                    "yaw": start_rotation.yaw,
+                    "speed": initial_speed,
+                },
+                "direction": direction,
+            }
+            return trajectory_def
+
+    @classmethod
+    def _build_trajectory(cls, trajectory_def, junction_distance_limit=50):
         trajectory = []
         location = carla.Location(x=trajectory_def["start"]["x"], y=trajectory_def["start"]["y"], z=0)
         waypoint = CarlaDataProvider.get_map().get_waypoint(location)
@@ -279,11 +309,11 @@ class ScenarioDefinition:
 
                 # Filter waypoints for the target lane direction
                 direction_mapping = {
-                    'left': 'right',
-                    'right': 'left',
+                    'left': 'left',
+                    'right': 'right',
                     'forward': 'ref',
                 }
-                target_exit_wps = filter_junction_wp_direction(waypoint, exit_wps,
+                target_exit_wps = filter_junction_wp_direction(trajectory_def["start"]["yaw"], exit_wps,
                                                                direction_mapping[trajectory_def["direction"]])
 
                 if not target_exit_wps:

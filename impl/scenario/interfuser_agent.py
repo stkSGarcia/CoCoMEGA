@@ -215,10 +215,6 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         collection_delay_upper = os.environ.get("COLLECTION_DELAY_UPPER", None)
         self.collection_delay = random.randint(int(collection_delay_lower), int(collection_delay_upper)) \
             if collection_delay_lower is not None and collection_delay_upper is not None else None
-
-        print(
-            f"Selected a random collection delay from [{collection_delay_lower},{collection_delay_upper}]: {self.collection_delay}")
-
         self.num_collected = 0
 
     def setup(self, path_to_conf_file):
@@ -698,7 +694,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
 
     def save(self, tick_data):
         if ((self.collection_interval > 0) and (self.step % (self.collection_interval * self.frame_rate) != 0)) \
-                or (self.step < (self.collection_delay * self.frame_rate)):
+                or ((self.collection_delay is not None) and (self.step < (self.collection_delay * self.frame_rate))):
             return
         if (self.collection_duration > 0) \
                 and (self.step >= ((self.collection_delay + self.collection_duration) * self.frame_rate)):

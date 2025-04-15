@@ -245,7 +245,7 @@ class LeaderBoardFactory:
         entry_wps, _ = get_junction_topology(junction)
 
         # Filter waypoints for the specified lane direction
-        source_entry_wps = filter_junction_wp_direction(ego_waypoint, entry_wps, lane_dir)
+        source_entry_wps = filter_junction_wp_direction(scenario.trajectory["start"]["yaw"], entry_wps, lane_dir)
 
         if not source_entry_wps:
             logger.warning(f"No '{lane_dir}' lane found in the junction")
