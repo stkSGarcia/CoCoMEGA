@@ -251,7 +251,7 @@ class ScenarioDefinition:
     @classmethod
     def _random_trajectory(cls):
         while True:
-            town = random.choice(CONFIG["trajectory"]["towns"])
+            town = random.choice(cfg.CONFIG["trajectory"]["towns"])
             load_world(town)
             initial_transform = CarlaDataProvider._rng.choice(CarlaDataProvider._spawn_points)
             wp = CarlaDataProvider.get_map().get_waypoint(initial_transform.location)
@@ -260,7 +260,7 @@ class ScenarioDefinition:
             start_transform = initial_transform
             start_location = start_transform.location
             start_rotation = start_transform.rotation
-            initial_speed = random.uniform(0, CONFIG["trajectory"]["initial_speed_limit"])
+            initial_speed = random.uniform(0, cfg.CONFIG["trajectory"]["initial_speed_limit"])
             direction = random.choice(get_available_directions(start_transform))
             trajectory_def = {
                 "town": town,
