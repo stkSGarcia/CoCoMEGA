@@ -124,14 +124,14 @@ def traj_interpolation(trajectory):
 
 def get_junction(location, distance_limit=None):
     waypoint = CarlaDataProvider.get_map().get_waypoint(location)
-    partial_trajectory = [waypoint]
+    partial_trajectory = [waypoint.transform]
 
     # Find the nearest junction
     dist = 0
     while not waypoint.is_junction:
         waypoint = waypoint.next(1.0)[0]
         dist += 1
-        partial_trajectory.append(waypoint)
+        partial_trajectory.append(waypoint.transform)
         if (distance_limit is not None) and dist > distance_limit:
             return partial_trajectory, None
 
@@ -258,5 +258,5 @@ def get_available_directions(initial_transform, distance_limit=50):
             wp_dict["right"].append(wp)
 
     directions = [(direction, get_closest_wp(wp_list, reference_wp=initial_waypoint)) for direction, wp_list in
-                  wp_dict.items()]
+                  wp_dict.items() if len(wp_list) > 0]
     return directions

@@ -16,7 +16,8 @@ from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from impl import config as cfg
 from impl.scenario.LeaderboardFactory import LeaderBoardFactory
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
-from impl.utils.carla_utils import load_world, traj_interpolation, get_available_directions, get_junction
+from impl.utils.carla_utils import load_world, traj_interpolation, get_available_directions, get_junction, \
+    location_to_dict, dict_to_location
 from impl.utils.trajectory import rotate_vector, single_trajectory_score
 
 logger = logging.getLogger(__name__)
@@ -261,6 +262,7 @@ class ScenarioDefinition:
             start_rotation = start_transform.rotation
             initial_speed = random.uniform(0, cfg.CONFIG["trajectory"]["initial_speed_limit"])
             direction, exit_waypoint = random.choice(get_available_directions(start_transform))
+            junction_exit = location_to_dict(exit_waypoint.transform.location) if exit_waypoint is not None else None
             trajectory_def = {
                 "town": town,
                 "start": {
@@ -271,7 +273,7 @@ class ScenarioDefinition:
                     "speed": initial_speed,
                 },
                 "direction": direction,
-                "exit_waypoint": exit_waypoint,
+                "junction_exit": junction_exit,
             }
             return trajectory_def
 
@@ -291,9 +293,9 @@ class ScenarioDefinition:
                     raise InvalidScenarioDefinitionError(
                         f"The trajectory direction is '{trajectory_def['direction']}' but no junction found!")
             else:
+                assert trajectory_def["junction_exit"] is not None
 
-                assert trajectory_def["exit_waypoint"] is not None
-                waypoint = trajectory_def["exit_waypoint"]
+                waypoint = CarlaDataProvider.get_map().get_waypoint(dict_to_location(trajectory_def["junction_exit"]))
                 for i in range(junction_distance_limit):
                     trajectory.append(waypoint.transform)
                     waypoint = waypoint.next(1)[0]
