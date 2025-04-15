@@ -229,7 +229,7 @@ class ScenarioEvaluator(object):
         Load a new CARLA world and provide data to CarlaDataProvider
         """
 
-        if CarlaDataProvider.get_world() is None or CarlaDataProvider.get_map().name.lower() != self.scenario_definition.town:
+        if CarlaDataProvider.get_world() is None or CarlaDataProvider.get_map().name.lower() != self.scenario_definition.town.lower():
             self.world = self.client.load_world(self.scenario_definition.town)
             CarlaDataProvider.set_world(self.world)
         else:
@@ -257,7 +257,7 @@ class ScenarioEvaluator(object):
 
             self.world.tick()
 
-        if CarlaDataProvider.get_map().name.lower() != self.scenario_definition.town:
+        if CarlaDataProvider.get_map().name.lower() != self.scenario_definition.town.lower():
             raise Exception("The CARLA server uses the wrong map!"
                             "This scenario requires to use map {}".format(self.scenario_definition.town))
 
