@@ -32,7 +32,7 @@ arguments = [
     ("TEAM_CONFIG", "agent_config", "impl/scenario/interfuser_config_v1.py"),
     ("DEBUG_CHALLENGE", "debug", 0),
     ("RESUME", "resume", False),
-    ("SAVE_PATH", None, CONFIG["workspace"]["sim_save"]),
+    ("SAVE_PATH", None, None),
     (None, "trafficManagerSeed", "1"),
     (None, "carlaProviderSeed", "2000"),
     (None, "record", ""),

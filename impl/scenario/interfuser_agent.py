@@ -694,7 +694,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
 
     def save(self, tick_data):
         if ((self.collection_interval > 0) and (self.step % (self.collection_interval * self.frame_rate) != 0)) \
-                or (self.step < (self.collection_delay * self.frame_rate)):
+                or ((self.collection_delay is not None) and (self.step < (self.collection_delay * self.frame_rate))):
             return
         if (self.collection_duration > 0) \
                 and (self.step >= ((self.collection_delay + self.collection_duration) * self.frame_rate)):
