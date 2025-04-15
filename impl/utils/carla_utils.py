@@ -124,17 +124,19 @@ def traj_interpolation(trajectory):
 
 def get_junction(location, distance_limit=None):
     waypoint = CarlaDataProvider.get_map().get_waypoint(location)
+    partial_trajectory = [waypoint]
 
     # Find the nearest junction
     dist = 0
     while not waypoint.is_junction:
         waypoint = waypoint.next(1.0)[0]
         dist += 1
+        partial_trajectory.append(waypoint)
         if (distance_limit is not None) and dist > distance_limit:
-            return None, None
+            return partial_trajectory, None
 
     junction = waypoint.get_junction()
-    return waypoint, junction
+    return partial_trajectory, junction
 
 
 def wp_dist(wp1, wp2):
@@ -236,22 +238,25 @@ def get_direction(trajectory):
         return direction
 
 
-def get_available_directions(initial_transform):
-    directions = []
+def get_available_directions(initial_transform, distance_limit=50):
+    initial_location = initial_transform.location
+    initial_waypoint = CarlaDataProvider.get_map().get_waypoint(initial_location)
     reference_yaw = initial_transform.rotation.yaw
-    # waypoint = CarlaDataProvider.get_map().get_waypoint(initial_transform.location)
-    _, junction = get_junction(initial_transform.location, distance_limit=50)
-    if junction is None: return ["forward"]
+    _, junction = get_junction(initial_location, distance_limit=distance_limit)
+    if junction is None: return [("forward", None)]
 
     _, exit_wps = get_junction_topology(junction)
 
+    wp_dict = {"forward": [], "left": [], "right": []}
     for wp in exit_wps:
         diff = (wp.transform.rotation.yaw - reference_yaw) % 360
         if (diff > 315.0) or (diff < 45.0):
-            directions.append("forward")
+            wp_dict["forward"].append(wp)
         elif 210.0 < diff <= 315.0:
-            directions.append("left")
+            wp_dict["left"].append(wp)
         elif 45.0 <= diff < 150.0:
-            directions.append("right")
+            wp_dict["right"].append(wp)
 
-    return list(set(directions))
+    directions = [(direction, get_closest_wp(wp_list, reference_wp=initial_waypoint)) for direction, wp_list in
+                  wp_dict.items()]
+    return directions

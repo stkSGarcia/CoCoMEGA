@@ -16,8 +16,7 @@ from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from impl import config as cfg
 from impl.scenario.LeaderboardFactory import LeaderBoardFactory
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
-from impl.utils.carla_utils import get_junction_topology, filter_junction_wp_direction, get_closest_wp, load_world, \
-    traj_interpolation, get_available_directions
+from impl.utils.carla_utils import load_world, traj_interpolation, get_available_directions, get_junction
 from impl.utils.trajectory import rotate_vector, single_trajectory_score
 
 logger = logging.getLogger(__name__)
@@ -261,7 +260,7 @@ class ScenarioDefinition:
             start_location = start_transform.location
             start_rotation = start_transform.rotation
             initial_speed = random.uniform(0, cfg.CONFIG["trajectory"]["initial_speed_limit"])
-            direction = random.choice(get_available_directions(start_transform))
+            direction, exit_waypoint = random.choice(get_available_directions(start_transform))
             trajectory_def = {
                 "town": town,
                 "start": {
@@ -272,58 +271,32 @@ class ScenarioDefinition:
                     "speed": initial_speed,
                 },
                 "direction": direction,
+                "exit_waypoint": exit_waypoint,
             }
             return trajectory_def
 
     @classmethod
     def _build_trajectory(cls, trajectory_def, junction_distance_limit=50):
-        trajectory = []
-        location = carla.Location(x=trajectory_def["start"]["x"], y=trajectory_def["start"]["y"], z=0)
-        waypoint = CarlaDataProvider.get_map().get_waypoint(location)
-        is_junction = waypoint.is_junction
-        trajectory.append(waypoint.transform)
-
-        # Find the nearest junction
-        i = 0
-        no_junction = False
-        while not waypoint.is_junction:
-            waypoint = waypoint.next(1.0)[0]
-            i += 1
-            if i % 5 == 4:
+        initial_location = carla.Location(x=trajectory_def["start"]["x"], y=trajectory_def["start"]["y"], z=0)
+        trajectory, junction = get_junction(initial_location, distance_limit=junction_distance_limit)
+        is_junction = (junction is not None)
+        if trajectory_def["direction"] is None:
+            waypoint = trajectory[-1]
+            for i in range(junction_distance_limit):
+                waypoint = waypoint.next(1)[0]
                 trajectory.append(waypoint.transform)
-            if i >= junction_distance_limit:
-                no_junction = True
-                break
-        if no_junction:
-            if trajectory_def["direction"] is not None and trajectory_def["direction"] != 'forward':
-                raise InvalidScenarioDefinitionError(
-                    f"The trajectory direction is '{trajectory_def['direction']}' but no junction found!")
-            for i in range(10):
-                trajectory.append(waypoint.transform)
-                waypoint = waypoint.next(5.0)[0]
         else:
-            trajectory.append(waypoint.transform)
-            if trajectory_def["direction"] is not None:
-                junction = waypoint.get_junction()
-                _, exit_wps = get_junction_topology(junction)
-
-                # Filter waypoints for the target lane direction
-                direction_mapping = {
-                    'left': 'left',
-                    'right': 'right',
-                    'forward': 'ref',
-                }
-                target_exit_wps = filter_junction_wp_direction(trajectory_def["start"]["yaw"], exit_wps,
-                                                               direction_mapping[trajectory_def["direction"]])
-
-                if not target_exit_wps:
+            if junction is None:
+                if trajectory_def["direction"] != "forward":
                     raise InvalidScenarioDefinitionError(
-                        f"No lane found in the '{trajectory_def['direction']}' direction!")
+                        f"The trajectory direction is '{trajectory_def['direction']}' but no junction found!")
+            else:
 
-                target_wp = get_closest_wp(wp_list=target_exit_wps, reference_wp=waypoint)
-                for i in range(5):
-                    trajectory.append(target_wp.transform)
-                    target_wp = target_wp.next(5)[0]
+                assert trajectory_def["exit_waypoint"] is not None
+                waypoint = trajectory_def["exit_waypoint"]
+                for i in range(junction_distance_limit):
+                    trajectory.append(waypoint.transform)
+                    waypoint = waypoint.next(1)[0]
 
         trajectory, gps_route, route = traj_interpolation([t.location for t in trajectory])
 
