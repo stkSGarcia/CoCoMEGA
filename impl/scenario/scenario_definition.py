@@ -261,7 +261,10 @@ class ScenarioDefinition:
             start_location = start_transform.location
             start_rotation = start_transform.rotation
             initial_speed = random.uniform(0, cfg.CONFIG["trajectory"]["initial_speed_limit"])
-            direction, exit_waypoint = random.choice(get_available_directions(start_transform))
+            direction, exit_waypoint = random.choice(get_available_directions(
+                start_transform,
+                distance_limit=cfg.CONFIG["trajectory"]["junction_distance_limit"]
+            ))
             junction_exit = location_to_dict(exit_waypoint.transform.location) if exit_waypoint is not None else None
             trajectory_def = {
                 "town": town,
@@ -278,13 +281,15 @@ class ScenarioDefinition:
             return trajectory_def
 
     @classmethod
-    def _build_trajectory(cls, trajectory_def, junction_distance_limit=50):
-        initial_location = carla.Location(x=trajectory_def["start"]["x"], y=trajectory_def["start"]["y"], z=0)
-        trajectory, junction = get_junction(initial_location, distance_limit=junction_distance_limit)
+    def _build_trajectory(cls, trajectory_def):
+        initial_location = carla.Location(x=trajectory_def["start"]["x"], y=trajectory_def["start"]["y"],
+                                          z=trajectory_def["start"]["z"])
+        trajectory, junction = get_junction(initial_location,
+                                            distance_limit=cfg.CONFIG["trajectory"]["junction_distance_limit"])
         is_junction = (junction is not None)
         if trajectory_def["direction"] is None:
             waypoint = trajectory[-1]
-            for i in range(junction_distance_limit):
+            for i in range(cfg.CONFIG["trajectory"]["junction_distance_limit"]):
                 waypoint = waypoint.next(1)[0]
                 trajectory.append(waypoint.transform)
         else:
@@ -294,9 +299,8 @@ class ScenarioDefinition:
                         f"The trajectory direction is '{trajectory_def['direction']}' but no junction found!")
             else:
                 assert trajectory_def["junction_exit"] is not None
-
                 waypoint = CarlaDataProvider.get_map().get_waypoint(dict_to_location(trajectory_def["junction_exit"]))
-                for i in range(junction_distance_limit):
+                for i in range(cfg.CONFIG["trajectory"]["junction_distance_limit"]):
                     trajectory.append(waypoint.transform)
                     waypoint = waypoint.next(1)[0]
 

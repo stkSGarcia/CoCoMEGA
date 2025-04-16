@@ -238,7 +238,7 @@ def get_direction(trajectory):
         return direction
 
 
-def get_available_directions(initial_transform, distance_limit=50):
+def get_available_directions(initial_transform, distance_limit=None):
     initial_location = initial_transform.location
     initial_waypoint = CarlaDataProvider.get_map().get_waypoint(initial_location)
     reference_yaw = initial_transform.rotation.yaw

@@ -173,6 +173,7 @@ violation:
 trajectory:
   towns: ["town01", "town02", "town03", "town04", "town05"]
   initial_speed_limit: 5
+  junction_distance_limit: 50
   predefined:
     - town: town05
       start:
