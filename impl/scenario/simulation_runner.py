@@ -187,11 +187,13 @@ def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False, addition
             is_successful = True
             break
         except InvalidScenarioDefinitionError as e:
-            logger.error(f"Scenario failed: {scenario}, message: {e}.")
+            #logger.error(f"Scenario failed: {scenario}, message: {e}.")
+            logger.error(f"Scenario failed, message: {e}.")
             is_successful = False
             break
         except Exception as e:
-            logger.error(f"Scenario failed: {scenario}, message: {e}.")
+            # logger.error(f"Scenario failed: {scenario}, message: {e}.")
+            logger.error(f"Scenario failed, message: {e}.")
             if cfg.CONFIG['debug']:
                 traceback.print_exc()
             is_successful = False
