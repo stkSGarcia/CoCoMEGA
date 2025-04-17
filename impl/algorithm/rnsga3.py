@@ -45,12 +45,12 @@ def selRNSGA3(individuals, k, ref_points, ref_dirs, best_point=None, worst_point
     :param k: The number of individuals to select.
     :param ref_points: Reference points to use for niching.
     :param ref_dirs: Reference points uniformly on the hyperplane intersecting each axis at 1.
-    :param best_point: Best point found at previous generation.
-        If not provided find the best point only from current individuals.
-    :param worst_point: Worst point found at previous generation.
-        If not provided find the worst point only from current individuals.
-    :param extreme_points: Extreme points found at previous generation.
-        If not provided find the extreme points only from current individuals.
+    :param best_point: Best point found in previous generations.
+        If not provided, find the best point only from current individuals.
+    :param worst_point: Worst point found in previous generations.
+        If not provided, find the worst point only from current individuals.
+    :param extreme_points: Extreme points found in previous generations.
+        If not provided, find the extreme points only from current individuals.
     :param mu: Defines the init_simplex_scale of the reference lines used during survival selection.
         Increasing mu will result having solutions with a larger spread.
     :param nd: Specify the non-dominated algorithm to use: 'standard' or 'log'.
@@ -72,7 +72,7 @@ def selRNSGA3(individuals, k, ref_points, ref_dirs, best_point=None, worst_point
     fitnesses = np.array([ind.fitness.wvalues for f in pareto_fronts for ind in f])
     fitnesses *= -1
 
-    # Get best and worst point of population, contrary to pymoo we don't use memory.
+    # Get the best and worst point of population, contrary to pymoo we don't use memory.
     if best_point is not None and worst_point is not None:
         best_point = np.min(np.vstack((fitnesses, best_point, ref_points)), axis=0)
         worst_point = np.max(np.vstack((fitnesses, worst_point, ref_points)), axis=0)
@@ -91,7 +91,7 @@ def selRNSGA3(individuals, k, ref_points, ref_dirs, best_point=None, worst_point
 
     niches, dist = associate_to_niche(fitnesses, aspiration_ref_points, best_point, intercepts)
 
-    # Get counts per niche for individuals in all front but the last.
+    # Get counts per niche for individuals in all fronts but the last.
     niche_counts = np.zeros(len(aspiration_ref_points), dtype=np.int64)
     index, counts = np.unique(niches[:-len(pareto_fronts[-1])], return_counts=True)
     niche_counts[index] = counts
@@ -130,7 +130,7 @@ def _get_ref_dirs_from_points(ref_point, ref_dirs, mu=0.1):
 
         cent = np.mean(ref_dir_for_aspiration_point, axis=0)  # Find centroid of shrunken reference points.
 
-        # Project shrunken Das-Dennis points back onto original Das-Dennis hyperplane.
+        # Project shrunken Das-Dennis points back onto the original Das-Dennis hyperplane.
         intercept = _line_plane_intersection(np.zeros(n_obj), point, point_on_plane, n_vector)
         shift = intercept - cent  # Shift vector.
 
@@ -172,17 +172,17 @@ def _line_plane_intersection(l0, l1, p0, p_no, epsilon=1e-6):
         l = l * d
         return l0 + l
     else:
-        # The segment is parallel to plane then return the perpendicular projection.
+        # The segment is parallel to the plane then return the perpendicular projection.
         ref_proj = l1 - (np.dot(l1 - p0, p_no) * p_no)
         return ref_proj
 
 
 def _denormalize(x, xl=None, xu=None):
-    # If both xl and xu are None we are basically done because normalization is disabled.
+    # If both xl and xu are None, we are basically done because normalization is disabled.
     if x is None or (xl is None and xu is None):
         return x
 
-    # If not set simply fall back no nan values.
+    # If not set, simply fall back no nan values.
     if xl is None:
         xl = np.full_like(xu, np.nan)
     if xu is None:
@@ -190,7 +190,7 @@ def _denormalize(x, xl=None, xu=None):
 
     xl, xu = np.copy(xl).astype(float), np.copy(xu).astype(float)
 
-    # If both are equal then set the upper bound to none (always the 0 or lower bound will be returned then).
+    # If both are equal, then set the upper bound to none (always the 0 or lower bound will be returned then).
     xu[xl == xu] = np.nan
 
     # Check out when the input values are nan.

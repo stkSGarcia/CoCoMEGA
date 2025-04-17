@@ -89,7 +89,7 @@ def init_config():
     else:
         logger.warning("Cannot find log configuration file.")
 
-    # Add InterFuser to path
+    # Add InterFuser to the path
     for path in [
         "carla/PythonAPI",
         "carla/PythonAPI/carla",
@@ -102,7 +102,7 @@ def init_config():
 
 
 def init_project_directory(name: str, resume=False):
-    """Create necessary directories for executions or resume from an existing project directory.
+    """Create the necessary directories for executions or resume from an existing project directory.
 
     :param name: Execution name. If `resume` is `True`, this is the directory name to resume from.
     :param resume: Whether to resume.
