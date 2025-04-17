@@ -140,7 +140,7 @@ scenario:
     walker: 0.5
     static: 0.1
   max_actors: 4
-  init_selection_factor: 2
+  init_selection_factor: 10
   dist_scaling: 0.4
   tournament: 3
   cxpb: 0.8

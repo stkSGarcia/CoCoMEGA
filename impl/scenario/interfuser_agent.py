@@ -306,7 +306,8 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         self._vehicle = CarlaDataProvider.get_hero_actor()
         self._world = self._vehicle.get_world()
         if WEATHER:
-            self._world.set_weather(carla.WeatherParameters(**cfg.CONFIG["blueprint"]["scenario"]["weather"][int(WEATHER)]))
+            self._world.set_weather(
+                carla.WeatherParameters(**cfg.CONFIG["blueprint"]["scenario"]["weather"][int(WEATHER)]))
         self.frame_rate = 1.0 / self._world.get_settings().fixed_delta_seconds
 
     def _get_position(self, tick_data):
@@ -548,14 +549,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             )
         traffic_meta = self.traffic_meta_moving_avg
 
-        tick_data["raw"] = traffic_meta
-        tick_data["bev_feature"] = bev_feature
         tick_data["pred_waypoints"] = pred_waypoints
-        tick_data["traffic"] = {
-            "is_junction": is_junction,
-            "red_light": traffic_light_state,
-            "stop_sign": stop_sign
-        }
 
         steer, throttle, brake, meta_infos = self.controller.run_step(
             velocity,
@@ -624,71 +618,72 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             self.prev_control = control
             self.prev_surround_map = surround_map
 
-        tick_data["map"] = self.prev_surround_map
-        tick_data["map_t1"] = map_t1
-        tick_data["map_t2"] = map_t2
-        tick_data["rgb_raw"] = tick_data["rgb"]
-        tick_data["rgb_left_raw"] = tick_data["rgb_left"]
-        tick_data["rgb_right_raw"] = tick_data["rgb_right"]
+        if (display_agent) or (SAVE_PATH is not None):
+            tick_data["raw"] = traffic_meta
+            tick_data["bev_feature"] = bev_feature
+            tick_data["traffic"] = {
+                "is_junction": is_junction,
+                "red_light": traffic_light_state,
+                "stop_sign": stop_sign
+            }
+            tick_data["map"] = self.prev_surround_map
+            tick_data["map_t1"] = map_t1
+            tick_data["map_t2"] = map_t2
+            tick_data["rgb_raw"] = tick_data["rgb"]
+            tick_data["rgb_left_raw"] = tick_data["rgb_left"]
+            tick_data["rgb_right_raw"] = tick_data["rgb_right"]
 
-        tick_data["rgb"] = cv2.resize(tick_data["rgb"], (800, 600))
-        tick_data["rgb_left"] = cv2.resize(tick_data["rgb_left"], (200, 150))
-        tick_data["rgb_right"] = cv2.resize(tick_data["rgb_right"], (200, 150))
-        tick_data["rgb_focus"] = cv2.resize(tick_data["rgb_raw"][244:356, 344:456], (150, 150))
-        tick_data["control"] = "throttle: %.2f, steer: %.2f, brake: %.2f" % (
-            control.throttle,
-            control.steer,
-            control.brake,
-        )
-        tick_data["meta_infos"] = meta_infos
-        tick_data["box_info"] = "car: %d, bike: %d, pedestrian: %d" % (
-            box_info["car"],
-            box_info["bike"],
-            box_info["pedestrian"],
-        )
-        tick_data["mes"] = "speed: %.2f" % velocity
-        tick_data["time"] = "time: %.3f" % timestamp
-        if display_agent:
-            surface = self._hic.run_interface(tick_data)
-            tick_data["surface"] = surface
+            tick_data["rgb"] = cv2.resize(tick_data["rgb"], (800, 600))
+            tick_data["rgb_left"] = cv2.resize(tick_data["rgb_left"], (200, 150))
+            tick_data["rgb_right"] = cv2.resize(tick_data["rgb_right"], (200, 150))
+            tick_data["rgb_focus"] = cv2.resize(tick_data["rgb_raw"][244:356, 344:456], (150, 150))
+            tick_data["control"] = "throttle: %.2f, steer: %.2f, brake: %.2f" % (
+                control.throttle,
+                control.steer,
+                control.brake,
+            )
+            tick_data["meta_infos"] = meta_infos
+            tick_data["box_info"] = "car: %d, bike: %d, pedestrian: %d" % (
+                box_info["car"],
+                box_info["bike"],
+                box_info["pedestrian"],
+            )
+            tick_data["mes"] = "speed: %.2f" % velocity
+            tick_data["time"] = "time: %.3f" % timestamp
 
-        if self.video_recorder:
+            tick_data["other_actors"] = estimate_other_actor_data(traffic_meta.reshape(20, 20, 7),
+                                                                  compass=tick_data["compass"])
+            tick_data["sim_data"] = {}
+            tick_data["sim_data"]["other_actors"] = self.collect_actor_data()
+
+            tick_data["sim_data"]["town"] = CarlaDataProvider.get_map().name
+            weather = CarlaDataProvider.get_world().get_weather()
+
+            tick_data["sim_data"]["weather"] = WEATHER
+            tick_data["sim_data"]["brightness"] = weather.sun_altitude_angle
+            ego_vehicle = CarlaDataProvider.get_hero_actor()
+            ego_trans = ego_vehicle.get_transform()
+
+            tick_data["sim_data"]["route"] = [location_to_dict(t[0]) for t in CarlaDataProvider._ego_vehicle_route],
+            tick_data["sim_data"]["trajectory"] = {
+                "start": {
+                    "x": ego_trans.location.x,
+                    "y": ego_trans.location.y,
+                    "z": ego_trans.location.z,
+                    "yaw": ego_trans.rotation.yaw,
+                    "speed": tick_data["speed"]
+                },
+                "direction": get_direction(CarlaDataProvider._ego_vehicle_route),
+            }
+
             if display_agent:
-                self.video_recorder.write_frame(surface)
-            else:
-                raise RuntimeError("Unable to record video while display_agent=false")
+                surface = self._hic.run_interface(tick_data)
+                tick_data["surface"] = surface
+                if self.video_recorder:
+                    self.video_recorder.write_frame(surface)
 
-        tick_data["other_actors"] = estimate_other_actor_data(traffic_meta.reshape(20, 20, 7),
-                                                              compass=tick_data["compass"])
-        tick_data["sim_data"] = {}
-        tick_data["sim_data"]["other_actors"] = self.collect_actor_data()
-
-        tick_data["sim_data"]["town"] = CarlaDataProvider.get_map().name
-        weather = CarlaDataProvider.get_world().get_weather()
-
-        tick_data["sim_data"]["weather"] = WEATHER
-        tick_data["sim_data"]["brightness"] = weather.sun_altitude_angle
-        ego_vehicle = CarlaDataProvider.get_hero_actor()
-        ego_trans = ego_vehicle.get_transform()
-
-        tick_data["sim_data"]["route"] = [location_to_dict(t[0]) for t in CarlaDataProvider._ego_vehicle_route],
-        tick_data["sim_data"]["trajectory"] = {
-            "start": {
-                "x": ego_trans.location.x,
-                "y": ego_trans.location.y,
-                "z": ego_trans.location.z,
-                "yaw": ego_trans.rotation.yaw,
-                "speed": tick_data["speed"]
-            },
-            "direction": get_direction(CarlaDataProvider._ego_vehicle_route),
-        }
-
-        # print(f"Step: {self.step / self.frame_rate}, Delay: {self.collection_delay}, "
-        #             f"Duration Ends: {(self.collection_delay + self.collection_duration)}, "
-        #             f"Interval: {self.collection_interval}")
-
-        if SAVE_PATH is not None:
-            self.save(tick_data)
+            if SAVE_PATH is not None:
+                self.save(tick_data)
 
         return control
 
