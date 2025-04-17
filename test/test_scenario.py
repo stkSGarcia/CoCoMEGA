@@ -2,12 +2,9 @@ import random
 from copy import deepcopy
 from unittest import TestCase
 
-import test
 from impl.scenario.scenario_definition import ScenarioDefinition, Boundary
 from impl.scenario.scenario_definition import Vehicle, Walker, Static
 from impl.utils.carla_utils import initialize_carla
-
-config = test.CONFIG
 
 
 class TestActor(TestCase):
