@@ -26,16 +26,16 @@ from impl.utils.leaderboad_utils import get_enviroment_confs, make_yamls, create
 logger = logging.getLogger("impl")
 
 
-def parse_list(type, delimeter):
+def parse_list(_type, delimeter):
     def parse_func(arg_str):
         """Parse a comma-separated list of integers into a list."""
         try:
             arg_str = arg_str.strip()
             if arg_str.startswith('[') and arg_str.endswith(']'):
                 arg_str = arg_str[1:-1]
-            return [type(str(w).strip()) for w in arg_str.split(delimeter)]
+            return [_type(str(w).strip()) for w in arg_str.split(delimeter)]
         except ValueError:
-            raise argparse.ArgumentTypeError(f"args must be a list of '{type}' separated by '{delimeter}'")
+            raise argparse.ArgumentTypeError(f"args must be a list of '{_type}' separated by '{delimeter}'")
 
     return parse_func
 
@@ -355,7 +355,7 @@ if __name__ == "__main__":
                                            help="convert runtime data to runtime scenarios")
     parser_convert.add_argument("-d", "--directory", required=True, help="directory of runtime data")
     parser_convert.add_argument("-n", "--number", type=int, default=100, help="number of runtime scenarios")
-    parser_convert.add_argument("--towns", type=parse_list(int, ","), default=None, help="filter specific towns")
+    parser_convert.add_argument("--towns", type=parse_list(str, ","), default=None, help="filter specific towns")
     parser_convert.set_defaults(func=lambda args: convert2scenarios(args.directory, args.number, args.towns))
 
     if len(sys.argv) == 1:
