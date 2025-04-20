@@ -226,7 +226,9 @@ def convert2scenarios(directory: str, n: int):
             scenarios.append(scenario)
     else:
         count = 0
-        for data_path in Path(directory).rglob("*.pkl"):
+        files = list(Path(directory).rglob("*.pkl"))
+        random.shuffle(files)
+        for data_path in files:
             if count < n:
                 scenario = vectorize(data_path)
                 if scenario is None: continue
