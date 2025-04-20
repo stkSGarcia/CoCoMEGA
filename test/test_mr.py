@@ -1,12 +1,9 @@
 from copy import deepcopy
 from unittest import TestCase
 
-import test
 from impl.mr.mr import PerturbationFactory, Operation
 from impl.scenario.scenario_definition import Boundary, ScenarioDefinition, Vehicle
 from impl.utils.carla_utils import initialize_carla
-
-config = test.CONFIG
 
 
 class TestMR(TestCase):

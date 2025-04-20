@@ -91,6 +91,8 @@ def _dist_attrs(this, that, attrs, boundary: Boundary, scaling):
             # TODO: within the same category.
             if hasattr(this, attr) and hasattr(that, attr):
                 dist += pow(scaling * (0.0 if getattr(this, attr) == getattr(that, attr) else 1.0), 2)
+        else:
+            raise ValueError(f"Unsupported boundaries: [{lower}, {upper}].")
     return dist
 
 

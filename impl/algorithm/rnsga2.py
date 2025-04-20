@@ -98,7 +98,7 @@ def selRNSGA2(individuals, k, ref_points, ideal_point, nadir_point, epsilon=0.01
         # Number of individuals remaining.
         n_remaining = k - len(chosen)
 
-        # Calculate the distance matrix from ever solution to all reference point.
+        # Calculate the distance matrix from every solution to all reference points.
         dist_to_ref_points = _calc_norm_pref_distance(fitnesses[i], ref_points, weights, ideal_point, nadir_point)
 
         # The ranking of each point regarding each reference point (two times argsort is necessary).
@@ -133,19 +133,19 @@ def selRNSGA2(individuals, k, ref_points, ideal_point, nadir_point, epsilon=0.01
                 # Set crowding for that individual.
                 crowding[idx] = ranking[idx]
 
-                # Need to remove myself from not-selected array.
+                # Need to remove myself from the not-selected array.
                 to_remove = [idx]
 
                 # Group of close solutions.
                 dist = dist_to_others[idx][not_selected]
                 group = not_selected[np.where(dist < epsilon)[0]]
 
-                # If there exists solution with a distance less than epsilon.
+                # If there exists a solution with a distance less than epsilon.
                 if len(group):
                     # Discourage them by giving them a high crowding.
                     crowding[group] = ranking[group] + np.round(len(front) / 2)
 
-                    # Remove group from not_selected array.
+                    # Remove the group from the not_selected array.
                     to_remove.extend(group)
 
                 not_selected = np.array([i for i in not_selected if i not in to_remove])

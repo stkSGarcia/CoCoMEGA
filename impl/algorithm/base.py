@@ -61,7 +61,7 @@ class BaseAlgorithm:
         :param population: The population that requires recording statistics.
         :param gen_num: The number of generations.
         :param pop_name: The name of the population.
-        :param sim_num: The number of simulations actually run.
+        :param sim_num: The number of simulations actually runs.
         """
         record = self.stats.compile(population) if len(population) > 0 else {
             "avg": [np.nan, ] * self.n_obj,
@@ -187,7 +187,7 @@ class BaseAlgorithm:
         """DO NOT CALL THIS FUNCTION.
         It is used to replace the original `dominates` function in `deap`.
 
-        @param obj: Indices indicating on which objectives the domination is tested.
+        :param obj: Indices indicating on which objectives the domination is tested.
         """
         if not obj:
             obj = slice(None)

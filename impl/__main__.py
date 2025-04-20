@@ -244,7 +244,7 @@ def convert2scenarios(directory: str, n: int):
 
 
 if __name__ == "__main__":
-    # Parse command line.
+    # Parse the command line.
     parser = argparse.ArgumentParser(
         prog="mtcg",
         description="Test case generator for metamorphic testing.",

@@ -96,9 +96,9 @@ if cfg.CONFIG["search"]["multi_objective"]["enable"]:
 def _fitness(source, follow_up, mr_set=mr_set):
     """Calculate the fitness value and check if it violates the relation.
 
-    @param source: Simulation results of the source scenario.
-    @param follow_up: Simulation results of the follow-up scenario.
-    @return: A tuple containing a bool value indicating whether it violates the relation and the fitness value.
+    :param source: Simulation results of the source scenario.
+    :param follow_up: Simulation results of the follow-up scenario.
+    :return: A tuple containing a bool value indicating whether it violates the relation and the fitness value.
     """
     if mr_set.field == "velocity":
         func = lambda row: sqrt(row.velocity_x ** 2 + row.velocity_y ** 2)
@@ -109,13 +109,19 @@ def _fitness(source, follow_up, mr_set=mr_set):
 
 
 def _calculate_similarity(scenario, scenarios):
+    """Calculate the heterogeneous distance between the given scenario and the list of scenarios.
+
+    :param scenario: The given scenario.
+    :param scenarios: A list of scenarios.
+    :return: The heterogeneous distance.
+    """
     return min([scenario.dist(scen) for scen in scenarios])
 
 
 def _evaluate_solutions(solutions):
     """Evaluate the complete solutions.
 
-    @return: A list of complete solutions evaluated and the number of simulations.
+    :return: A list of complete solutions evaluated and the number of simulations.
     """
     scenarios = []
     reeval = []
@@ -154,8 +160,8 @@ def _evaluate_solutions(solutions):
 def _evaluate_solutions_dt(solutions):
     """Evaluate the complete solutions (Differential Testing approach).
 
-        @return: A list of complete solutions evaluated and the number of simulations.
-        """
+    :return: A list of complete solutions evaluated and the number of simulations.
+    """
     scenarios = []
     for solution in solutions:
         scenarios.append(solution[0])
@@ -299,6 +305,12 @@ def _reevaluate(solutions):
 
 
 def _penalize(fitness, similarity):
+    """Penalize the fitness value according to the similarity.
+
+    :param fitness: The fitness value.
+    :param similarity: The similarity.
+    :return: Penalized fitness value.
+    """
     if similarity <= cfg.CONFIG["search"]["constraint"]["threshold"]:
         return (fitness[0],)
     penalty = cfg.CONFIG["search"]["constraint"]["penalty_base"] ** (
@@ -311,9 +323,9 @@ def _penalize(fitness, similarity):
 def _evaluate_individual(individual, complete_solutions):
     """Evaluate the individual fitness of a scenario or a sequence of perturbations.
 
-    @param individual: The individual to be evaluated.
-    @param complete_solutions: The list of complete solutions with fitness evaluated.
-    @return: The individual with fitness evaluated.
+    :param individual: The individual to be evaluated.
+    :param complete_solutions: The list of complete solutions with fitness evaluated.
+    :return: The individual with fitness evaluated.
     """
     index = 0 if str(type(individual)) == str(creator.Scenario) else 1
     involved = []
