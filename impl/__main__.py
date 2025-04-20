@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import List
 
 import argformat
 import torch
@@ -209,10 +210,14 @@ def train_interfuser(args):
     return process.returncode
 
 
-def convert2scenarios(directory: str, n: int):
+def convert2scenarios(directory: str, n: int, towns: List[str]):
     def vectorize(path):
+        towns_lower = [name.lower() for name in towns]
         try:
             runtime_data = pickle.loads(path.read_bytes())
+            if towns is not None and runtime_data["sim_data"]["town"].lower() not in towns_lower:
+                logger.info("Scenario town is not in one of the selected towns. skipping...")
+                return None
             return vectorize_runtime_data(runtime_data)
         except Exception as e:
             logger.error(f"Failed to vectorize runtime data from {path}, error message {e}.")
@@ -350,7 +355,8 @@ if __name__ == "__main__":
                                            help="convert runtime data to runtime scenarios")
     parser_convert.add_argument("-d", "--directory", required=True, help="directory of runtime data")
     parser_convert.add_argument("-n", "--number", type=int, default=100, help="number of runtime scenarios")
-    parser_convert.set_defaults(func=lambda args: convert2scenarios(args.directory, args.number))
+    parser_convert.add_argument("--towns", type=parse_list(int, ","), default=None, help="filter specific towns")
+    parser_convert.set_defaults(func=lambda args: convert2scenarios(args.directory, args.number, args.towns))
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
