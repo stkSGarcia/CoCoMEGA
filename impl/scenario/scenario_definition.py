@@ -305,8 +305,9 @@ class ScenarioDefinition:
                     if trajectory_def["direction"] not in wp_dict:
                         raise InvalidScenarioDefinitionError(
                             f"No '{trajectory_def['direction']}' direction found in the junction!")
-                    trajectory_def["junction_exit"] = get_closest_wp(wp_dict[trajectory_def["direction"]],
-                                                                     reference_loc=trajectory[-1].location)
+                    closest_wp = get_closest_wp(wp_dict[trajectory_def["direction"]],
+                                                reference_loc=trajectory[-1].location)
+                    trajectory_def["junction_exit"] = location_to_dict(closest_wp.transform.location)
 
                 assert trajectory_def["junction_exit"] is not None
                 waypoint = CarlaDataProvider.get_map().get_waypoint(dict_to_location(trajectory_def["junction_exit"]))
