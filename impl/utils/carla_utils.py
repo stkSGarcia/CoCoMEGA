@@ -139,15 +139,15 @@ def get_junction(location, distance_limit=None):
     return partial_trajectory, junction
 
 
-def wp_dist(wp1, wp2):
+def loc_dist(loc1, loc2):
     return math.sqrt(
-        math.pow(wp1.transform.location.x - wp2.transform.location.x, 2) \
-        + math.pow(wp1.transform.location.y - wp2.transform.location.y, 2)
+        math.pow(loc1.x - loc2.x, 2) \
+        + math.pow(loc1.y - loc2.y, 2)
     )
 
 
-def get_closest_wp(wp_list, reference_wp):
-    return min(wp_list, key=lambda wp: wp_dist(wp, reference_wp))
+def get_closest_wp(wp_list, reference_loc):
+    return min(wp_list, key=lambda wp: loc_dist(wp.transform.location, reference_loc))
 
 
 def transform_to_dict(transform):
@@ -239,12 +239,15 @@ def get_direction(trajectory):
 
 
 def get_available_directions(initial_transform, distance_limit=None):
-    initial_location = initial_transform.location
-    initial_waypoint = CarlaDataProvider.get_map().get_waypoint(initial_location)
-    reference_yaw = initial_transform.rotation.yaw
-    _, junction = get_junction(initial_location, distance_limit=distance_limit)
+    trajectory, junction = get_junction(initial_transform.location, distance_limit=distance_limit)
     if junction is None: return [("forward", None)]
+    wp_dict = group_junction_directions(junction, reference_yaw=trajectory[-1].rotation.yaw)
+    directions = [(direction, get_closest_wp(wp_list, reference_loc=trajectory[-1].location)) for direction, wp_list in
+                  wp_dict.items() if len(wp_list) > 0]
+    return directions
 
+
+def group_junction_directions(junction, reference_yaw):
     _, exit_wps = get_junction_topology(junction)
 
     wp_dict = {"forward": [], "left": [], "right": []}
@@ -257,6 +260,4 @@ def get_available_directions(initial_transform, distance_limit=None):
         elif 45.0 <= diff < 150.0:
             wp_dict["right"].append(wp)
 
-    directions = [(direction, get_closest_wp(wp_list, reference_wp=initial_waypoint)) for direction, wp_list in
-                  wp_dict.items() if len(wp_list) > 0]
-    return directions
+    return wp_dict

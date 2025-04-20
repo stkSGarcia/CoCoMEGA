@@ -17,7 +17,7 @@ from impl import config as cfg
 from impl.scenario.LeaderboardFactory import LeaderBoardFactory
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
 from impl.utils.carla_utils import load_world, traj_interpolation, get_available_directions, get_junction, \
-    location_to_dict, dict_to_location
+    location_to_dict, dict_to_location, group_junction_directions, get_closest_wp
 from impl.utils.trajectory import rotate_vector, single_trajectory_score
 
 logger = logging.getLogger(__name__)
@@ -300,6 +300,14 @@ class ScenarioDefinition:
                     raise InvalidScenarioDefinitionError(
                         f"The trajectory direction is '{trajectory_def['direction']}' but no junction found!")
             else:
+                if "junction_exit" not in trajectory_def:
+                    wp_dict = group_junction_directions(junction, reference_yaw=trajectory[-1].rotation.yaw)
+                    if trajectory_def["direction"] not in wp_dict:
+                        raise InvalidScenarioDefinitionError(
+                            f"No '{trajectory_def['direction']}' direction found in the junction!")
+                    trajectory_def["junction_exit"] = get_closest_wp(wp_dict[trajectory_def["direction"]],
+                                                                     reference_loc=trajectory[-1].location)
+
                 assert trajectory_def["junction_exit"] is not None
                 waypoint = CarlaDataProvider.get_map().get_waypoint(dict_to_location(trajectory_def["junction_exit"]))
                 for i in range(cfg.CONFIG["trajectory"]["junction_distance_limit"]):
