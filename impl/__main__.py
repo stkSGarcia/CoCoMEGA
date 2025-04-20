@@ -13,7 +13,6 @@ import argformat
 import torch
 
 from impl import config as cfg
-from impl import problem
 from impl.algorithm.ccea import CCEA
 from impl.algorithm.ga import GeneticAlgorithm
 from impl.algorithm.moccea import MOCCEA
@@ -41,6 +40,7 @@ def parse_list(_type, delimeter):
 
 
 def search(algorithm: str, resume: bool, folder_name: str):
+    from impl import problem
     if resume:
         cfg.init_project_directory(folder_name, resume)
     else:
