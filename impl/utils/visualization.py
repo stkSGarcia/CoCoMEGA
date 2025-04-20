@@ -665,7 +665,7 @@ def visualize_archived_distinct_solutions(projects: Dict[str, List[str]], fitnes
             ax.xaxis.set_major_locator(MultipleLocator(0.2))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=1))
             ax.legend()
-            ax.grid("both")
+            ax.grid(True, which="both")
     calculate_ds_improvements(mean_df)
     # for fitness, d in vda.items():
     #     for alg1, alg2 in (("ccea", "ga"), ("ccea", "rs"), ("ga", "rs")):
