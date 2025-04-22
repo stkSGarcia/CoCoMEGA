@@ -230,10 +230,9 @@ def convert2scenarios(directory: str, n: int, towns: List[str]):
             if scenario is None: continue
             scenarios.append(scenario)
     else:
+        # Reservoir sampling.
         count = 0
-        files = list(Path(directory).rglob("*.pkl"))
-        random.shuffle(files)
-        for data_path in files:
+        for data_path in Path(directory).rglob("*.pkl"):
             if count < n:
                 scenario = vectorize(data_path)
                 if scenario is None: continue
