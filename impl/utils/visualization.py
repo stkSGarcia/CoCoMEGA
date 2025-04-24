@@ -39,6 +39,7 @@ verbose_map = {
     "ccea-c": "CoCoMEGA\c",
     "ccea-d": "CoCoMEGA\d",
     "ccea+ri": "CoCoMEGA+RI",
+    "ccea-c+ri": "CoCoMEGA\c+RI",
     "rs": "RS",
     "ga": "SGA",
     "gawa": "SGA with Archives",
@@ -53,12 +54,13 @@ style_map = {
     "ccea": {"color": "C1", "marker": "o"},
     "ccea-c": {"color": "C3", "marker": "P"},
     "ccea-d": {"color": "C3", "marker": "P"},
-    "ccea+ri": {"color": "C3", "marker": "P"},
+    "ccea+ri": {"color": "C4", "marker": "P"},
+    "ccea-c+ri": {"color": "C5", "marker": "P"},
     "ga": {"color": "C2", "marker": "*"},
     "rs": {"color": "C0", "marker": "x"}
 }
 
-skip_map = {"ccea": 5, "ccea-c": 5, "ccea-d": 5, "ccea+ri": 5, "ga": 2, "rs": 1}
+skip_map = {"ccea": 5, "ccea-c": 5, "ccea-d": 5, "ccea+ri": 5, "ccea-c+ri": 5, "ga": 2, "rs": 1}
 
 
 class Visualizer:
