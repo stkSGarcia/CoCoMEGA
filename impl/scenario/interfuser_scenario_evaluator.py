@@ -57,7 +57,14 @@ sensors_to_icons = {
 
 class ScenarioEvaluator(object):
     """
-    TODO: document me!
+    The ScenarioEvaluator is responsible for managing and executing scenario-based evaluations in CARLA.
+
+    This includes:
+    - Initializing the CARLA environment and loading the correct map.
+    - Loading and validating the autonomous agent.
+    - Configuring the simulation environment and traffic manager.
+    - Executing scenario simulations with watchdogs for timeout.
+    - Handling errors and cleanup.
     """
 
     ego_vehicles = []
@@ -69,8 +76,10 @@ class ScenarioEvaluator(object):
 
     def __init__(self, scenario_definition, args):
         """
-        Setup CARLA client and world
-        Setup ScenarioManager
+        Initialize the ScenarioEvaluator.
+
+        :param scenario_definition: An instance of ScenarioDefinition containing map and route info.
+        :param args: Parsed command-line arguments for simulation configuration.
         """
         self.scenario_definition = scenario_definition
 
@@ -110,10 +119,12 @@ class ScenarioEvaluator(object):
         self._agent_watchdog = Watchdog(int(float(args.timeout)))
         signal.signal(signal.SIGINT, self._signal_handler)
 
-
     def _signal_handler(self, signum, frame):
         """
-        Terminate scenario ticking when receiving a signal interrupt
+        Signal handler to stop simulation cleanly on user interruption or watchdog timeout.
+
+        :param signum: Signal number.
+        :param frame: Current stack frame.
         """
         if self._agent_watchdog and not self._agent_watchdog.get_status():
             raise RuntimeError("Timeout: Agent took too long to setup")
@@ -132,7 +143,7 @@ class ScenarioEvaluator(object):
 
     def _cleanup(self):
         """
-        Remove and destroy all actors
+        Cleanup the CARLA world and destroy all actors. Also resets internal states and watchdogs.
         """
         # Simulation still running and in synchronous mode?
         if self.manager and self.manager.get_running_status() \
@@ -189,7 +200,10 @@ class ScenarioEvaluator(object):
 
     def _prepare_ego_vehicles(self, ego_vehicles, wait_for_ego_vehicles=False):
         """
-        Spawn or update the ego vehicles
+        Spawn ego vehicles or attach to existing ones if wait_for_ego_vehicles is True.
+
+        :param ego_vehicles: List of ego vehicle blueprints and transforms.
+        :param wait_for_ego_vehicles: Whether to wait for pre-spawned ego vehicles.
         """
 
         if not wait_for_ego_vehicles:
@@ -226,7 +240,9 @@ class ScenarioEvaluator(object):
     # @profile
     def _load_and_wait_for_world(self, args):
         """
-        Load a new CARLA world and provide data to CarlaDataProvider
+        Load the required CARLA map and configure the simulation environment.
+
+        :param args: Parsed command-line arguments with simulation settings.
         """
 
         if CarlaDataProvider.get_world() is None or CarlaDataProvider.get_map().name.lower() != self.scenario_definition.town.lower():
@@ -264,12 +280,13 @@ class ScenarioEvaluator(object):
     # @profile
     def _load_and_run_scenario(self, args, repetition_index, save_snapshot=False):
         """
-        Load and run the scenario given by args.
+        Load and run a scenario from start to finish, including agent setup and scenario execution.
 
-        Depending on what code fails, the simulation will either stop the route and
-        continue from the next one, or report a crash and stop.
+        :param args: Simulation arguments including agent path and configs.
+        :param repetition_index: Index to distinguish between repeated trials.
+        :param save_snapshot: Whether to save scenario snapshot (optional).
+        :raises: SimulationError, LoadingScenarioFailedError, AgentSetupFailedError
         """
-
         logger.info(
             f"\n\033[1m========= Preparing {self.scenario_definition.id_} (repetition {repetition_index}) =========")
         logger.info("> Setting up the agent\033[0m")
@@ -278,7 +295,8 @@ class ScenarioEvaluator(object):
         try:
             self._agent_watchdog.start()
             agent_class_name = getattr(self.module_agent, 'get_entry_point')()
-            self.agent_instance = getattr(self.module_agent, agent_class_name)(args.agent_config, args.additional_config)
+            self.agent_instance = getattr(self.module_agent, agent_class_name)(args.agent_config,
+                                                                               args.additional_config)
 
             # Check and store the sensors
             if not self.sensors:
@@ -379,12 +397,15 @@ class ScenarioEvaluator(object):
 
     def run(self, args):
         """
-        Run the challenge mode
+        Run all scenarios defined by arguments.
+
+        :param args: Command-line arguments specifying settings.
         """
 
         for i in range(args.repetitions):
             # run
-            self._load_and_run_scenario(args, repetition_index=i, save_snapshot=cfg.CONFIG["simulation"]["save_snapshot"])
+            self._load_and_run_scenario(args, repetition_index=i,
+                                        save_snapshot=cfg.CONFIG["simulation"]["save_snapshot"])
 
 
 def main():

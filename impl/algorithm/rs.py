@@ -11,10 +11,18 @@ logger = logging.getLogger(__name__)
 
 
 class RandomSearch(BaseAlgorithm):
-    """Random Search."""
+    """Random Search algorithm for test case generation.
+
+    This algorithm randomly generates and evaluates scenario-perturbation pairs
+    without using crossover or mutation.
+    """
     _name = "RS"
 
     def solve(self, resume=False):
+        """Execute the Random Search (RS) algorithm.
+
+        :param resume: Whether to resume from a previous checkpoint.
+        """
         super().solve()
         # Initialize the population or resume from the latest checkpoint.
         if resume:

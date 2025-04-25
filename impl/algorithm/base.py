@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseAlgorithm:
-    """Base class for algorithms."""
+    """Base class for search algorithms, providing shared utility functions and structure."""
     _name = "BASE"
 
     def __init__(self, toolbox: base.Toolbox, budget: Budget, seed=None):

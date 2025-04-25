@@ -6,7 +6,7 @@ import numpy as np
 
 from impl import config as cfg
 from impl.scenario.scenario_definition import ScenarioDefinition, Vehicle, Walker, Static
-from impl.utils.carla_utils import traj_interpolation, location_to_dict, compass_to_yaw
+from impl.utils.carla_utils import trajectory_interpolation, location_to_dict, compass_to_yaw
 from impl.utils.math_utils import cartesian_to_polar, vector_norm, polar_to_cartesian
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
@@ -76,6 +76,11 @@ reweight_array = np.array([1.0, 3.5, 3.5, 2.0, 3.5, 2.0, 8.0])
 
 
 def get_enviroment_confs():
+    """
+    Generate a list of environment configurations based on towns, weathers, and route types.
+
+    :return: List of environment configurations.
+    """
     weathers = cfg.CONFIG["runtime"]["weathers"]
     towns = cfg.CONFIG["runtime"]["towns"]
     route_types = cfg.CONFIG["runtime"]["routes"]
@@ -98,6 +103,11 @@ def get_enviroment_confs():
 
 
 def make_yamls():
+    """
+    Create YAML files for data collection configuration for each weather condition.
+
+    Saves YAML files under the configured YAML root directory.
+    """
     conf = cfg.CONFIG["data_collection"].copy()
     os.makedirs(cfg.CONFIG["data_collection"]["yaml_root"], exist_ok=True)
     for weather in cfg.CONFIG["runtime"]["weathers"]:
@@ -112,6 +122,12 @@ def make_yamls():
 
 
 def vectorize_runtime_data(rt_data):
+    """
+    Convert runtime simulation data into a `ScenarioDefinition` object.
+
+    :param rt_data: Dictionary containing runtime simulation data.
+    :return: Generated ScenarioDefinition instance.
+    """
     scenario_def = ScenarioDefinition._generate_empty_scenario()
     trajectory = rt_data["sim_data"]["trajectory"]
     scenario_def.set_trajectory({
@@ -146,11 +162,12 @@ def vectorize_runtime_data(rt_data):
 
 def create_dataset_index(dataset_root, weathers=None, towns=None):
     """
-        Creates a dataset_index.txt file that lists the training/evaluation data.
+    Create a `dataset_index.txt` file listing paths and frame counts for training or evaluation data.
 
-        Args:
-            dataset_root (str): Path to the root directory of the dataset.
-        """
+    :param dataset_root: Path to the dataset root directory.
+    :param weathers: Optional list of weather IDs to filter data.
+    :param towns: Optional list of town IDs to filter data.
+    """
     index_file_path = os.path.join(dataset_root, "dataset_index.txt")
 
     with open(index_file_path, "w") as index_file:
@@ -171,6 +188,12 @@ def create_dataset_index(dataset_root, weathers=None, towns=None):
 
 
 def find_peak_box(data):
+    """
+    Find peak points in a detection tensor and categorize detected objects by size.
+
+    :param data: Detection tensor (shape: 20x20 grid with detection channels).
+    :return: List of detected objects with position and size category.
+    """
     det_data = np.zeros((22, 22, 7))
     det_data[1:21, 1:21] = data
     det_data[19:21, 1:21, 0] -= 0.1
@@ -210,6 +233,13 @@ def find_peak_box(data):
 
 
 def estimate_other_actor_data(det_data, compass):
+    """
+    Estimate positions, speeds, and orientations of other actors based on detection data.
+
+    :param det_data: Detection tensor containing bounding box and movement information.
+    :param compass: Compass angle of the ego vehicle (in radians).
+    :return: List of dictionaries representing estimated actor information.
+    """
     actor_data = []
     det_data = det_data * reweight_array
     box_info = find_peak_box(det_data)

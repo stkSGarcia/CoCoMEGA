@@ -52,6 +52,14 @@ carla_host = carla_port = tm_port = gpu_device = None
 
 
 def _init_carla(instance_configs):
+    """
+    Initialize CARLA connection based on provided instance configuration.
+
+    This sets host, port, traffic manager port, and GPU device.
+    Cleans previous CARLA actors and prepares environment.
+
+    :param instance_configs: Queue providing instance settings.
+    """
     global carla_host, carla_port, tm_port, gpu_device
     carla_host, carla_port, tm_port, gpu_device = instance_configs.get(timeout=10)
     os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_device)
@@ -60,6 +68,12 @@ def _init_carla(instance_configs):
 
 
 def run_free_environments(confs):
+    """
+    Run multiple environment instances in parallel or sequentially.
+
+    :param confs: List of configuration dictionaries for each environment run.
+    :return: A list of results from each environment.
+    """
     if cfg.CONFIG["runtime"]["parallel"]:
         process_configs = Manager().Queue()
         for instance in cfg.CONFIG["runtime"]["instances"]:
@@ -81,6 +95,14 @@ def run_free_environments(confs):
 
 
 def run_environment(conf):
+    """
+    Run a single simulation environment with the given configuration.
+
+    Sets environment variables and executes a subprocess to run the simulation.
+
+    :param conf: Configuration dictionary for one environment instance.
+    :return: Process return code (0 for success).
+    """
     global carla_host, carla_port, tm_port
 
     cp_path = os.path.join(conf["cp_root"], f"weather-{conf['weather']}", f"{conf['route_name']}.json")
@@ -150,9 +172,14 @@ def run_environment(conf):
 
 
 def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False, additional_config=None):
-    """Run a scenario defined in ScenarioDefinition.
+    """
+    Run a single `ScenarioDefinition` through CARLA simulation.
 
-    @return: The simulation result and whether the scenario was actually executed.
+    :param scenario: ScenarioDefinition object to simulate.
+    :param agent_name: Name of the agent configuration to use.
+    :param rerun: Whether to force rerunning even if results exist.
+    :param additional_config: Additional parameters to pass.
+    :return: (Result dataframe, whether simulation was newly executed).
     """
     global carla_host, carla_port, tm_port, gpu_device
     assert carla_host is not None and carla_port is not None and tm_port is not None and gpu_device is not None
@@ -220,9 +247,14 @@ def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False, addition
 
 
 def run_scenarios(scenarios, agent_name="v1", rerun=False, additional_confs=None):
-    """Run scenarios.
+    """
+    Run a batch of scenarios either sequentially or in parallel.
 
-    @return: A list of simulation results and the number of simulations.
+    :param scenarios: List of ScenarioDefinition objects to simulate.
+    :param agent_name: Name of agent configuration to use.
+    :param rerun: Whether to rerun already evaluated scenarios.
+    :param additional_confs: Optional additional configurations per scenario.
+    :return: (List of results, number of successful runs).
     """
     if additional_confs is None:
         additional_confs = list(itertools.repeat(None, len(scenarios)))
@@ -253,10 +285,16 @@ def run_scenarios(scenarios, agent_name="v1", rerun=False, additional_confs=None
 
 
 def run_solutions(file: str, top: int = -1, verbose=True, agent_name="v1", record_video=False):
-    """Run scenarios from a solution file.
+    """
+    Load and run scenarios from a saved solution file.
 
-    @param file: The solution file.
-    @param top: Number of top scenarios to run (-1 for all scenarios).
+    Each solution typically contains a source and a follow-up scenario.
+
+    :param file: Path to the pickle file containing solutions.
+    :param top: Number of top solutions to run (-1 runs all).
+    :param verbose: If True, run with output logs; otherwise silent.
+    :param agent_name: Agent name to use.
+    :param record_video: Whether to record video outputs for the runs.
     """
     solution_name = file.split("/")[-1].split(".")[0]
     with open(file, "rb") as f:
@@ -292,6 +330,12 @@ def run_solutions(file: str, top: int = -1, verbose=True, agent_name="v1", recor
 
 
 def already_recorded(solution_path):
+    """
+    Check if a recording already exists for a given solution path.
+
+    :param solution_path: Path where the source and follow-up recordings are expected.
+    :return: True if already recorded, False otherwise.
+    """
     try:
         if len(os.listdir(solution_path / "source")) > 0 and len(os.listdir(solution_path / "follow-up")) > 0:
             return True

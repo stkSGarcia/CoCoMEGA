@@ -14,9 +14,9 @@ from scipy.spatial.distance import cdist
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
 from impl import config as cfg
-from impl.scenario.LeaderboardFactory import LeaderBoardFactory
+from impl.scenario.Leaderboard_factory import LeaderBoardFactory
 from impl.scenario.exceptions import InvalidScenarioDefinitionError
-from impl.utils.carla_utils import load_world, traj_interpolation, get_available_directions, get_junction, \
+from impl.utils.carla_utils import load_world, trajectory_interpolation, get_available_directions, get_junction, \
     location_to_dict, dict_to_location, group_junction_directions, get_closest_wp
 from impl.utils.trajectory import rotate_vector, single_trajectory_score
 
@@ -24,6 +24,8 @@ logger = logging.getLogger(__name__)
 
 
 class Boundary(dict):
+    """Boundary definition for actor placement and parameters."""
+
     class Region(Enum):
         LEFT = cfg.CONFIG["boundary"]["region"]["left"]
         FOCUS = cfg.CONFIG["boundary"]["region"]["focus"]
@@ -44,6 +46,7 @@ class Boundary(dict):
         self["angle"] = [np.min(angles), np.max(angles)]
 
     def random(self, field: str, region: Region = None, none_pb=None):
+        """Randomly sample a value within the boundary."""
         if field in ["radius", "angle"]:
             if region is None:
                 region = random.choice(list(Boundary.Region))
@@ -57,6 +60,7 @@ class Boundary(dict):
 
     @staticmethod
     def get_region(angle):
+        """Return the region associated with a given angle."""
         for region in Boundary.Region:
             lower, upper = region.value["angle"]
             if lower <= angle <= upper:
@@ -64,6 +68,7 @@ class Boundary(dict):
         return None
 
     def _check_type_consistency(self, values):
+        """Validate consistency of boundary type values."""
         for element in values:
             if isinstance(element, list):
                 assert (len(element) == 2)
@@ -82,13 +87,13 @@ class Boundary(dict):
 
 
 def _dist_attrs(this, that, attrs, boundary: Boundary, scaling):
+    """Calculate the distance between global attributes of two given scenarios."""
     dist = 0
     for attr in attrs:
         lower, upper = boundary[attr]
         if isinstance(lower, float):
             dist += pow(abs(getattr(this, attr) - getattr(that, attr)) / (upper - lower), 2) if upper != lower else 0
         elif isinstance(lower, int):
-            # TODO: within the same category.
             if hasattr(this, attr) and hasattr(that, attr):
                 dist += pow(scaling * (0.0 if getattr(this, attr) == getattr(that, attr) else 1.0), 2)
         else:
@@ -97,6 +102,7 @@ def _dist_attrs(this, that, attrs, boundary: Boundary, scaling):
 
 
 def _mate_attrs(this, that, attrs, cxpb):
+    """Perform uniform crossover on the global attributes of two given scenarios."""
     for attr in attrs:
         if random.random() < cxpb:
             value = getattr(this, attr)
@@ -105,6 +111,7 @@ def _mate_attrs(this, that, attrs, cxpb):
 
 
 def _mate_actors(this, that, cxpb):
+    """Perform uniform crossover on the actors of two given scenarios."""
     common = min(len(this), len(that))
     for i in range(common):
         if random.random() < cxpb:
@@ -118,6 +125,7 @@ def _mate_actors(this, that, cxpb):
 
 
 def _mutate_attrs(this, attrs, boundary: Boundary, mutpb, eta, std):
+    """Perform mutation on the global attributes of a given scenario."""
     for attr in attrs:
         if random.random() >= mutpb: continue
         lower, upper = boundary[attr]
@@ -150,6 +158,8 @@ def _mutate_attrs(this, attrs, boundary: Boundary, mutpb, eta, std):
 
 
 class ScenarioDefinition:
+    """Defines a scenario for simulation including ego, actors, weather, and trajectory."""
+
     ATTRIBUTES = ["weather", "brightness", "stop_sign_est", "red_light_est", "is_junction_est"]
     DYNAMIC = ["vehicle", "walker", "static"]
     _BLUEPRINTS = cfg.CONFIG["blueprint"]["scenario"]
@@ -190,10 +200,16 @@ class ScenarioDefinition:
             self.is_junction_est = instance.is_junction_est
 
     def assign_new_id(self):
+        """Assign a new UUID to the scenario."""
         self.id_ = uuid.uuid4().hex
 
     @classmethod
     def generate_random(cls, predefined_trajectory=False):
+        """Generate a random scenario.
+
+        :param predefined_trajectory: Determines whether to select a predefined trajectory or generate a random one
+        :return: The generated scenario.
+        """
         scenario = cls._generate_empty_scenario()
         if predefined_trajectory:
             scenario.set_trajectory(cls._random_predefined_trajectory())
@@ -206,6 +222,14 @@ class ScenarioDefinition:
 
     @classmethod
     def generate_leaderboard_scenario(cls, scenario_type, **kwargs):
+        """
+        Generate a scenario based on a predefined leaderboard style.
+
+        :param scenario_type: Type of leaderboard scenario (e.g., 'crossing_negotiation', 'pedestrian_emerging').
+        :type scenario_type: str
+        :param kwargs: Additional parameters passed to the LeaderBoardFactory.
+        :return: A leaderboard scenario instance.
+        """
         scenario = cls._generate_empty_scenario()
         scenario.set_trajectory(cls._random_predefined_trajectory())
 
@@ -213,6 +237,11 @@ class ScenarioDefinition:
 
     @classmethod
     def generate_random_or_leaderboard(cls):
+        """
+        Randomly decide whether to generate a random scenario or a leaderboard scenario.
+
+        :return: A randomly generated or leaderboard scenario instance.
+        """
         if random.random() < cfg.CONFIG["scenario"]["leaderboard_pb"]:
             return cls.generate_leaderboard_scenario(scenario_type="random")
         else:
@@ -220,6 +249,11 @@ class ScenarioDefinition:
 
     @classmethod
     def generate_random_with_marked_actors(cls):
+        """
+        Generate a random scenario with a marked actor in front of the ego vehicle.
+
+        :return: The generated scenario.
+        """
         scenario = cls.generate_random()
         category = random.choice(("vehicle", "walker"))
         actors = getattr(scenario, f"{category}s")
@@ -231,6 +265,11 @@ class ScenarioDefinition:
 
     @classmethod
     def _generate_empty_scenario(cls):
+        """
+        Create an empty scenario template including an ego vehicle, its trajectory, and basic environment settings.
+
+        :return: An empty ScenarioDefinition instance with initialized fields.
+        """
         scenario = cls()
         scenario.ego_vehicle = Vehicle.generate_random()
         scenario.ego_vehicle.angle = 0
@@ -246,12 +285,22 @@ class ScenarioDefinition:
 
     @classmethod
     def _random_predefined_trajectory(cls):
+        """
+        Select a random trajectory definition from the list of predefined trajectories given in config.yaml.
+
+        :return: The selected trajectroy definition.
+        """
         trajectory_def = random.choice(cls._TRAJECTORY).copy()
         trajectory_def["direction"] = random.choice(trajectory_def.get("direction", [None]))
         return trajectory_def
 
     @classmethod
     def _random_trajectory(cls):
+        """
+        Generate a random trajectory definition.
+
+        :return: The generated trajectory definition.
+        """
         while True:
             town = random.choice(cfg.CONFIG["trajectory"]["towns"])
             load_world(town)
@@ -284,6 +333,13 @@ class ScenarioDefinition:
 
     @classmethod
     def _build_trajectory(cls, trajectory_def):
+        """
+        Construct a complete trajectory for the ego vehicle, based on the starting point and direction.
+
+        :param trajectory_def: Dictionary containing 'start', 'direction', and optionally 'junction_exit'.
+        :return: A tuple of trajectory waypoints, GPS route, CARLA route, and junction status.
+        :raises InvalidScenarioDefinitionError: If the trajectory direction is not valid given the starting location.
+        """
         initial_location = carla.Location(x=trajectory_def["start"]["x"], y=trajectory_def["start"]["y"],
                                           z=trajectory_def["start"]["z"])
         trajectory, junction = get_junction(initial_location,
@@ -315,11 +371,16 @@ class ScenarioDefinition:
                     trajectory.append(waypoint.transform)
                     waypoint = waypoint.next(1)[0]
 
-        trajectory, gps_route, route = traj_interpolation([t.location for t in trajectory])
+        trajectory, gps_route, route = trajectory_interpolation([t.location for t in trajectory])
 
         return trajectory, gps_route, route, is_junction
 
     def set_trajectory(self, trajectory_def):
+        """
+        Set the ego vehicle's trajectory using a trajectory definition.
+
+        :param trajectory_def: Dictionary describing the trajectory setup (start, direction, etc.).
+        """
         self.ego_vehicle.yaw = trajectory_def["start"]["yaw"]
         self.ego_vehicle.speed = trajectory_def["start"]["speed"]
         load_world(trajectory_def["town"])
@@ -330,20 +391,46 @@ class ScenarioDefinition:
         self.town = trajectory_def["town"]
 
     def get_trigger_position(self):
+        """
+        Return the ego vehicle's starting position.
+
+        :return: Dictionary containing the 'x', 'y', 'z', 'yaw', and 'speed' values.
+        """
         return self.trajectory["start"]
 
     def get_other_actors(self):
+        """
+        Get the configuration of all non-ego actors (vehicles, walkers, statics).
+
+        :return: List of actor configuration dictionaries.
+        """
         return [actor.get_config() for actor in self.vehicles + self.walkers + self.statics]
 
     def get_weather(self):
+        """
+        Get the weather settings for the scenario.
+
+        :return: Dictionary with weather parameters.
+        """
         weather_parameters = ScenarioDefinition._BLUEPRINTS["weather"][self.weather]
         weather_parameters["sun_altitude_angle"] = ScenarioDefinition._BLUEPRINTS["brightness"][self.brightness]
         return weather_parameters
 
     def set_brightness(self, brightness_value):
+        """
+        Update the brightness level to the nearest available preset.
+
+        :param brightness_value: Desired sun brightness value.
+        """
         self.brightness = self._find_closest_brightness_index(brightness_value)
 
     def _find_closest_brightness_index(self, brightness_value):
+        """
+        Find the index of the brightness preset closest to the given value.
+
+        :param brightness_value: Desired brightness value.
+        :return: Index of the closest brightness level.
+        """
         ret = 0
         dist = None
         for idx, value in enumerate(ScenarioDefinition._BLUEPRINTS["brightness"]):
@@ -353,6 +440,14 @@ class ScenarioDefinition:
         return ret
 
     def add_actor(self, category: str, new_actor, mark=False, tilt_dir=None):
+        """
+        Add a new actor to the scenario.
+
+        :param category: Type of the actor to add ('vehicle', 'walker', or 'static').
+        :param new_actor: The actor instance to add.
+        :param mark: Whether to mark this actor as special (default: False).
+        :param tilt_dir: Apply a tilt to the actor's position ('left', 'right', or None).
+        """
         actors = getattr(self, f"{category}s")
         new_actor_dc = deepcopy(new_actor)
         new_actor_dc.mark = mark
@@ -360,12 +455,27 @@ class ScenarioDefinition:
         actors.append(new_actor_dc)
 
     def remove_actor(self, category: str, region):
+        """
+        Remove the nearest actor of the specified category and region.
+
+        :param category: Actor type ('vehicle', 'walker', or 'static').
+        :param region: Region constraint for selecting the actor to remove.
+        """
         actors = getattr(self, f"{category}s")
         index = ScenarioDefinition._pick_nearest_actor(actors, region)
         if index >= 0:
             del actors[index]
 
     def replace_actor(self, category: str, region, new_actor, mark=False, tilt_dir=None):
+        """
+        Replace the nearest actor of the given category and region with a new actor.
+
+        :param category: Actor type ('vehicle', 'walker', or 'static').
+        :param region: Region constraint for selecting the actor to replace.
+        :param new_actor: New actor instance to insert.
+        :param mark: Whether to mark the new actor (default: False).
+        :param tilt_dir: Tilt direction to apply ('left', 'right', or None).
+        """
         actors = getattr(self, f"{category}s")
         index = ScenarioDefinition._pick_nearest_actor(actors, region)
         if index >= 0:
@@ -376,24 +486,37 @@ class ScenarioDefinition:
             actors.append(new_actor_dc)
 
     def update_attribute(self, category: str, value):
+        """
+        Update a global scenario attribute.
+
+        :param category: Attribute name to update (e.g., 'weather', 'brightness').
+        :param value: New value to assign to the attribute.
+        """
         setattr(self, category, value)
 
     def update_ego(self, category: str, value):
+        """
+        Update an attribute of the ego vehicle.
+
+        :param category: Attribute to update ('position', 'yaw', 'speed', etc.).
+        :param value: New value for the attribute.
+        """
         if category == "position":
             original = self.get_trigger_position()
             load_world(self.town)
-            x, y = self._next_waypoint(original["x"], original["y"], value)
-            if x is not None and y is not None:
+            x, y, z = self._next_waypoint(original["x"], original["y"], original["z"], value)
+            if x is not None and y is not None and z is not None:
                 try:
                     (self.trajectory["trajectory"],
                      self.trajectory["gps_route"],
                      self.trajectory["route"],
                      self.trajectory["start"]["is_junction"]
                      ) = self._build_trajectory({
-                        "start": {"x": x, "y": y},
+                        "start": {"x": x, "y": y, "z": z},
                         "direction": self.trajectory["direction"]}
                     )
-                    self.trajectory["start"]["x"], self.trajectory["start"]["y"] = x, y
+                    self.trajectory["start"]["x"], self.trajectory["start"]["y"], self.trajectory["start"][
+                        "z"] = x, y, z
                 except InvalidScenarioDefinitionError:
                     logger.warning(f"Unable to change the starting position.")
             else:
@@ -402,16 +525,32 @@ class ScenarioDefinition:
             self.ego_vehicle.update_attribute(category, value)
 
     @staticmethod
-    def _next_waypoint(x, y, interval):
-        waypoint = CarlaDataProvider.get_map().get_waypoint(carla.Location(x=x, y=y, z=0))
+    def _next_waypoint(x, y, z, interval):
+        """
+        Find the next waypoint at a certain distance from a given location.
+
+        :param x: X-coordinate of the current location.
+        :param y: Y-coordinate of the current location.
+        :param z: Z-coordinate of the current location.
+        :param interval: Distance to move along the road.
+        :return: New (x, y) coordinates, or (None, None) if no waypoint is found.
+        """
+        waypoint = CarlaDataProvider.get_map().get_waypoint(carla.Location(x=x, y=y, z=z))
         new_waypoints = waypoint.next(interval)
         if len(new_waypoints) > 0:
             new_location = new_waypoints[0].transform.location
-            return new_location.x, new_location.y
+            return new_location.x, new_location.y, new_location.z
         else:
-            return None, None
+            return None, None, None
 
     def update_actor(self, category: str, attribute: str, value):
+        """
+        Update an attribute for all marked actors of a specific category.
+
+        :param category: Actor type ('vehicle', 'walker', or 'static').
+        :param attribute: Attribute name to update (e.g., 'speed', 'yaw').
+        :param value: New value to assign to the attribute.
+        """
         actors = getattr(self, f"{category}s")
         is_changed = False
         for actor in actors:
@@ -423,6 +562,13 @@ class ScenarioDefinition:
 
     @staticmethod
     def _random_pick_actor(actors, region: Boundary.Region = None):
+        """
+        Randomly pick an unmarked actor from a given list, optionally filtering by region.
+
+        :param actors: List of actor instances to select from.
+        :param region: Region to filter actors by (optional).
+        :return: Index of the randomly selected actor, or -1 if none found.
+        """
         index, count = -1, 0
         for i, actor in enumerate(actors):
             if not actor.mark and (region is None or actor.region == region):
@@ -433,12 +579,27 @@ class ScenarioDefinition:
 
     @staticmethod
     def _pick_nearest_actor(actors, region: Boundary.Region = None):
+        """
+        Pick the nearest unmarked actor to the origin based on radius.
+
+        :param actors: List of actor instances to choose from.
+        :param region: Region to filter actors by (optional).
+        :return: Index of the actor with minimum radius, or -1 if no actor satisfies conditions.
+        """
         candidates = [(i, actor) for i, actor in enumerate(actors)
                       if not actor.mark and (region is None or actor.region == region)]
         return sorted(candidates, key=lambda x: x[1].radius)[0][0] if candidates else -1
 
     def dist(self, other, scaling=cfg.CONFIG["scenario"]["dist_scaling"]):
-        # if not isinstance(other, self.__class__):
+        """
+        Compute a distance measure between two scenarios.
+        The distance accounts for both scenario attributes and actor configurations.
+
+        :param other: Another ScenarioDefinition instance to compare against.
+        :param scaling: Scaling factor for discrete differences (default from config).
+        :return: Computed distance between two scenarios.
+        :raises ValueError: If 'other' is not a ScenarioDefinition.
+        """
         if str(type(other)) != str(type(self)):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         dist = _dist_attrs(self, other, ScenarioDefinition.ATTRIBUTES, ScenarioDefinition._BOUNDARY, scaling=scaling)
@@ -457,9 +618,23 @@ class ScenarioDefinition:
 
     @staticmethod
     def select(population, k=2):
+        """
+        Perform tournament selection on a population.
+
+        :param population: List of ScenarioDefinition instances.
+        :param k: Number of individuals to select (default: 2).
+        :return: Selected individuals.
+        """
         return tools.selTournament(population, k=k, tournsize=cfg.CONFIG["scenario"]["tournament"])
 
     def mate(self, other, cxpb=cfg.CONFIG["scenario"]["cxpb"]):
+        """
+        Apply uniform crossover on two scenarios by swapping their attributes and actors.
+
+        :param other: Another ScenarioDefinition instance to mate with.
+        :param cxpb: Crossover probability (default from config).
+        :raises ValueError: If 'other' is not a ScenarioDefinition.
+        """
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         _mate_attrs(self, other, ScenarioDefinition.ATTRIBUTES, cxpb=cxpb)
@@ -470,6 +645,13 @@ class ScenarioDefinition:
     def mutate(self, mutpb=cfg.CONFIG["scenario"]["mutpb"],
                eta=cfg.CONFIG["scenario"]["mut_eta"],
                std=cfg.CONFIG["scenario"]["mut_std"]):
+        """
+        Mutate the scenario's attributes and actors. Mutation can also randomly add or delete actors.
+
+        :param mutpb: Probability of mutation per attribute (default from config).
+        :param eta: Distribution index for polynomial mutation.
+        :param std: Standard deviation for Gaussian mutation.
+        """
         _mutate_attrs(self, ScenarioDefinition.ATTRIBUTES, ScenarioDefinition._BOUNDARY, mutpb=mutpb, eta=eta, std=std)
         for actor in self.vehicles + self.walkers + self.statics:
             actor.mutate(mutpb=mutpb, eta=eta, std=std)
@@ -486,9 +668,17 @@ class ScenarioDefinition:
                 if limit > 0: actors += cls.generate_random_actors(cfg.CONFIG["scenario"]["mut_add"], limit)
 
     def correct(self):
+        """Correct the scenario by reassigning a new unique ID."""
         self.assign_new_id()
 
     def build_actor_trajectory(self, actor_def, scenario_duration=cfg.CONFIG["simulation"]["scenario_duration"]):
+        """
+        Build a trajectory for an actor based on its spawn point and direction.
+
+        :param actor_def: Actor definition containing spawn information.
+        :param scenario_duration: Total duration of the scenario to compute the trajectory (in seconds).
+        :return: List of trajectory points as dictionaries with 'x' and 'y' keys.
+        """
         num_trajectory_points = 30
         spawn_point = actor_def.get_config()['spawn_point']
 
@@ -510,6 +700,11 @@ class ScenarioDefinition:
         return trajectory
 
     def trajectory_score(self):
+        """
+        Compute an average trajectory score for all actors relative to the ego route.
+
+        :return: Average trajectory score across all vehicles, walkers, and statics.
+        """
         score = 0
         count = 0
         for actor in self.vehicles + self.walkers + self.statics:
@@ -519,11 +714,21 @@ class ScenarioDefinition:
         return score / count if count > 0 else 0
 
     def clear_marks(self):
+        """
+        Clear the 'mark' attribute for all vehicles, walkers, and statics.
+        """
         for actor in self.vehicles + self.walkers + self.statics:
             actor.mark = False
 
     @staticmethod
     def _list_eq(this, that):
+        """
+        Check if two lists contain the same elements regardless of order.
+
+        :param this: First list to compare.
+        :param that: Second list to compare.
+        :return: True if lists are equivalent, False otherwise.
+        """
         if len(this) != len(that): return False
         copy = list(this)
         try:
@@ -534,6 +739,12 @@ class ScenarioDefinition:
         return not copy
 
     def __eq__(self, other):
+        """
+        Check if two ScenarioDefinition instances are equivalent.
+
+        :param other: Another ScenarioDefinition to compare against.
+        :return: True if scenarios are equivalent, False otherwise.
+        """
         # return (isinstance(other, self.__class__) and
         return (str(type(self)) == str(type(other)) and
                 self.town == other.town and
@@ -546,6 +757,11 @@ class ScenarioDefinition:
                 self._list_eq(self.statics, other.statics))
 
     def __repr__(self):
+        """
+        Generate a string representation of the ScenarioDefinition.
+
+        :return: Readable string showing the scenario's key attributes.
+        """
         return (f"Scenario(id={self.id_}, "
                 f"town={self.town}, "
                 f"ego_vehicle={self.ego_vehicle}, "
@@ -558,11 +774,23 @@ class ScenarioDefinition:
 
 
 class Actor(ABC):
+    """
+    Abstract base class representing a generic actor (vehicle, walker, or static) in the scenario.
+    """
+
     _ATTRIBUTES = ["radius", "angle", "yaw", "model"]
     _BLUEPRINTS = None
     _BOUNDARY = None
 
     def __init__(self, radius, angle, yaw, model, *args, **kwargs):
+        """
+        Initialize a new Actor instance.
+
+        :param radius: Distance from the ego vehicle.
+        :param angle: Angular direction around the ego vehicle.
+        :param yaw: Actor orientation.
+        :param model: Index of the blueprint model.
+        """
         self.radius = radius
         self.angle = angle
         self.yaw = yaw
@@ -572,10 +800,19 @@ class Actor(ABC):
         self.mark = False
 
     def update_region(self):
+        """
+        Update the region (LEFT, FOCUS, RIGHT) of the actor based on its angle.
+        """
         self.region = self._BOUNDARY.get_region(self.angle)
 
     @classmethod
     def get_actor_index(cls, actor_blueprint):
+        """
+        Get the index of a blueprint model from its name.
+
+        :param actor_blueprint: Blueprint name of the actor.
+        :return: Index of the blueprint in the model list.
+        """
         try:
             return cls._BLUEPRINTS["model"].index(actor_blueprint)
         except ValueError:
@@ -584,11 +821,25 @@ class Actor(ABC):
 
     @classmethod
     def generate_random(cls, region: Boundary.Region = None, none_pb=None):
+        """
+        Generate a random actor with attributes sampled within boundaries.
+
+        :param region: Optional region constraint for actor placement.
+        :param none_pb: Probability of returning None for a given attribute.
+        :return: Randomly generated actor.
+        """
         return cls(**{attr: cls._BOUNDARY.random(attr, region, none_pb)
                       for attr in Actor._ATTRIBUTES + cls._ATTRIBUTES})
 
     @classmethod
     def generate_random_actors(cls, probability, limit=cfg.CONFIG["scenario"]["max_actors"]):
+        """
+        Generate a list of random actors based on a sampling probability.
+
+        :param probability: Probability of adding each actor.
+        :param limit: Maximum number of actors to generate.
+        :return: List of randomly generated actors.
+        """
         actors = []
         times = 1
         while len(actors) < limit and random.random() < probability ** times:
@@ -597,12 +848,24 @@ class Actor(ABC):
         return actors
 
     def dist(self, other, scaling=cfg.CONFIG["scenario"]["dist_scaling"]):
+        """
+        Compute a distance metric between this actor and another based on attribute differences.
+
+        :param other: Another actor to compare.
+        :param scaling: Scaling factor for categorical attributes.
+        :return: Distance score.
+        """
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         return _dist_attrs(self, other, Actor._ATTRIBUTES + self._ATTRIBUTES, self._BOUNDARY, scaling=scaling)
 
     def mate(self, other, cxpb=cfg.CONFIG["scenario"]["cxpb"]):
-        """Mate actors in place."""
+        """
+        Perform uniform crossover (attribute swapping) between two actors.
+
+        :param other: Another actor.
+        :param cxpb: Probability of swapping each attribute.
+        """
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
         _mate_attrs(self, other, Actor._ATTRIBUTES + self._ATTRIBUTES, cxpb=cxpb)
@@ -612,21 +875,43 @@ class Actor(ABC):
     def mutate(self, mutpb=cfg.CONFIG["scenario"]["mutpb"],
                eta=cfg.CONFIG["scenario"]["mut_eta"],
                std=cfg.CONFIG["scenario"]["mut_std"]):
-        """Mutate actors in place."""
+        """
+        Apply mutation to actor attributes.
+
+        :param mutpb: Mutation probability.
+        :param eta: Crowding degree of the mutation (polynomial mutation parameter).
+        :param std: Standard deviation for Gaussian mutation fallback.
+        """
         _mutate_attrs(self, Actor._ATTRIBUTES + self._ATTRIBUTES, self._BOUNDARY, mutpb=mutpb, eta=eta, std=std)
         self.update_region()
 
     def tilt(self, tilt_dir):
+        """
+        Adjust the actor's angle slightly to left or right.
+
+        :param tilt_dir: Direction of tilt ('left' or 'right').
+        """
         coef = -1 if tilt_dir == "left" else (1 if tilt_dir == "right" else 0)
         self.angle += coef * cfg.CONFIG["boundary"]["tilt_degrees"]
 
     def update_attribute(self, category: str, value):
+        """
+        Update a specific attribute of the actor.
+
+        :param category: Attribute name.
+        :param value: New value for the attribute.
+        """
         old_value = getattr(self, category)
         if value == old_value:
             logger.warning(f"The new {category} value is identical to the original.")
         setattr(self, category, value)
 
     def get_config(self):
+        """
+        Export the actor's configuration dictionary for spawning in simulation.
+
+        :return: Configuration dictionary.
+        """
         return {
             "role_name": f"{self.region.name.lower() if self.region else 'others'}{'-mark' if self.mark else ''}",
             "spawn_point": {
@@ -639,6 +924,12 @@ class Actor(ABC):
         }
 
     def __eq__(self, other):
+        """
+        Compare two actors for equality based on key attributes.
+
+        :param other: Another actor.
+        :return: True if the actors are equal, False otherwise.
+        """
         return (isinstance(other, self.__class__) and
                 self.radius == other.radius and
                 self.angle == other.angle and
@@ -646,21 +937,43 @@ class Actor(ABC):
                 self.model == other.model)
 
     def __repr__(self):
+        """
+        Return a human-readable string representation of the actor.
+
+        :return: String showing actor class, attributes, and marking.
+        """
         return (f"{self.__class__.__name__}{'*' if self.mark else ''}(region={self.region}, " +
                 ", ".join(f"{attr}={str(getattr(self, attr))}" for attr in Actor._ATTRIBUTES + self._ATTRIBUTES) + ")")
 
 
 class Vehicle(Actor):
+    """
+    Vehicle class extending Actor, representing a dynamic vehicle in the simulation.
+    """
     _ATTRIBUTES = ["speed"]
     _BLUEPRINTS = cfg.CONFIG["blueprint"]["vehicle"]
     _BOUNDARY = Boundary(cfg.CONFIG["boundary"]["vehicle"])
 
     def __init__(self, radius, angle, yaw, model, speed):
+        """
+        Initialize a Vehicle instance.
+
+        :param radius: Distance from the ego vehicle.
+        :param angle: Direction angle relative to ego vehicle.
+        :param yaw: Orientation of the vehicle.
+        :param model: Model index from blueprint.
+        :param speed: initial speed of the vehicle.
+        """
         super().__init__(radius, angle, yaw, model)
         self.speed = speed
         self.autopilot = True
 
     def get_config(self):
+        """
+        Return the vehicle configuration dictionary used for spawning.
+
+        :return: Configuration dictionary including speed and autopilot status.
+        """
         return {
             **super().get_config(),
             "speed": self.speed,
@@ -669,6 +982,14 @@ class Vehicle(Actor):
 
     @classmethod
     def generate_random(cls, region: Boundary.Region = None, none_pb=None, **filters):
+        """
+        Generate a random vehicle, optionally filtering by base model.
+
+        :param region: Optional boundary region constraint.
+        :param none_pb: Probability of returning None for an attribute.
+        :param filters: Filters to control base model selection.
+        :return: Randomly generated Vehicle.
+        """
         vehicle = super().generate_random(region, none_pb)
         if "base_model" in filters:
             if isinstance(filters["base_model"], list):
@@ -682,29 +1003,61 @@ class Vehicle(Actor):
         return vehicle
 
     def __eq__(self, other):
+        """
+        Compare two vehicles for equality including speed.
+
+        :param other: Another Vehicle object.
+        :return: True if equal, False otherwise.
+        """
         return super().__eq__(other) and self.speed == other.speed
 
 
 class Walker(Actor):
+    """
+    Walker class extending Actor, representing a pedestrian in the simulation.
+    """
     _ATTRIBUTES = ["speed"]
     _BLUEPRINTS = cfg.CONFIG["blueprint"]["walker"]
     _BOUNDARY = Boundary(cfg.CONFIG["boundary"]["walker"])
 
     def __init__(self, radius, angle, yaw, model, speed):
+        """
+        Initialize a Walker instance.
+
+        :param radius: Distance from the ego vehicle.
+        :param angle: Direction angle relative to ego vehicle.
+        :param yaw: Orientation of the walker.
+        :param model: Model index from blueprint.
+        :param speed: Walking speed.
+        """
         super().__init__(radius, angle, yaw, model)
         self.speed = speed
 
     def get_config(self):
+        """
+        Return the walker configuration dictionary used for spawning.
+
+        :return: Configuration dictionary including speed.
+        """
         return {
             **super().get_config(),
             "speed": self.speed,
         }
 
     def __eq__(self, other):
+        """
+        Compare two walkers for equality including speed.
+
+        :param other: Another Walker object.
+        :return: True if equal, False otherwise.
+        """
         return super().__eq__(other) and self.speed == other.speed
 
 
 class Static(Actor):
+    """
+    Static class extending Actor, representing a static object (e.g., prop, obstacle) in the simulation.
+    """
     _ATTRIBUTES = []
     _BLUEPRINTS = cfg.CONFIG["blueprint"]["static"]
     _BOUNDARY = Boundary(cfg.CONFIG["boundary"]["static"])

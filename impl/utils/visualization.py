@@ -98,6 +98,17 @@ class Visualizer:
 
     @classmethod
     def plot_histogram(cls, stats, color, show, out_dir, title=None, name=None, verbose_name=None):
+        """
+        Plot a histogram of the provided statistics.
+
+        :param stats: Data to be plotted in the histogram.
+        :param color: Whether the color is for a specific group or not.
+        :param show: Whether to display the plot.
+        :param out_dir: The directory to save the plot.
+        :param title: The title of the histogram.
+        :param name: The name for the histogram.
+        :param verbose_name: More descriptive name for the histogram.
+        """
         fig = go.Figure()
 
         # Adding histogram trace
@@ -129,6 +140,13 @@ class Visualizer:
 
     @classmethod
     def visualize_algorithm_Stats(cls, path, name, out_dir):
+        """
+        Visualize algorithm statistics from a logbook file.
+
+        :param path: The file path of the logbook containing the algorithm statistics.
+        :param name: The name of the algorithm being visualized.
+        :param out_dir: The directory to save the plot.
+        """
         with open(path, "rb") as f:
             logbook = pickle.load(f)
         stats = pd.DataFrame(logbook)
@@ -173,7 +191,11 @@ class Visualizer:
     @classmethod
     def _plot_generation_statistics(cls, stats, out_dir):
         """
-            Generates line plots for evolutionary algorithm statistics across generations.
+        Generate line plots for evolutionary algorithm statistics across generations.
+
+        :param stats: Data containing statistics over generations.
+        :param out_dir: The directory to save the plots.
+        :return: List of figures created during the plotting.
         """
         timestamp = int(round(time.time() * 1000))
         figs = []
@@ -226,14 +248,20 @@ class Visualizer:
     @staticmethod
     def _show_plot(fig):
         """
-            Displays the plot.
+        Display the plot.
+
+        :param fig: The plot figure to display.
         """
         fig.show()
 
     @staticmethod
     def _save_fig(fig, out_dir, name):
         """
-            Saves figure as image
+        Save the figure as an image file.
+
+        :param fig: The figure to save.
+        :param out_dir: The directory where the image should be saved.
+        :param name: The name of the saved file.
         """
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)

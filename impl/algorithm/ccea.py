@@ -15,10 +15,14 @@ logger = logging.getLogger(__name__)
 
 
 class CCEA(BaseAlgorithm):
-    """Cooperative Co-Evolutionary Algorithm."""
+    """Cooperative Co-Evolutionary Algorithm (CCEA) for co-evolving scenarios and perturbations jointly."""
     _name = "CCEA"
 
     def solve(self, resume=False):
+        """Main optimization loop for CCEA. Supports resuming from a checkpoint.
+
+        :param resume: Whether to resume from the latest checkpoint.
+        """
         super().solve()
         # Initialize the population or resume from the latest checkpoint.
         if resume:

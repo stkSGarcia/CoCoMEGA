@@ -25,9 +25,19 @@ from impl.utils.leaderboad_utils import get_enviroment_confs, make_yamls, create
 logger = logging.getLogger("impl")
 
 
-def parse_list(_type, delimeter):
-    def parse_func(arg_str):
-        """Parse a comma-separated list of integers into a list."""
+def parse_list(_type: type, delimeter: str):
+    """Create a parser for a delimited list of values of a specified type.
+
+    :param _type: The type to which each list item should be converted.
+    :param delimeter: The delimiter used to split the input string.
+    :return: A function that parses the input string into a list of values.
+    """
+    def parse_func(arg_str: str):
+        """Parse a comma-separated list of values into a list of specified type.
+
+        :param arg_str: Input string containing delimited values.
+        :return: List of parsed values.
+        """
         try:
             arg_str = arg_str.strip()
             if arg_str.startswith('[') and arg_str.endswith(']'):
@@ -40,6 +50,12 @@ def parse_list(_type, delimeter):
 
 
 def search(algorithm: str, resume: bool, folder_name: str):
+    """Run a search using the specified algorithm.
+
+    :param algorithm: Name of the search algorithm (e.g., 'ccea', 'rs').
+    :param resume: Whether to resume from a previous run.
+    :param folder_name: Folder name to resume from.
+    """
     from impl import problem
     if resume:
         cfg.init_project_directory(folder_name, resume)
@@ -61,6 +77,11 @@ def search(algorithm: str, resume: bool, folder_name: str):
 
 
 def simulate(num: int, file: str):
+    """Simulate random or solution-based driving scenarios.
+
+    :param num: Number of scenarios to simulate.
+    :param file: Path to a solution file; if None, simulate randomly.
+    """
     cfg.init_project_directory("sim")
     if file:
         logger.info(f"Loading solution file: {file}.")
@@ -71,6 +92,11 @@ def simulate(num: int, file: str):
 
 
 def collect_runtime_data(agent: str, output: str):
+    """Run free simulations to collect runtime data for a specific agent.
+
+    :param agent: Name or version of the agent.
+    :param output: Path to save the collected runtime data.
+    """
     if output is None:
         output = cfg.CONFIG["workspace"]["runtime_data"]
         cp_root = cfg.CONFIG["workspace"]["data_collection_checkpoint"]
@@ -112,6 +138,9 @@ def collect_runtime_data(agent: str, output: str):
 
 
 def generate_train_data():
+    """Run free simulations to generate training data using rule-based agents.
+    """
+
     logger.info(f"Generating training data...")
 
     os.makedirs(cfg.CONFIG["workspace"]["data_gen_checkpoint"], exist_ok=True)
@@ -138,6 +167,11 @@ def generate_train_data():
 
 
 def train_interfuser(args):
+    """Train an Interfuser model using the collected training data and provided arguments.
+
+    :param args: Parsed training arguments.
+    :return: Return code of the training process.
+    """
     logger.info(f"Creating dataset index...")
     create_dataset_index(cfg.CONFIG["workspace"]["train_data"],
                          weathers=args.train_weathers + args.val_weathers,
@@ -211,7 +245,18 @@ def train_interfuser(args):
 
 
 def convert2scenarios(directory: str, n: int, towns: List[str]):
+    """Convert runtime data files to runtime scenarios.
+
+    :param directory: Directory containing runtime data.
+    :param n: Number of scenarios to sample (0 for all).
+    :param towns: List of allowed towns for filtering.
+    """
     def vectorize(path):
+        """Helper function to vectorize a runtime data file if it matches town criteria.
+
+        :param path: Path to the .pkl file.
+        :return: Vectorized scenario (None if failed).
+        """
         towns_lower = [name.lower() for name in towns]
         try:
             runtime_data = pickle.loads(path.read_bytes())

@@ -20,6 +20,13 @@ class selRNSGA3WithMemory:
     """
 
     def __init__(self, ref_points, p, mu=0.05, nd="log"):
+        """Initialize the memory-based selection operator.
+
+        :param ref_points: User-defined reference points.
+        :param p: Parameter for generating uniform reference directions.
+        :param mu: Spread control parameter.
+        :param nd: Non-dominated sorting method ('log' or 'standard').
+        """
         self.ref_points = np.array(ref_points)
         self.ref_dirs = tools.uniform_reference_points(self.ref_points.shape[1], p)
         self.best_point = np.full((1, self.ref_points.shape[1]), np.inf)
@@ -154,9 +161,13 @@ def _line_plane_intersection(l0, l1, p0, p_no, epsilon=1e-6):
         p0 is a point on the plane (plane coordinate).
         p_no is a normal vector defining the plane direction;
              (does not need to be normalized).
-
     reference: https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
-    return a Vector or None (when the intersection can't be found).
+
+    :param l0: Line point.
+    :param l1: Line direction.
+    :param p0: Point on plane.
+    :param p_no: Plane normal.
+    :return: Intersection point or None (when the intersection can't be found).
     """
     l = l1 - l0
     dot = np.dot(l, p_no)
@@ -178,6 +189,13 @@ def _line_plane_intersection(l0, l1, p0, p_no, epsilon=1e-6):
 
 
 def _denormalize(x, xl=None, xu=None):
+    """Transform normalized coordinates back to original scale.
+
+    :param x: Normalized input.
+    :param xl: Lower bounds.
+    :param xu: Upper bounds.
+    :return: Denormalized array.
+    """
     # If both xl and xu are None, we are basically done because normalization is disabled.
     if x is None or (xl is None and xu is None):
         return x

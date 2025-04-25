@@ -32,6 +32,7 @@ class MOSA(BaseAlgorithm):
         self.pop_size = pop_size
 
     def solve(self):
+        """Main optimization loop for MOSA. Supports resuming from a checkpoint."""
         logger.info("MOSA started.")
         logger.info(f"Time budget: {self.time_budget}.")
         logger.info(f"Max iteration: {self.max_iter}.")

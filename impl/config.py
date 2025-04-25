@@ -14,6 +14,12 @@ CONFIG = {}  # Always use this variable by using `from impl import config as cfg
 
 
 def _merge_dict(default: dict, user: dict):
+    """Recursively merge user dictionary into the default dictionary.
+
+    :param default: The default configuration dictionary.
+    :param user: The user-provided configuration dictionary.
+    :return: Merged configuration dictionary.
+    """
     for k, v in user.items():
         if k not in default or not isinstance(default[k], dict):
             default[k] = v
@@ -23,6 +29,10 @@ def _merge_dict(default: dict, user: dict):
 
 
 def _update_log_dir(dictionary):
+    """Update log directory paths in the logging configuration.
+
+    :param dictionary: Dictionary of logging configurations.
+    """
     for k, v in dictionary.items():
         if isinstance(v, Mapping):
             _update_log_dir(v)
@@ -31,16 +41,31 @@ def _update_log_dir(dictionary):
 
 
 class DirectoryAccessor:
+    """A utility class to access and manage workspace directories."""
     def __init__(self, workspace_config: dict):
+        """Initialize with the provided workspace configuration.
+
+        :param workspace_config: Dictionary of workspace paths.
+        """
         self._config = workspace_config
         self._config["root"].mkdir(exist_ok=True, parents=True)
 
     def __setitem__(self, key, value):
+        """Set a directory path for a given key.
+
+        :param key: Directory key (excluding 'root').
+        :param value: Directory path.
+        """
         if key == "root":
             raise KeyError(f"Setting 'root' is not allowed.")
         self._config[key] = Path(value)
 
     def __getitem__(self, key):
+        """Get the full path for a directory.
+
+        :param key: Directory key.
+        :return: Full path for the given key.
+        """
         if key not in self._config:
             raise KeyError(f"'{key}' not in workspace configuration.")
         if self._config[key] is None: return None
@@ -51,14 +76,25 @@ class DirectoryAccessor:
         return path
 
     def __contains__(self, key):
+        """Check if the workspace configuration contains the key.
+
+        :param key: Key to check.
+        :return: True if key exists, False otherwise.
+        """
         return key in self._config
 
     def get(self, key, default=None):
+        """Get the value for a given key, with optional default.
+
+        :param key: Key to look up.
+        :param default: Default value if key is not present.
+        :return: Value associated with the key.
+        """
         return self._config.get(key, default)
 
 
 def init_config():
-    """Load configurations."""
+    """Initialize and load default and custom configurations, set up paths and logging."""
     config_base = Path("conf")
     config_name = Path("config.yaml")
     log_config_name = Path("log.yaml")
@@ -129,7 +165,7 @@ def init_project_directory(name: str, resume=False):
 
 
 def dump_config_to_json():
-    """Dump the configuration dictionary to a JSON file."""
+    """Dump the current configuration to a JSON file in the current project directory."""
     serializable_config = CONFIG.copy()
     workspace_dict = {}
     for k, v in serializable_config["workspace"]._config.items():

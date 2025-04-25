@@ -13,6 +13,12 @@ if cfg.CONFIG["docker"]["enabled"]:
 
 
 def get_container(container_name):
+    """
+    Retrieve a running Docker container by its name.
+
+    :param container_name: Name of the container.
+    :return: Docker container object if running, otherwise None.
+    """
     try:
         container = docker_client.containers.get(container_name)
         if container.status != 'running':
@@ -23,6 +29,16 @@ def get_container(container_name):
 
 
 def setup_carla(container_name, port, gpu_device):
+    """
+    Set up and run a CARLA server inside a Docker container.
+
+    If the container is not running, a new one is launched with the correct settings.
+
+    :param container_name: Desired name for the Docker container.
+    :param port: World port to expose for CARLA server.
+    :param gpu_device: GPU device index to assign to the container.
+    :return: Docker container object.
+    """
     carla_container = get_container(container_name)
     if carla_container is None or carla_container.status != 'running':
         logger.info("Setting up Carla...")
@@ -45,12 +61,24 @@ def setup_carla(container_name, port, gpu_device):
 
 
 def user_has_processes_in_container(container_id, username):
+    """
+    Check whether a user has any active processes inside a given Docker container.
+
+    :param container_id: ID of the Docker container.
+    :param username: Username inside the container.
+    :return: True if processes are found, False otherwise.
+    """
     result = subprocess.run(['docker', 'exec', container_id, 'ps', '-u', username],
                             shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     return result.returncode == 0
 
 
 def cleanup_containers():
+    """
+    Stop all Docker containers launched by the current user that match the CARLA Docker image.
+
+    Only containers belonging to the current system user will be affected.
+    """
     logger.info("Cleaning up Carla containers ...")
     command = f'docker ps -a --filter "name=^{cfg.CONFIG["docker"]["image"]}" -q | while read container; do ' \
               'pid=$(docker inspect --format "{{{{ .State.Pid }}}}" "$container" 2>/dev/null); ' \

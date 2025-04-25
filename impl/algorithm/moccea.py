@@ -16,6 +16,10 @@ class MOCCEA(BaseAlgorithm):
     _name = "MOCCEA"
 
     def solve(self, resume=False):
+        """Main optimization loop for MOCCEA. Supports resuming from a checkpoint.
+
+        :param resume: Whether to resume from the latest checkpoint.
+        """
         super().solve()
         # Initialize the population or resume from the latest checkpoint.
         if resume:

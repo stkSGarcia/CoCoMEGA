@@ -20,22 +20,22 @@ crossings = {
     None: ["ref"]
 }
 
+
 class LeaderBoardFactory:
+    """
+    Factory class for generating predefined types of driving scenarios in CARLA.
+    """
+
     @classmethod
     def generate(cls, scenario, scenario_type, **kwargs):
         """
         Generate a scenario based on the given scenario type.
 
-        Args:
-            scenario (object): The scenario object to be modified.
-            scenario_type (str): The type of scenario to generate.
-            **kwargs: Additional keyword arguments for the scenario generation methods.
-
-        Returns:
-            object: The modified scenario object.
-
-        Raises:
-            ValueError: If the scenario type is unknown.
+        :param scenario: The scenario object to modify.
+        :param scenario_type: A string indicating the type of scenario to generate.
+        :param kwargs: Additional keyword arguments for the generation function.
+        :return: Modified scenario object.
+        :raises ValueError: If scenario_type is unknown.
         """
         scenario_types = [name[9:] for name, _ in
                           inspect.getmembers(LeaderBoardFactory, predicate=inspect.isfunction) if
@@ -58,22 +58,18 @@ class LeaderBoardFactory:
         """
         Generate a random lane vehicle scenario.
 
-        Args:
-            scenario (object): The scenario object to be modified.
-            num_vehicles (int): Number of vehicles to generate. Default is 4.
-            distance_between (int): Distance between vehicles. Default is 15.
-            speed (float): Speed of the vehicles. Default is 10.0.
-            vehicle_types (list): List of vehicle types. Default is ['car', 'truck', 'van'].
-            force_crossing (bool): Whether to force crossing vehicles. Default is False.
-
-        Returns:
-            object: The modified scenario object.
+        :param scenario: The scenario object to modify.
+        :param num_vehicles: Number of vehicles to generate. Default is 4.
+        :param distance_between: Distance between vehicles. Default is 15.
+        :param speed: Speed of the vehicles. Default is 10.0.
+        :param vehicle_types: List of vehicle types. Default is ['car', 'truck', 'van'].
+        :param force_crossing: Whether to force crossing vehicles. Default is False.
+        :return: Modified scenario object.
         """
         if vehicle_types is None:
             vehicle_types = ['car', 'truck', 'van']
         lane_dir = random.choice(
-            crossings[scenario.trajectory["direction"]] if force_crossing
-            else ["ref", "left", "right", "opposite"]
+            crossings[scenario.trajectory["direction"]] if force_crossing else ["ref", "left", "right", "opposite"]
         )
         scenario = LeaderBoardFactory._generate_lane_vehicles(
             scenario, lane_dir, num_vehicles, distance_between, speed, vehicle_types, autopilot=False)
@@ -83,18 +79,15 @@ class LeaderBoardFactory:
     def generate_crossing_negotiation(scenario, min_vehicles=1, max_vehicles=2, distance_between=15, speed=10.0,
                                       vehicle_types=None):
         """
-        Generate a crossing negotiation scenario.
+        Generate a crossing negotiation scenario with multiple lane directions.
 
-        Args:
-            scenario (object): The scenario object to be modified.
-            min_vehicles (int): Minimum number of vehicles on each lane. Default is 1.
-            max_vehicles (int): Maximum number of vehicles on each lane. Default is 2.
-            distance_between (int): Distance between vehicles on each lane. Default is 15.
-            speed (float): Speed of the vehicles. Default is 10.0.
-            vehicle_types (list): List of vehicle types. Default is ['car', 'truck', 'van'].
-
-        Returns:
-            object: The modified scenario object.
+        :param scenario: The scenario object to modify.
+        :param min_vehicles: Minimum number of vehicles on each lane. Default is 1.
+        :param max_vehicles: Maximum number of vehicles on each lane. Default is 2.
+        :param distance_between: Distance between vehicles on each lane. Default is 15.
+        :param speed: Speed of the vehicles. Default is 10.0.
+        :param vehicle_types: List of vehicle types. Default is ['car', 'truck', 'van'].
+        :return: Modified scenario object.
         """
         if vehicle_types is None:
             vehicle_types = ['car', 'truck', 'van']
@@ -109,14 +102,11 @@ class LeaderBoardFactory:
         """
         Generate a random lane motorcycle crossing scenario.
 
-        Args:
-            scenario (object): The scenario object to be modified.
-            num_vehicles (int): Number of vehicles to generate. Default is 4.
-            distance_between (int): Distance between vehicles. Default is 10.
-            speed (float): Speed of the vehicles. Default is 12.0.
-
-        Returns:
-            object: The modified scenario object.
+        :param scenario: The scenario object to modify.
+        :param num_vehicles: Number of vehicles to generate. Default is 4.
+        :param distance_between: Distance between vehicles. Default is 10.
+        :param speed: Speed of the vehicles. Default is 12.0.
+        :return: Modified scenario object.
         """
         return LeaderBoardFactory.generate_random_lane_vehicles(
             scenario, num_vehicles, distance_between, speed, vehicle_types=["motorcycle"], force_crossing=True)
@@ -126,14 +116,11 @@ class LeaderBoardFactory:
         """
         Generate a random lane bicycle crossing scenario.
 
-        Args:
-            scenario (object): The scenario object to be modified.
-            num_vehicles (int): Number of vehicles to generate. Default is 4.
-            distance_between (int): Distance between vehicles. Default is 8.
-            speed (float): Speed of the vehicles. Default is 5.0.
-
-        Returns:
-            object: The modified scenario object.
+        :param scenario: The scenario object to modify.
+        :param num_vehicles: Number of vehicles to generate. Default is 4.
+        :param distance_between: Distance between vehicles. Default is 8.
+        :param speed: Speed of the vehicles. Default is 5.0.
+        :return: Modified scenario object.
         """
         return LeaderBoardFactory.generate_random_lane_vehicles(
             scenario, num_vehicles, distance_between, speed, vehicle_types=["bicycle"], force_crossing=True)
@@ -143,12 +130,9 @@ class LeaderBoardFactory:
         """
         Generate an obstacle avoidance scenario.
 
-        Args:
-            scenario (object): The scenario object to be modified.
-            distance_from_junction (int): Distance from the junction to place the obstacle. Default is 0.
-
-        Returns:
-            object: The modified scenario object.
+        :param scenario: The scenario object to modify.
+        :param distance_from_junction: Distance from the junction to place the obstacle. Default is 0.
+        :return: Modified scenario object.
         """
         return LeaderBoardFactory._generate_obstacle_vehicle(scenario,
                                                              ["car", "truck", "van", "bicycle", "motorcycle"],
@@ -159,13 +143,10 @@ class LeaderBoardFactory:
         """
         Generate a slow moving hazard scenario.
 
-        Args:
-            scenario (object): The scenario object to be modified.
-            distance (int): Distance from the ego vehicle to generate the hazard. Default is 15.
-            speed (float): Speed of the vehicles. Default is 1.0.
-
-        Returns:
-            object: The modified scenario object.
+        :param scenario: The scenario object to modify.
+        :param distance: Distance from the ego vehicle to generate the hazard. Default is 15.
+        :param speed: Speed of the vehicles. Default is 1.0.
+        :return: Modified scenario object.
         """
         return LeaderBoardFactory._generate_obstacle_vehicle(scenario, ["bicycle", "motorcycle"],
                                                              distance=distance, speed=speed)
@@ -175,13 +156,10 @@ class LeaderBoardFactory:
         """
         Generate a pedestrian emerging scenario.
 
-        Args:
-            scenario (object): The scenario object to be modified.
-            distance (int): Distance between the ego vehicle and the pedestrian to be spawned. Default is 10.
-            speed (float): Speed of the pedestrian. Default is 0.8.
-
-        Returns:
-            object: The modified scenario object.
+        :param scenario: The scenario object to modify.
+        :param distance: Distance between the ego vehicle and the pedestrian to be spawned. Default is 10.
+        :param speed: Speed of the pedestrian. Default is 0.8.
+        :return: Modified scenario object.
         """
         from impl.scenario.scenario_definition import Walker
         ego_start = scenario.trajectory["start"]
@@ -199,15 +177,12 @@ class LeaderBoardFactory:
         """
         Generate an obstacle vehicle.
 
-        Args:
-            scenario (object): The scenario object to be modified.
-            vehicle_types (list): List of vehicle types.
-            distance (int): Distance from the ego vehicle to generate the hazard. Default is 15.
-            distance_from_junction (int): Distance from the junction to place the obstacle. Default is 0.
-            speed (float): Speed of the vehicles. Default is 0.0.
-
-        Returns:
-            object: The modified scenario object.
+        :param scenario: The scenario object to modify.
+        :param vehicle_types: List of vehicle types.
+        :param distance: Distance from the ego vehicle to generate the hazard. Default is 15.
+        :param distance_from_junction: Distance from the junction to place the obstacle. Default is 0.
+        :param speed: Speed of the vehicles. Default is 0.0.
+        :return: Modified scenario object.
         """
         waypoints = [CarlaDataProvider.get_map().get_waypoint(dict_to_location(loc))
                      for loc in scenario.trajectory["trajectory"]]
@@ -228,18 +203,16 @@ class LeaderBoardFactory:
         """
         Helper method to generate vehicles in a lane.
 
-        Args:
-            scenario (object): The scenario object to be modified.
-            lane_dir (str): The direction of the lane.
-            num_vehicles (int): Number of vehicles to generate.
-            distance_between (int): Distance between vehicles.
-            speed (float): Speed of the vehicles.
-            vehicle_types (list): List of vehicle types.
-
-        Returns:
-            object: The modified scenario object.
+        :param scenario: The scenario object to modify.
+        :param lane_dir: The direction of the lane.
+        :param num_vehicles: Number of vehicles to generate.
+        :param distance_between: Distance between vehicles.
+        :param speed: Speed of the vehicles.
+        :param vehicle_types: List of vehicle types.
+        :return: Modified scenario object.
         """
-        ego_location = carla.Location(x=scenario.trajectory["start"]["x"], y=scenario.trajectory["start"]["y"], z=0)
+        ego_location = carla.Location(x=scenario.trajectory["start"]["x"], y=scenario.trajectory["start"]["y"],
+                                      z=scenario.trajectory["start"]["z"])
 
         _, junction = get_junction(ego_location)
         entry_wps, _ = get_junction_topology(junction)
@@ -267,14 +240,11 @@ class LeaderBoardFactory:
         """
         Helper method to generate a vehicle.
 
-        Args:
-            scenario (object): The scenario object to be modified.
-            spawn_transform (carla.Transform): The transform of the vehicle to be spawned.
-            vehicle_types (list): List of vehicle types.
-            speed (float): Speed of the vehicle.
-
-        Returns:
-            object: The generated vehicle object.
+        :param scenario: The scenario object to modify.
+        :param spawn_transform: The transform of the vehicle to be spawned.
+        :param vehicle_types: List of vehicle types.
+        :param speed: Speed of the vehicle.
+        :return: Modified scenario object.
         """
         from impl.scenario.scenario_definition import Vehicle
         ego_start = scenario.trajectory["start"]

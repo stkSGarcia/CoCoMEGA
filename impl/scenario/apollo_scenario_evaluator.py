@@ -18,6 +18,7 @@ CARLA_HOME = f'/home/{USER}/carla0.9.15/CARLA_0.9.15'
 
 
 class ScenarioRunner:
+    """Not used. To be removed."""
     def __init__(self, scenario):
         self.scenario = scenario
         self.docker_client = docker.from_env()

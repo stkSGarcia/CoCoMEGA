@@ -12,6 +12,17 @@ logger = logging.getLogger(__name__)
 
 
 def initialize_carla(host=None, port=None, tm_port=None, gpu_device=None, seed=2000):
+    """
+    Initialize the CARLA client and data provider.
+
+    Sets client, traffic manager, random seed, and starts CARLA server if needed.
+
+    :param host: IP address of the CARLA server.
+    :param port: Port of the CARLA server.
+    :param tm_port: Port of the traffic manager.
+    :param gpu_device: GPU device ID to use.
+    :param seed: Random seed for reproducibility.
+    """
     try:
         # Initialize the Carla client and the world
         conf = cfg.CONFIG["simulation"]["instances"][0]
@@ -38,8 +49,10 @@ def initialize_carla(host=None, port=None, tm_port=None, gpu_device=None, seed=2
 
 def get_junction_topology(junction):
     """
-    Given a junction, returns a two list of waypoints corresponding to the entry
-    and exit lanes of the junction
+    Retrieve entry and exit waypoints for a given junction.
+
+    :param junction: CARLA junction object.
+    :return: (List of entry waypoints, List of exit waypoints)
     """
 
     def get_lane_key(waypoint):
@@ -85,9 +98,12 @@ def get_junction_topology(junction):
 
 def filter_junction_wp_direction(reference_yaw, wp_list, direction='opposite'):
     """
-    Given a list of entry / exit wps of a junction, filters them according to a specific direction,
-    returning all waypoint part of lanes that are at 'direction' with respect to the reference.
-    This might fail for complex junctions, as only the wp yaws is checked, not their relative positions
+    Filter junction waypoints by relative direction to a reference yaw.
+
+    :param reference_yaw: Reference yaw in degrees.
+    :param wp_list: List of CARLA waypoints.
+    :param direction: Target direction ('left', 'right', 'forward', or 'opposite').
+    :return: Filtered list of waypoints matching the direction.
     """
 
     filtered_wps = []
@@ -112,7 +128,13 @@ def filter_junction_wp_direction(reference_yaw, wp_list, direction='opposite'):
     return filtered_wps
 
 
-def traj_interpolation(trajectory):
+def trajectory_interpolation(trajectory):
+    """
+    Interpolate a trajectory to get GPS route and navigation route.
+
+    :param trajectory: List of CARLA locations.
+    :return: (Interpolated trajectory dicts, GPS route, Full route)
+    """
     gps_route, route = interpolate_trajectory(CarlaDataProvider.get_world(), trajectory)
 
     trajectory = [location_to_dict(t) for t in trajectory]
@@ -123,6 +145,13 @@ def traj_interpolation(trajectory):
 
 
 def get_junction(location, distance_limit=None):
+    """
+    Find the nearest junction from a location.
+
+    :param location: CARLA location.
+    :param distance_limit: Maximum distance to search.
+    :return: (Partial trajectory to junction, junction object or None)
+    """
     waypoint = CarlaDataProvider.get_map().get_waypoint(location)
     partial_trajectory = [waypoint.transform]
 
@@ -140,6 +169,13 @@ def get_junction(location, distance_limit=None):
 
 
 def loc_dist(loc1, loc2):
+    """
+    Compute Euclidean distance between two CARLA locations.
+
+    :param loc1: First CARLA location.
+    :param loc2: Second CARLA location.
+    :return: Distance in meters.
+    """
     return math.sqrt(
         math.pow(loc1.x - loc2.x, 2) \
         + math.pow(loc1.y - loc2.y, 2)
@@ -147,10 +183,23 @@ def loc_dist(loc1, loc2):
 
 
 def get_closest_wp(wp_list, reference_loc):
+    """
+    Find the closest waypoint to a reference location.
+
+    :param wp_list: List of waypoints.
+    :param reference_loc: CARLA location to compare against.
+    :return: Closest waypoint.
+    """
     return min(wp_list, key=lambda wp: loc_dist(wp.transform.location, reference_loc))
 
 
 def transform_to_dict(transform):
+    """
+    Convert a CARLA transform to a dictionary.
+
+    :param transform: CARLA transform.
+    :return: Dictionary with x, y, z, yaw.
+    """
     return {
         'x': transform.location.x,
         'y': transform.location.y,
@@ -160,6 +209,12 @@ def transform_to_dict(transform):
 
 
 def dict_to_transform(_dict):
+    """
+    Convert a dictionary into a CARLA transform.
+
+    :param _dict: Dictionary with x, y, z, yaw keys.
+    :return: CARLA transform.
+    """
     return carla.Transform(
         location=carla.Location(x=_dict["x"], y=_dict["y"], z=_dict["z"]),
         rotation=carla.Rotation(yaw=_dict["yaw"], pitch=0, roll=0)
@@ -167,6 +222,12 @@ def dict_to_transform(_dict):
 
 
 def location_to_dict(location):
+    """
+    Convert a CARLA location to a dictionary.
+
+    :param location: CARLA location.
+    :return: Dictionary with x, y, z.
+    """
     return {
         'x': location.x,
         'y': location.y,
@@ -175,10 +236,22 @@ def location_to_dict(location):
 
 
 def dict_to_location(_dict):
+    """
+    Convert a dictionary into a CARLA location.
+
+    :param _dict: Dictionary with x, y, z keys.
+    :return: CARLA location.
+    """
     return carla.Location(x=_dict["x"], y=_dict["y"], z=_dict["z"])
 
 
 def copy_transform(transform):
+    """
+    Deep copy a CARLA transform.
+
+    :param transform: CARLA transform to copy.
+    :return: A new CARLA transform with the same data.
+    """
     return carla.Transform(
         carla.Location(
             x=transform.location.x,
@@ -194,6 +267,11 @@ def copy_transform(transform):
 
 
 def load_world(town):
+    """
+    Load a CARLA world by town name if not already loaded.
+
+    :param town: Name of the CARLA map/town.
+    """
     if CarlaDataProvider.get_client() is None:
         initialize_carla()
     if CarlaDataProvider.get_world() is None or CarlaDataProvider.get_world().get_map().name.lower() != town.lower():
@@ -202,6 +280,12 @@ def load_world(town):
 
 
 def compass_to_yaw(compass):
+    """
+    Convert compass radians to CARLA yaw degrees.
+
+    :param compass: Compass value in radians.
+    :return: Yaw in degrees (-180, 180].
+    """
     yaw = (compass * 180 / np.pi - 90)
     if yaw > 180:
         yaw = yaw - 360
@@ -211,6 +295,12 @@ def compass_to_yaw(compass):
 
 
 def get_direction(trajectory):
+    """
+    Infer route direction (forward, left, right, or opposite) from a trajectory.
+
+    :param trajectory: List of (location, road option) tuples.
+    :return: String representing the general direction.
+    """
     direction = "forward"
     reached_junction = False
     reference_wp = None
@@ -235,10 +325,17 @@ def get_direction(trajectory):
             else:
                 direction = 'opposite'
 
-        return direction
+    return direction
 
 
 def get_available_directions(initial_transform, distance_limit=None):
+    """
+    Get available exit directions from a junction based on an initial transform.
+
+    :param initial_transform: CARLA transform.
+    :param distance_limit: Distance limit to search for junctions.
+    :return: List of (direction, closest waypoint) tuples.
+    """
     trajectory, junction = get_junction(initial_transform.location, distance_limit=distance_limit)
     if junction is None: return [("forward", None)]
     wp_dict = group_junction_directions(junction, reference_yaw=trajectory[-1].rotation.yaw)
@@ -248,6 +345,13 @@ def get_available_directions(initial_transform, distance_limit=None):
 
 
 def group_junction_directions(junction, reference_yaw):
+    """
+    Group junction exit waypoints into directions relative to a reference yaw.
+
+    :param junction: CARLA junction object.
+    :param reference_yaw: Yaw to compare against.
+    :return: Dictionary with keys 'forward', 'left', 'right' and lists of waypoints.
+    """
     _, exit_wps = get_junction_topology(junction)
 
     wp_dict = {"forward": [], "left": [], "right": []}

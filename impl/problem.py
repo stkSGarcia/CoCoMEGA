@@ -53,6 +53,7 @@ toolbox.register("perturbation", tools.initIterate, creator.Perturbation, mr_set
 
 
 def _pop_scenario():
+    """Initialize the scenario of populations"""
     pop_scenario = tools.initRepeat(
         list, toolbox.scenario,
         n=cfg.CONFIG["scenario"]["pop_size"] * cfg.CONFIG["scenario"]["init_selection_factor"],
@@ -94,10 +95,11 @@ if cfg.CONFIG["search"]["multi_objective"]["enable"]:
 
 # Define genetic operators.
 def _fitness(source, follow_up, mr_set=mr_set):
-    """Calculate the fitness value and check if it violates the relation.
+    """Calculate the fitness value and check if it violates the metamorphic relations.
 
     :param source: Simulation results of the source scenario.
     :param follow_up: Simulation results of the follow-up scenario.
+    :param mr_set: The set of metamorphic relations to be violated.
     :return: A tuple containing a bool value indicating whether it violates the relation and the fitness value.
     """
     if mr_set.field == "velocity":
@@ -121,7 +123,8 @@ def _calculate_similarity(scenario, scenarios):
 def _evaluate_solutions(solutions):
     """Evaluate the complete solutions.
 
-    :return: A list of complete solutions evaluated and the number of simulations.
+    :param solutions: List of complete solutions.
+    :return: Tuple (evaluated_solutions, number_of_simulations).
     """
     scenarios = []
     reeval = []
@@ -153,14 +156,13 @@ def _evaluate_solutions(solutions):
             del solution.fitness.values
 
     reeval_sim_num = _reevaluate(reeval)
-
     return solutions, sim_num + reeval_sim_num
 
-
 def _evaluate_solutions_dt(solutions):
-    """Evaluate the complete solutions (Differential Testing approach).
+    """Evaluate complete solutions using the Differential Testing approach.
 
-    :return: A list of complete solutions evaluated and the number of simulations.
+    :param solutions: List of complete solutions.
+    :return: Tuple (evaluated_solutions, number_of_simulations).
     """
     scenarios = []
     for solution in solutions:
@@ -211,6 +213,13 @@ def _evaluate_solutions_dt(solutions):
 
 
 def _perform_evaluation(solutions, scenarios, agent_name):
+    """Run simulations for scenarios and attach evaluation results to solutions.
+
+    :param solutions: List of solutions to update.
+    :param scenarios: Scenarios to simulate.
+    :param agent_name: Name of the agent to run simulations with.
+    :return: Tuple (updated_solutions, number_of_simulations).
+    """
     reeval = []
     results, sim_num = run_scenarios(scenarios, agent_name=agent_name)
     for solution, source, follow_up in zip(solutions, results[::2], results[1::2]):
@@ -239,6 +248,11 @@ def _perform_evaluation(solutions, scenarios, agent_name):
 
 
 def _reevaluate(solutions):
+    """Reevaluate selected solutions multiple times and aggregate the results.
+
+    :param solutions: List of solutions flagged for reevaluation.
+    :return: Total number of simulations performed during reevaluation.
+    """
     if len(solutions) == 0:
         return 0
     repeat = cfg.CONFIG["violation"]["reevaluation"]["repeat"]
@@ -246,10 +260,10 @@ def _reevaluate(solutions):
     scenarios = []
     for solution in solutions:
         solution.eval_history = [{
-            'source': solution.source.copy(),
-            'follow_up': solution.follow_up.copy(),
-            'is_violated': solution.is_violated,
-            'fitness': deepcopy(solution.fitness),
+            "source": solution.source.copy(),
+            "follow_up": solution.follow_up.copy(),
+            "is_violated": solution.is_violated,
+            "fitness": deepcopy(solution.fitness),
         }]
         solution.aggregation = aggregation
         for repetition in range(1, repeat):
@@ -277,14 +291,14 @@ def _reevaluate(solutions):
             del fitness.values
 
         solution.eval_history.append({
-            'source': source,
-            'follow_up': follow_up,
-            'is_violated': is_violated,
-            'fitness': fitness,
+            "source": source,
+            "follow_up": follow_up,
+            "is_violated": is_violated,
+            "fitness": fitness,
         })
 
     for solution in solutions:
-        fitnesses = [(ev['fitness'].values[0] if ev['fitness'].valid else np.nan) for ev in solution.eval_history]
+        fitnesses = [(ev["fitness"].values[0] if ev["fitness"].valid else np.nan) for ev in solution.eval_history]
         num_nan_fitnesses = len([f for f in fitnesses if np.isnan(f)])
         if num_nan_fitnesses > float(repeat) / 2:
             del solution.fitness.values
@@ -292,14 +306,14 @@ def _reevaluate(solutions):
             solution.follow_up = None
             solution.is_violated = False
         else:
-            aggregate_value = getattr(np, f'nan{aggregation}')(fitnesses)
+            aggregate_value = getattr(np, f"nan{aggregation}")(fitnesses)
             aggregation_arg = np.nanargmin(np.abs([f - aggregate_value for f in fitnesses]))
             selected_candidate = solution.eval_history[aggregation_arg]
 
             solution.fitness.values = (aggregate_value,)
-            solution.source = selected_candidate['source']
-            solution.follow_up = selected_candidate['follow_up']
-            solution.is_violated = selected_candidate['is_violated']
+            solution.source = selected_candidate["source"]
+            solution.follow_up = selected_candidate["follow_up"]
+            solution.is_violated = selected_candidate["is_violated"]
 
     return sim_num
 

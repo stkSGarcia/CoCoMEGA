@@ -1,9 +1,5 @@
 class InvalidScenarioDefinitionError(Exception):
-    """Exception raised for invalid scenario configuration.
-
-    Attributes:
-        message -- explanation of the error
-    """
+    """Exception raised for invalid scenario configuration."""
 
     def __init__(self, message):
         self.message = message
@@ -11,11 +7,7 @@ class InvalidScenarioDefinitionError(Exception):
 
 
 class LoadingScenarioFailedError(Exception):
-    """Exception raised for failure of loading scenario.
-
-        Attributes:
-            message -- explanation of the error
-        """
+    """Exception raised for failure of loading scenario."""
 
     def __init__(self, message):
         self.message = message
@@ -23,11 +15,7 @@ class LoadingScenarioFailedError(Exception):
 
 
 class AgentSetupFailedError(Exception):
-    """Exception raised for failure of setting up agent.
-
-        Attributes:
-            message -- explanation of the error
-        """
+    """Exception raised for failure of setting up agent."""
 
     def __init__(self, message):
         self.message = message
@@ -35,11 +23,7 @@ class AgentSetupFailedError(Exception):
 
 
 class SimulationError(Exception):
-    """Exception raised for error during the simulation.
-
-        Attributes:
-            message -- explanation of the error
-        """
+    """Exception raised for error during the simulation."""
 
     def __init__(self, message):
         self.message = message
@@ -47,11 +31,7 @@ class SimulationError(Exception):
 
 
 class StoppingScenarioFailedError(Exception):
-    """Exception raised for failure of stopping scenario.
-
-        Attributes:
-            message -- explanation of the error
-        """
+    """Exception raised for failure of stopping scenario."""
 
     def __init__(self, message):
         self.message = message
@@ -59,11 +39,7 @@ class StoppingScenarioFailedError(Exception):
 
 
 class EarlyTerminationException(Exception):
-    """Exception raised for early termination of scenario.
-
-        Attributes:
-            message -- explanation of the error
-        """
+    """Exception raised for early termination of scenario."""
 
     def __init__(self, message):
         self.message = message
@@ -71,11 +47,7 @@ class EarlyTerminationException(Exception):
 
 
 class AgentTerminationSignal(Exception):
-    """Exception raised if agent terminates the scenario.
-
-        Attributes:
-            message -- explanation of the error
-        """
+    """Exception raised if agent terminates the scenario."""
 
     def __init__(self, message):
         self.message = message

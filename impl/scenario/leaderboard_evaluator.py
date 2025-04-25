@@ -1,16 +1,13 @@
-from leaderboard.leaderboard_evaluator import LeaderboardEvaluator, sensors_to_icons
 import traceback
 import logging
 import argparse
 from argparse import RawTextHelpFormatter
-
 import sys
 import carla
 
-# from srunner.scenariomanager.carla_data_provider import *
 from srunner.scenariomanager.timer import GameTime
 from srunner.scenariomanager.watchdog import Watchdog
-
+from leaderboard.leaderboard_evaluator import LeaderboardEvaluator, sensors_to_icons
 from leaderboard.scenarios.scenario_manager import ScenarioManager
 from leaderboard.scenarios.route_scenario import RouteScenario
 from leaderboard.envs.sensor_interface import SensorInterface, SensorConfigurationInvalid
@@ -24,12 +21,18 @@ logger = logging.getLogger(__name__)
 
 
 class CustomizedEvaluator(LeaderboardEvaluator):
+    """
+    Customized Evaluator class for CARLA Leaderboard.
+
+    Overrides the _load_and_run_scenario method to include more detailed
+    crash handling and customized evaluation behavior.
+    """
     def _load_and_run_scenario(self, args, config):
         """
-        Load and run the scenario given by config.
+        Load and run the scenario given by config. Overrides the super method
 
-        Depending on what code fails, the simulation will either stop the route and
-        continue from the next one, or report a crash and stop.
+        :param args: Parsed arguments for evaluation.
+        :param config: Scenario configuration to load and execute.
         """
         crash_message = ""
         entry_status = "Started"

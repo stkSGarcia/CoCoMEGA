@@ -18,6 +18,15 @@ class selRNSGA2WithMemory:
 
     def __init__(self, ref_points, epsilon=0.001, normalization="front", weights=None,
                  extreme_points_as_reference_points=False, nd="log"):
+        """Initialize selection with reference points and parameters.
+
+        :param ref_points: Reference points for niching.
+        :param epsilon: Threshold for diversity control.
+        :param normalization: Type of normalization ('front', 'ever', or 'no').
+        :param weights: Weight vector for objectives.
+        :param extreme_points_as_reference_points: Whether to add extreme points to reference points.
+        :param nd: Non-dominated sorting method ('log' or 'standard').
+        """
         self.ref_points = np.array(ref_points)
         n_obj = self.ref_points.shape[1]
         self.ideal_point = np.full(n_obj, np.inf)

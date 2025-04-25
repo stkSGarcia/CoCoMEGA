@@ -53,7 +53,10 @@ IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
 
 
 class DisplayInterface(object):
+    """Display interface for visualizing agent's sensor data."""
+
     def __init__(self):
+        """Initialize the display window."""
         self._width = 1200
         self._height = 600
         self._surface = None
@@ -67,6 +70,11 @@ class DisplayInterface(object):
         pygame.display.set_caption("Human Agent")
 
     def run_interface(self, input_data):
+        """Update the display surface with the given sensor inputs.
+
+        :param input_data: Dictionary containing sensor images and metadata.
+        :return: Display surface as a numpy array.
+        """
         rgb = input_data['rgb']
         rgb_left = input_data['rgb_left']
         rgb_right = input_data['rgb_right']
@@ -123,6 +131,7 @@ class DisplayInterface(object):
         return surface
 
     def _quit(self):
+        """Quit pygame display."""
         pygame.quit()
 
 
@@ -131,10 +140,20 @@ def get_entry_point():
 
 
 class Resize2FixedSize:
+    """Resize an input PIL image to a fixed size."""
     def __init__(self, size):
+        """Initialize with target size.
+
+        :param size: Target size tuple (width, height).
+        """
         self.size = size
 
     def __call__(self, pil_img):
+        """Resize the input PIL image.
+
+        :param pil_img: Input PIL image.
+        :return: Resized PIL image.
+        """
         pil_img = pil_img.resize(self.size)
         return pil_img
 
@@ -142,6 +161,14 @@ class Resize2FixedSize:
 def create_carla_rgb_transform(
         input_size, need_scale=True, mean=IMAGENET_DEFAULT_MEAN, std=IMAGENET_DEFAULT_STD
 ):
+    """Create a transformation pipeline for CARLA RGB images.
+
+    :param input_size: Target image size.
+    :param need_scale: Whether to resize before cropping.
+    :param mean: Normalization mean.
+    :param std: Normalization std.
+    :return: Composed torchvision transform.
+    """
     if isinstance(input_size, (tuple, list)):
         img_size = input_size[-2:]
     else:
@@ -172,8 +199,13 @@ def create_carla_rgb_transform(
 
 
 class VideoRecorder:
-    def __init__(self, save_path):
+    """Record simulation frames into a video."""
 
+    def __init__(self, save_path):
+        """Initialize the video recorder.
+
+        :param save_path: Directory to save the recorded video.
+        """
         self.save_path = save_path
         self.video_writer = None
         self.frame_width = 1200
@@ -190,10 +222,15 @@ class VideoRecorder:
         logger.info(f"Recording video to: {video_filename}")
 
     def write_frame(self, frame):
+        """Write a single frame to the video.
+
+        :param frame: Frame image.
+        """
         if self.is_recording and self.video_writer is not None:
             self.video_writer.write(frame)
 
     def stop_recording(self):
+        """Stop recording and save the video file."""
         if self.is_recording:
             self.video_writer.release()
             logger.info("Video recording stopped and saved.")
@@ -201,8 +238,14 @@ class VideoRecorder:
 
 
 class InterfuserAgent(autonomous_agent.AutonomousAgent):
+    """Main Interfuser agent that interacts with the CARLA environment."""
 
     def __init__(self, path_to_conf_file, additional_config=None):
+        """Initialize the Interfuser agent.
+
+        :param path_to_conf_file: Path to the agent configuration.
+        :param additional_config: Additional runtime configurations.
+        """
         self.video_recorder = None
         self.additional_config = additional_config
         super().__init__(path_to_conf_file)
@@ -218,6 +261,10 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         self.num_collected = 0
 
     def setup(self, path_to_conf_file):
+        """Set up agent's sensors and models.
+
+        :param path_to_conf_file: Path to configuration file.
+        """
 
         self.sensor_interface._queue_timeout = 100
         if display_agent:
@@ -300,6 +347,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             (self.save_path / "meta").mkdir(parents=True, exist_ok=False)
 
     def _init(self):
+        """Initialize route planner, vehicle and environment settings."""
         self._route_planner = RoutePlanner(4.0, 50.0)
         self._route_planner.set_route(self._global_plan, True)
         self.initialized = True
@@ -311,11 +359,20 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         self.frame_rate = 1.0 / self._world.get_settings().fixed_delta_seconds
 
     def _get_position(self, tick_data):
+        """Calculate the normalized GPS position.
+
+        :param tick_data: Tick data dictionary.
+        :return: Normalized GPS position.
+        """
         gps = tick_data["gps"]
         gps = (gps - self._route_planner.mean) * self._route_planner.scale
         return gps
 
     def sensors(self):
+        """Define and return the list of agent sensors.
+
+        :return: List of sensor configuration dictionaries.
+        """
         return [
             {
                 "type": "sensor.camera.rgb",
@@ -392,7 +449,11 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         ]
 
     def tick(self, input_data):
+        """Process sensor data at each timestep.
 
+        :param input_data: Raw sensor data.
+        :return: Processed tick data.
+        """
         rgb = cv2.cvtColor(input_data["rgb"][1][:, :, :3], cv2.COLOR_BGR2RGB)
         rgb_left = cv2.cvtColor(input_data["rgb_left"][1][:, :, :3], cv2.COLOR_BGR2RGB)
         rgb_right = cv2.cvtColor(
@@ -452,6 +513,12 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
 
     @torch.no_grad()
     def run_step(self, input_data, timestamp):
+        """Perform one step of inference and control.
+
+        :param input_data: Input sensor data.
+        :param timestamp: Current simulation timestamp.
+        :return: Control commands for the vehicle.
+        """
         if not self.initialized:
             self._init()
 
@@ -688,6 +755,10 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         return control
 
     def save(self, tick_data):
+        """Save collected data for the current step.
+
+        :param tick_data: Tick data to be saved.
+        """
         if ((self.collection_interval > 0) and (self.step % (self.collection_interval * self.frame_rate) != 0)) \
                 or ((self.collection_delay is not None) and (self.step < (self.collection_delay * self.frame_rate))):
             return
@@ -710,6 +781,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         return
 
     def destroy(self):
+        """Cleanup agent resources upon scenario end."""
         if self.video_recorder:
             self.video_recorder.stop_recording()
         if self.ensemble:
@@ -718,6 +790,10 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             del self.net
 
     def collect_actor_data(self):
+        """Collect information about nearby actors.
+
+        :return: Dictionary of actor data.
+        """
         data = {}
         vehicles = self._world.get_actors().filter("*vehicle*")
         for actor in vehicles:

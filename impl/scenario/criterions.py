@@ -12,12 +12,24 @@ from impl.scenario.exceptions import EarlyTerminationException
 
 
 def _distance(actor1, actor2):
+    """Compute the Euclidean distance between two actors in the 2D plane.
+
+    :param actor1: First CARLA actor.
+    :param actor2: Second CARLA actor.
+    :return: Distance in meters.
+    """
     loc1 = actor1.get_location()
     loc2 = actor2.get_location()
     return math.sqrt((loc1.x - loc2.x) ** 2 + (loc1.y - loc2.y) ** 2)
 
 
 def _angle_between_vectors(v1, v2):
+    """Calculate angle between two 2D vectors in degrees.
+
+    :param v1: First vector.
+    :param v2: Second vector.
+    :return: Angle in degrees.
+    """
     dot_product = v1.x * v2.x + v1.y * v2.y
     magnitude_v1 = math.sqrt(v1.x ** 2 + v1.y ** 2)
     magnitude_v2 = math.sqrt(v2.x ** 2 + v2.y ** 2)
@@ -27,22 +39,21 @@ def _angle_between_vectors(v1, v2):
 
 
 class VehicleMeasurementTest(Criterion):
-    """
-    This class contains an atomic test for Measuring Vehicle Behavior.
 
-    Important parameters:
-    - actor: CARLA actor to be used for this test
-    - measures: List of measures to measure. subset of [throttle, brake, steer, hand_brake, manual_gear_shift, reverse]
-    - measurement_interval: This variable determines the interval, in ticks, at which measurements are taken
-    - optional [optional]: If True, the result is not considered for an overall pass/fail result
-    """
+    """Atomic test to record control and positional data of a vehicle during simulation."""
 
     def __init__(self, actor, other_actors, measures, measurement_interval, scenario_def_id, optional=False,
                  name="VehicleMeasurement"):
-        """
-        Setup actor and measures
-        """
+        """Initialize the test with ego actor, measures, and output options.
 
+        :param actor: The main actor (vehicle) to monitor.
+        :param other_actors: List of other actors to consider for distance measurements.
+        :param measures: List of control or state attributes to log.
+        :param measurement_interval: How often to log data (in ticks).
+        :param scenario_def_id: Unique ID for scenario (used for CSV output).
+        :param optional: Whether this test affects overall pass/fail.
+        :param name: Name for the criterion.
+        """
         self.other_actors = other_actors
         self.measures = measures
         self.measurement_interval = measurement_interval
@@ -53,8 +64,9 @@ class VehicleMeasurementTest(Criterion):
         super(VehicleMeasurementTest, self).__init__(name, actor, 1, None, optional)
 
     def update(self):
-        """
-        Check velocity
+        """Update test status and record data at configured intervals.
+
+        :return: Always returns py_trees.common.Status.RUNNING.
         """
         new_status = py_trees.common.Status.RUNNING
 
@@ -104,23 +116,30 @@ class VehicleMeasurementTest(Criterion):
         return new_status
 
     def terminate(self, new_status):
+        """Terminate the test and save collected data to a CSV file."""
         if len(self.values) > 0:
             self._write_to_file()
         # raise EarlyTerminationException("Scenario has terminated right after start.")
         super().terminate(new_status)
 
     def _write_to_file(self):
+        """Write recorded measurements to a CSV file in the 'results' directory."""
         keys = self.values[0].keys()
         with (cfg.CONFIG["workspace"]["sim_result"] / f"{self.scenario_def_id}.csv").open("w", newline="") as f:
             dict_writer = csv.DictWriter(f, keys)
             dict_writer.writeheader()
             dict_writer.writerows(self.values)
 
-    def _isin_fov(self, other_actor):
+    def _isin_fov(self, actor):
+        """Check whether an actor is within the ego vehicle's field of view (FOV).
+
+        :param actor: The actor.
+        :return: True if within FOV, False otherwise.
+        """
         ego_transform = self.actor.get_transform()
         ego_location = ego_transform.location
         forward_vector = ego_transform.rotation.get_forward_vector()
-        actor_location = other_actor.get_location()
+        actor_location = actor.get_location()
 
         vector_to_actor = carla.Vector2D(actor_location.x - ego_location.x,
                                          actor_location.y - ego_location.y, )

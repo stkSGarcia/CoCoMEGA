@@ -48,18 +48,14 @@ INITIAL_SECONDS_DELAY = 5.0
 
 
 def convert_json_to_transform(actor_dict):
-    """
-    Convert a JSON string to a CARLA transform
-    """
+    """Convert a JSON dictionary to a CARLA Transform object."""
     return carla.Transform(location=carla.Location(x=float(actor_dict['x']), y=float(actor_dict['y']),
                                                    z=float(actor_dict['z'])),
                            rotation=carla.Rotation(roll=0.0, pitch=0.0, yaw=float(actor_dict['yaw'])))
 
 
 def convert_json_to_actor(actor_dict):
-    """
-    Convert a JSON string to an ActorConfigurationData dictionary
-    """
+    """Convert a JSON dictionary to an ActorConfigurationData object."""
     node = ET.Element('waypoint')
     sp = actor_dict['spawn_point']
     node.set('x', sp['x'])
@@ -346,6 +342,7 @@ class RouteScenario(BasicScenario):
                                color=carla.Color(255, 0, 0), life_time=persistency)
 
     def _draw_boundary(self, boundary, anchor, tilt=None, z=0.1):
+        """Draw the given boundary. Used for debugging."""
         rads, angs = boundary.value["radius"], boundary.value["angle"]
         coef = -1 if tilt == "left" else (1 if tilt == "right" else 0)
         angs = [ang + coef * cfg.CONFIG["boundary"]["tilt_degrees"] for ang in angs]
@@ -365,6 +362,7 @@ class RouteScenario(BasicScenario):
                                                      life_time=cfg.CONFIG["simulation"]["scenario_duration"] + 1)
 
     def _draw_route(self, trajectory, z=0.1):
+        """Draw the given trajectory. Used for debugging."""
         for i in range(len(trajectory) - 1):
             start_point = carla.Location(
                 x=trajectory[i]["x"],
@@ -441,6 +439,7 @@ class RouteScenario(BasicScenario):
         return sampled_scenarios
 
     def _build_scenario_configuration(self, scenario_def, ego_vehicle, agent_instance):
+        """Assemble the ScenarioConfiguration object."""
         list_of_actor_conf_instances = self._get_actors_instances(scenario_def.get_other_actors())
         # Create an actor configuration for the ego-vehicle trigger position
 
@@ -460,10 +459,7 @@ class RouteScenario(BasicScenario):
         return scenario_config
 
     def _get_actors_instances(self, list_of_antagonist_actors):
-        """
-        Get the full list of actor instances.
-        Receives a list of actor definitions and creates an actual list of ActorConfigurationObjects
-        """
+        """Convert a list of actor dictionaries to actor instances."""
 
         list_of_actors = []
         for actor_def in list_of_antagonist_actors:
@@ -472,28 +468,13 @@ class RouteScenario(BasicScenario):
         return list_of_actors
 
     def _create_behavior(self):
-        """
-        Basic behavior do nothing, i.e. Idle
-        """
-
+        """Define the main behavior tree of the scenario (typically idle)"""
         behavior = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL)
         behavior.add_child(py_trees.behaviours.Running(name="Keep Running"))
-        actor_definitions = self.scenario_definition.get_other_actors()
-        for i, other_actor in enumerate(self.other_actors):
-            if other_actor is not None and 'speed' in actor_definitions[i]:
-                # if "autopilot" in actor_definitions[i] and actor_definitions[i]["autopilot"]:
-                #     behavior.add_child(ChangeAutoPilot(other_actor, activate=True,
-                #                                        parameters={"max_speed": actor_definitions[i]["speed"]}))
-                # else:
-                # behavior.add_child(AccelerateToVelocity(other_actor, throttle_value=1,
-                #                                         target_velocity=actor_definitions[i]['speed']))
-                pass
-
         return behavior
 
     def _create_test_criteria(self):
-        """
-        """
+        """Define the success and monitoring criteria for the scenario."""
         criteria = []
         # route = convert_transform_to_location(self.route)
 
@@ -511,7 +492,5 @@ class RouteScenario(BasicScenario):
         return criteria
 
     def __del__(self):
-        """
-        Remove all actors upon deletion
-        """
+        """Ensure proper cleanup of actors on deletion."""
         self.remove_all_actors()

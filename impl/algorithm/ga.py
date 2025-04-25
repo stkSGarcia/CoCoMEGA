@@ -28,6 +28,10 @@ class GeneticAlgorithm(BaseAlgorithm):
         self.keep_best = keep_best
 
     def solve(self, resume=False):
+        """Main optimization loop for GA. Supports resuming from a checkpoint.
+
+        :param resume: Whether to resume from the latest checkpoint.
+        """
         super().solve()
         # Initialize the population or resume from the latest checkpoint.
         if resume:
