@@ -49,7 +49,7 @@ class Budget:
     def is_reached(self):
         """Determine if the budget is reached.
 
-        :return: Return `True` if the budget is reached, `False` otherwise.
+        :return: Return :data:`True` if the budget is reached, :data:`False` otherwise.
         """
         return ((self.max_sim is not None and self.sim_num > self.max_sim) or
                 (self.max_time is not None and time.perf_counter() - self.start_time > self.max_time) or

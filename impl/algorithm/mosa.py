@@ -13,7 +13,11 @@ logger = logging.getLogger(__name__)
 
 
 class MOSA(BaseAlgorithm):
-    """NOT used, to be removed."""
+    """Multi-Objective Search Algorithm.
+
+    .. deprecated:: 0.0.1
+       Not supported.
+    """
 
     def __init__(self,
                  objectives,

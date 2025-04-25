@@ -19,8 +19,8 @@ class GeneticAlgorithm(BaseAlgorithm):
     def __init__(self, toolbox, budget, seed=None, keep_best=False):
         """Constructor.
 
-        :param toolbox: `deap.base.Toolbox` that defines the problem.
-        :param budget: `Budget` that defines the searching budget.
+        :param toolbox: :class:`deap.base.Toolbox` that defines the problem.
+        :param budget: Search budget.
         :param seed: Random seed.
         :param keep_best: Whether to use an archive in the search.
         """

@@ -21,6 +21,7 @@ class selRNSGA3WithMemory:
 
     def __init__(self, ref_points, p, mu=0.05, nd="log"):
         """Initialize the memory-based selection operator.
+        See also :func:`selRNSGA3` for more details.
 
         :param ref_points: User-defined reference points.
         :param p: Parameter for generating uniform reference directions.
@@ -60,11 +61,11 @@ def selRNSGA3(individuals, k, ref_points, ref_dirs, best_point=None, worst_point
         If not provided, find the extreme points only from current individuals.
     :param mu: Defines the init_simplex_scale of the reference lines used during survival selection.
         Increasing mu will result having solutions with a larger spread.
-    :param nd: Specify the non-dominated algorithm to use: 'standard' or 'log'.
+    :param nd: Specify the non-dominated algorithm to use: :data:`standard` or :data:`log`.
     :param return_memory: If :data:`True`, return the best, worst and extreme points
         in addition to the chosen individuals.
     :returns: A list of selected individuals.
-    :returns: If `return_memory` is :data:`True`, a namedtuple with the
+        If `return_memory` is :data:`True`, a namedtuple with the
         `best_point`, `worst_point`, and `extreme_points`.
     """
     if nd == "standard":
