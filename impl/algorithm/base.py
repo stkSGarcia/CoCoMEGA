@@ -16,14 +16,14 @@ logger = logging.getLogger(__name__)
 
 
 class BaseAlgorithm:
-    """Base class for algorithms."""
+    """Base class for search algorithms."""
     _name = "BASE"
 
-    def __init__(self, toolbox: base.Toolbox, budget: Budget, seed=None):
+    def __init__(self, toolbox: base.Toolbox, budget: Budget, seed: int = None):
         """Constructor.
 
-        :param toolbox: `deap.base.Toolbox` that defines the problem.
-        :param budget: `Budget` that defines the searching budget.
+        :param toolbox: :class:`deap.base.Toolbox` that defines the problem.
+        :param budget: Search budget.
         :param seed: Random seed.
         """
         random.seed(seed)
@@ -89,6 +89,7 @@ class BaseAlgorithm:
         """Remove duplicate individuals in the given population.
 
         :param population: The population requiring deduplication.
+        :return: A list of unique individuals.
         """
         unique_individuals = []
         for ind in population:
@@ -185,7 +186,7 @@ class BaseAlgorithm:
     @staticmethod
     def _dominates(this, other, obj: List = None):
         """DO NOT CALL THIS FUNCTION.
-        It is used to replace the original `dominates` function in `deap`.
+        It is used to replace the original :func:`dominates` function in :mod:`deap`.
 
         :param obj: Indices indicating on which objectives the domination is tested.
         """

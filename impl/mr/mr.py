@@ -133,7 +133,7 @@ class Perturbation:
 
         :param mutpb: Mutation probability.
         :param eta: Crowding degree of the mutation. A high eta will produce a mutant resembling its parent,
-        while a small eta will produce a solution much more different.
+            while a small eta will produce a solution much more different.
         :param std: Standard deviation for the gaussian addition mutation.
         """
         if random.random() < mutpb:
@@ -220,7 +220,7 @@ class Perturbations(list):
 
         :param mutpb: Mutation probability.
         :param eta: Crowding degree of the mutation. A high eta will produce a mutant resembling its parent,
-        while a small eta will produce a solution much more different.
+            while a small eta will produce a solution much more different.
         :param std: Standard deviation for the gaussian addition mutation.
         """
         for perturbation in self:
@@ -306,11 +306,11 @@ class Relation(ABC):
     def is_violated(self, source, follow_up, labels=None) -> (bool, float):
         """Determine if this relation is violated and quantify the extent of violation.
 
-        :param source: The `DataFrame` of the source result.
-        :param follow_up: The `DataFrame` of the follow-up result.
+        :param source: The :class:`DataFrame` of the source result.
+        :param follow_up: The :class:`DataFrame` of the follow-up result.
         :param labels: Labels determining the perturbed objects.
-        :return: The `bool` value indicates whether the relation is violated.
-        The `float` value denotes the extent to which this relation is violated.
+        :return: The ``bool`` value indicates whether the relation is violated.
+            The ``float`` value denotes the extent to which this relation is violated.
         """
         labels = Relation.convert_labels(labels)
         _, df = Relation.dtw_dataframe(source, follow_up, self.field, labels) if cfg.CONFIG["violation"]["dtw"] \
@@ -325,18 +325,18 @@ class Relation(ABC):
 
     @staticmethod
     def convert_labels(labels):
-        """Convert the given labels into those in the result `DataFrame`."""
+        """Convert the given labels into those in the result :class:`DataFrame`."""
         return [f"{Relation._d}-{label}" for label in labels or set()]
 
     @staticmethod
     def dtw_dataframe(source, follow_up, field, labels):
-        """Generate a `DataFrame` from source and follow-up results using DTW algorithm.
+        """Generate a :class:`DataFrame` from source and follow-up results using DTW algorithm.
 
-        :param source: The `DataFrame` of the source result.
-        :param follow_up: The `DataFrame` of the follow-up result.
+        :param source: The :class:`DataFrame` of the source result.
+        :param follow_up: The :class:`DataFrame` of the follow-up result.
         :param field: The metric to be compared.
         :param labels: Labels determining the perturbed objects.
-        :return: A tuple of the DTW path and the generated `DataFrame`.
+        :return: A tuple of the DTW path and the generated :class:`DataFrame`.
         """
         if cfg.CONFIG["violation"]["strategy"] == "position":
             func, columns = partial(dtw_path), ["position_x", "position_y"]
@@ -353,13 +353,13 @@ class Relation(ABC):
 
     @staticmethod
     def pairwise_dataframe(source, follow_up, field, labels):
-        """Generate a `DataFrame` from source and follow-up results based on common indices.
+        """Generate a :class:`DataFrame` from source and follow-up results based on common indices.
 
-        :param source: The `DataFrame` of the source result.
-        :param follow_up: The `DataFrame` of the follow-up result.
+        :param source: The :class:`DataFrame` of the source result.
+        :param follow_up: The :class:`DataFrame` of the follow-up result.
         :param field: The metric to be compared.
         :param labels: Labels determining the perturbed objects.
-        :return: A tuple of matches and the generated `DataFrame`.
+        :return: A tuple of matches and the generated :class:`DataFrame`.
         """
         indices = source.index.union(follow_up.index)
         df = pd.DataFrame([(
@@ -372,10 +372,10 @@ class Relation(ABC):
 
     @staticmethod
     def critical_intervals(dataframe, labels):
-        """Fiter the given `DataFrame` by removing data where the perturbed
+        """Fiter the given :class:`DataFrame` by removing data where the perturbed
         objects are not in the field of view of the ego vehicle.
 
-        :param dataframe: The `DataFrame` to be filtered.
+        :param dataframe: The :class:`DataFrame` to be filtered.
         :param labels: Labels determining the perturbed objects.
         :return: A sequence of indices that indicate the critical intervals.
         """
@@ -428,7 +428,7 @@ class MR:
     def __init__(self, perturbation_factories: List[PerturbationFactory], relation: Relation):
         """Constructor.
 
-        :param perturbation_factories: A list of `PerturbationFactory` instances.
+        :param perturbation_factories: A list of :class:`PerturbationFactory` instances.
         :param relation: A common output relation.
         """
         self.perturbation_factories = perturbation_factories
@@ -461,7 +461,7 @@ class MRSet:
     def __init__(self, mrs: List[MR]):
         """Constructor.
 
-        :param mrs: A list of `MR` instances.
+        :param mrs: A list of :class:`MR` instances.
         """
         # Check relations.
         assert mrs
@@ -485,10 +485,10 @@ class MRSet:
     def is_violated(self, source, follow_up) -> (bool, float):
         """Determine if this relation is violated and quantify the extent of violation.
 
-        :param source: The `DataFrame` of the source result.
-        :param follow_up: The `DataFrame` of the follow-up result.
-        :return: The `bool` value indicates whether the relation is violated.
-        The `float` value denotes the extent to which this relation is violated.
+        :param source: The :class:`DataFrame` of the source result.
+        :param follow_up: The :class:`DataFrame` of the follow-up result.
+        :return: The ``bool`` value indicates whether the relation is violated.
+            The ``float`` value denotes the extent to which this relation is violated.
         """
         return self.relation.is_violated(source, follow_up, self.labels)
 

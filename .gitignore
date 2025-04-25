@@ -1,7 +1,6 @@
 ### Example user template
 .idea
 *.yaml
-/docs/
 /conf/*.pth.tar
 test/exp.ipynb
 
@@ -225,6 +224,7 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+docs/_autosummary/
 
 # PyBuilder
 .pybuilder/

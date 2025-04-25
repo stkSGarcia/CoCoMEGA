@@ -30,7 +30,7 @@ def _update_log_dir(dictionary):
             dictionary[k] = CONFIG["workspace"]["log"] / dictionary[k]
 
 
-class DirectoryAccessor:
+class _DirectoryAccessor:
     def __init__(self, workspace_config: dict):
         self._config = workspace_config
         self._config["root"].mkdir(exist_ok=True, parents=True)
@@ -75,7 +75,7 @@ def init_config():
 
     # Set up workspace root and create other directories on-demand.
     CONFIG["workspace"]["root"] = Path(__file__).parent.parent / CONFIG["workspace"]["root"]
-    CONFIG["workspace"] = DirectoryAccessor({k: Path(v) for k, v in CONFIG["workspace"].items()})
+    CONFIG["workspace"] = _DirectoryAccessor({k: Path(v) for k, v in CONFIG["workspace"].items()})
 
     # Log configurations.
     default_log_config_path = config_base / log_config_name
@@ -104,7 +104,7 @@ def init_config():
 def init_project_directory(name: str, resume=False):
     """Create the necessary directories for executions or resume from an existing project directory.
 
-    :param name: Execution name. If `resume` is `True`, this is the directory name to resume from.
+    :param name: Execution name. If `resume` is :data:`True`, this is the directory name to resume from.
     :param resume: Whether to resume.
     """
     global CONFIG

@@ -18,6 +18,7 @@ class selRNSGA2WithMemory:
 
     def __init__(self, ref_points, epsilon=0.001, normalization="front", weights=None,
                  extreme_points_as_reference_points=False, nd="log"):
+        """See also :func:`selRNSGA2` for more details."""
         self.ref_points = np.array(ref_points)
         n_obj = self.ref_points.shape[1]
         self.ideal_point = np.full(n_obj, np.inf)
@@ -50,14 +51,14 @@ def selRNSGA2(individuals, k, ref_points, ideal_point, nadir_point, epsilon=0.01
     :param ideal_point: Ideal point found at previous generation.
     :param nadir_point: Nadir point found at previous generation.
     :param epsilon: Epsilon parameter for crowding distance calculation.
-    :param normalization: Normalization method to use: 'ever' or 'front' or 'no'.
+    :param normalization: Normalization method to use: :data:`ever` or :data:`front` or :data:`no`.
     :param weights: Weights for each objective.
     :param extreme_points_as_reference_points: If :data:`True`, extreme points are added to the reference points.
-    :param nd: Specify the non-dominated algorithm to use: 'standard' or 'log'.
+    :param nd: Specify the non-dominated algorithm to use: :data:`standard` or :data:`log`.
     :param return_memory: If :data:`True`, return the reference, ideal and nadir points
         in addition to the chosen individuals.
     :returns: A list of selected individuals.
-    :returns: If `return_memory` is :data:`True`, a namedtuple with the
+        If `return_memory` is :data:`True`, a namedtuple with the
         `ref_points`, `ideal_point`, and `nadir_points`.
     """
     if nd == "standard":
