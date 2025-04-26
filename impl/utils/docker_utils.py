@@ -17,7 +17,7 @@ def get_container(container_name):
     Retrieve a running Docker container by its name.
 
     :param container_name: Name of the container.
-    :return: Docker container object if running, otherwise None.
+    :return: Docker container object if running, otherwise :data:`None`.
     """
     try:
         container = docker_client.containers.get(container_name)
@@ -66,7 +66,7 @@ def user_has_processes_in_container(container_id, username):
 
     :param container_id: ID of the Docker container.
     :param username: Username inside the container.
-    :return: True if processes are found, False otherwise.
+    :return: :data:`True` if processes are found, :data:`False` otherwise.
     """
     result = subprocess.run(['docker', 'exec', container_id, 'ps', '-u', username],
                             shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)

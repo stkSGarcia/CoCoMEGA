@@ -14,7 +14,7 @@ class TrajectorySolver:
 
         :param traj1: First trajectory (list of points).
         :param traj2: Second trajectory (list of points).
-        :return: True if any segments intersect, else False.
+        :return: :data:`True` if any segments intersect, else :data:`False`.
         """
         return TrajectorySolver._check_trajectory_collision(traj1, traj2)
 
@@ -25,7 +25,7 @@ class TrajectorySolver:
 
         :param traj1: First trajectory.
         :param traj2: Second trajectory.
-        :return: True if any segment pairs intersect.
+        :return: :data:`True` if any segment pairs intersect.
         """
         for i in range(len(traj1) - 1):
             for j in range(len(traj2) - 1):
@@ -42,7 +42,7 @@ class TrajectorySolver:
         :param p2: End of first segment.
         :param q1: Start of second segment.
         :param q2: End of second segment.
-        :return: True if they intersect.
+        :return: :data:`True` if they intersect.
         """
 
         # Find the 4 orientations needed for the general and special cases
@@ -79,7 +79,7 @@ class TrajectorySolver:
         """
         Compute orientation of three ordered points (p, q, r).
 
-        :return: 0 if collinear, 1 if clockwise, 2 if counterclockwise.
+        :return: :data:`0` if collinear, :data:`1` if clockwise, :data:`2` if counterclockwise.
         """
         val = (float(q["y"] - p["y"]) * (r["x"] - q["x"])) - (float(q["x"] - p["x"]) * (r["y"] - q["y"]))
         if val > 0:
@@ -94,7 +94,7 @@ class TrajectorySolver:
         """
         Check if point q lies on segment pr.
 
-        :return: True if on segment.
+        :return: :data:`True` if on segment.
         """
         if min(p["x"], r["x"]) <= q["x"] <= max(p["x"], r["x"]) and min(p["y"], r["y"]) <= q["y"] <= max(p["y"],
                                                                                                          r["y"]):
@@ -149,8 +149,8 @@ def distance_vector(v1, v2):
     """
     Compute vector difference between v1 and v2.
 
-    :param v1: Dict with 'x', 'y'.
-    :param v2: Dict with 'x', 'y'.
+    :param v1: Dict with `x`, `y`.
+    :param v2: Dict with `x`, `y`.
     :return: Vector difference as a dictionary.
     """
     return {'x': v1['x'] - v2['x'], 'y': v1['y'] - v2['y']}

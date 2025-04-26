@@ -73,7 +73,7 @@ skip_map = {
 
 class Visualizer:
     """
-        Visualization module with statistics data.
+    Visualization module with statistics data.
     """
 
     @classmethod
@@ -83,12 +83,12 @@ class Visualizer:
     @classmethod
     def visualize_gen_stats(cls, stats, show, out_dir):
         """
-            Visualization of generation statistics data.
-            :param stats: A dictionary containing lists of statistics per generation.
-                              Expected keys are 'gen' for generation numbers,
-                              'avg' for average fitness, 'max' for maximum fitness, etc.
-            :param show: A boolean to determine whether to show the plots or not.
-            :param out_dir: Output directory of plots
+        Visualization of generation statistics data.
+        :param stats: A dictionary containing lists of statistics per generation.
+            Expected keys are :data:`gen` for generation numbers,
+            :data:`avg` for average fitness, :data:`max` for maximum fitness, etc.
+        :param show: A boolean to determine whether to show the plots or not.
+        :param out_dir: Output directory of plots
         """
         stats = pd.DataFrame(stats)
         if len(stats) == 0:
@@ -280,7 +280,7 @@ def visualize_in_one(project, plot_nan=True, verbose=False, save_path=None, show
     """Plot all statistics data in one figure.
 
     :param project: Project name.
-    :param plot_nan: Plot NaN values.
+    :param plot_nan: Plot :data:`NaN` values.
     :param verbose: Show plots of populations and archives.
     :param save_path: The path to save the figure.
     :param show: A boolean to determine whether to show the plots or not.

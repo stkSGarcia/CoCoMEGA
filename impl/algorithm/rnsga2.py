@@ -9,7 +9,7 @@ RNSGA2Memory = namedtuple("RNSGA2Memory", ["ref_points", "ideal_point", "nadir_p
 class selRNSGA2WithMemory:
     """Class version of R-NSGA-II selection including memory for ideal and nadir points.
     Registering this operator in a toolbox is a bit different from classical operators,
-    it requires to instantiate the class instead of just registering the function:
+    it requires instantiating the class instead of just registering the function:
         >>> from deap import base
         >>> ref_points = [[0.5, 0.2], [0.3, 0.2]]
         >>> toolbox = base.Toolbox()
@@ -23,10 +23,10 @@ class selRNSGA2WithMemory:
 
         :param ref_points: Reference points for niching.
         :param epsilon: Threshold for diversity control.
-        :param normalization: Type of normalization ('front', 'ever', or 'no').
+        :param normalization: Type of normalization (:data:`ever`, :data:`front`, or :data:`no`).
         :param weights: Weight vector for objectives.
         :param extreme_points_as_reference_points: Whether to add extreme points to reference points.
-        :param nd: Non-dominated sorting method ('log' or 'standard').
+        :param nd: Non-dominated sorting method (:data:`standard` or :data:`log`).
         """
         self.ref_points = np.array(ref_points)
         n_obj = self.ref_points.shape[1]
@@ -64,7 +64,7 @@ def selRNSGA2(individuals, k, ref_points, ideal_point, nadir_point, epsilon=0.01
     :param weights: Weights for each objective.
     :param extreme_points_as_reference_points: If :data:`True`, extreme points are added to the reference points.
     :param nd: Specify the non-dominated algorithm to use: :data:`standard` or :data:`log`.
-    :param return_memory: If :data:`True`, return the reference, ideal and nadir points
+    :param return_memory: If :data:`True`, return the reference, ideal, and nadir points
         in addition to the chosen individuals.
     :returns: A list of selected individuals.
         If `return_memory` is :data:`True`, a namedtuple with the

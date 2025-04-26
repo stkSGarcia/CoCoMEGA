@@ -10,9 +10,9 @@ RNSGA3Memory = namedtuple("RNSGA3Memory", ["best_point", "worst_point", "extreme
 
 
 class selRNSGA3WithMemory:
-    """Class version of R-NSGA-III selection including memory for best, worst and extreme points.
+    """Class version of R-NSGA-III selection including memory for best, worst, and extreme points.
     Registering this operator in a toolbox is a bit different from classical operators,
-    it requires to instantiate the class instead of just registering the function:
+    it requires instantiating the class instead of just registering the function:
         >>> from deap import base
         >>> ref_points = [[1.0, 0.5, 0.2], [0.3, 0.2, 0.6]]
         >>> toolbox = base.Toolbox()
@@ -26,7 +26,7 @@ class selRNSGA3WithMemory:
         :param ref_points: User-defined reference points.
         :param p: Parameter for generating uniform reference directions.
         :param mu: Spread control parameter.
-        :param nd: Non-dominated sorting method ('log' or 'standard').
+        :param nd: Non-dominated sorting method (:data:`standard` or :data:`log`).
         """
         self.ref_points = np.array(ref_points)
         self.ref_dirs = tools.uniform_reference_points(self.ref_points.shape[1], p)
@@ -62,7 +62,7 @@ def selRNSGA3(individuals, k, ref_points, ref_dirs, best_point=None, worst_point
     :param mu: Defines the init_simplex_scale of the reference lines used during survival selection.
         Increasing mu will result having solutions with a larger spread.
     :param nd: Specify the non-dominated algorithm to use: :data:`standard` or :data:`log`.
-    :param return_memory: If :data:`True`, return the best, worst and extreme points
+    :param return_memory: If :data:`True`, return the best, worst, and extreme points
         in addition to the chosen individuals.
     :returns: A list of selected individuals.
         If `return_memory` is :data:`True`, a namedtuple with the

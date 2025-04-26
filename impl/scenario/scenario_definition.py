@@ -68,7 +68,7 @@ class Boundary(dict):
         return None
 
     def _check_type_consistency(self, values):
-        """Validate consistency of boundary type values."""
+        """Validate the consistency of boundary type values."""
         for element in values:
             if isinstance(element, list):
                 assert (len(element) == 2)
@@ -207,7 +207,7 @@ class ScenarioDefinition:
     def generate_random(cls, predefined_trajectory=False):
         """Generate a random scenario.
 
-        :param predefined_trajectory: Determines whether to select a predefined trajectory or generate a random one
+        :param predefined_trajectory: Determines whether to select a predefined trajectory or generate a random one.
         :return: The generated scenario.
         """
         scenario = cls._generate_empty_scenario()
@@ -225,9 +225,9 @@ class ScenarioDefinition:
         """
         Generate a scenario based on a predefined leaderboard style.
 
-        :param scenario_type: Type of leaderboard scenario (e.g., 'crossing_negotiation', 'pedestrian_emerging').
+        :param scenario_type: Type of leaderboard scenario (e.g., :data:`crossing_negotiation`, :data:`pedestrian_emerging`).
         :type scenario_type: str
-        :param kwargs: Additional parameters passed to the LeaderBoardFactory.
+        :param kwargs: Additional parameters passed to the :class:`LeaderBoardFactory`.
         :return: A leaderboard scenario instance.
         """
         scenario = cls._generate_empty_scenario()
@@ -268,7 +268,7 @@ class ScenarioDefinition:
         """
         Create an empty scenario template including an ego vehicle, its trajectory, and basic environment settings.
 
-        :return: An empty ScenarioDefinition instance with initialized fields.
+        :return: An empty :class:`ScenarioDefinition` instance with initialized fields.
         """
         scenario = cls()
         scenario.ego_vehicle = Vehicle.generate_random()
@@ -286,9 +286,9 @@ class ScenarioDefinition:
     @classmethod
     def _random_predefined_trajectory(cls):
         """
-        Select a random trajectory definition from the list of predefined trajectories given in config.yaml.
+        Select a random trajectory definition from the list of predefined trajectories given in `config.yaml`.
 
-        :return: The selected trajectroy definition.
+        :return: The selected trajectory definition.
         """
         trajectory_def = random.choice(cls._TRAJECTORY).copy()
         trajectory_def["direction"] = random.choice(trajectory_def.get("direction", [None]))
@@ -336,7 +336,7 @@ class ScenarioDefinition:
         """
         Construct a complete trajectory for the ego vehicle, based on the starting point and direction.
 
-        :param trajectory_def: Dictionary containing 'start', 'direction', and optionally 'junction_exit'.
+        :param trajectory_def: Dictionary containing `start`, `direction`, and optionally `junction_exit`.
         :return: A tuple of trajectory waypoints, GPS route, CARLA route, and junction status.
         :raises InvalidScenarioDefinitionError: If the trajectory direction is not valid given the starting location.
         """
@@ -394,7 +394,7 @@ class ScenarioDefinition:
         """
         Return the ego vehicle's starting position.
 
-        :return: Dictionary containing the 'x', 'y', 'z', 'yaw', and 'speed' values.
+        :return: Dictionary containing the `x`, `y`, `z`, `yaw`, and `speed` values.
         """
         return self.trajectory["start"]
 
@@ -443,10 +443,10 @@ class ScenarioDefinition:
         """
         Add a new actor to the scenario.
 
-        :param category: Type of the actor to add ('vehicle', 'walker', or 'static').
+        :param category: Type of the actor to add (:data:`vehicle`, :data:`walker`, or :data:`static`).
         :param new_actor: The actor instance to add.
-        :param mark: Whether to mark this actor as special (default: False).
-        :param tilt_dir: Apply a tilt to the actor's position ('left', 'right', or None).
+        :param mark: Whether to mark this actor as special (default: :data:`False`).
+        :param tilt_dir: Apply a tilt to the actor's position (:data:`left`, :data:`right`, or :data:`None`).
         """
         actors = getattr(self, f"{category}s")
         new_actor_dc = deepcopy(new_actor)
@@ -458,7 +458,7 @@ class ScenarioDefinition:
         """
         Remove the nearest actor of the specified category and region.
 
-        :param category: Actor type ('vehicle', 'walker', or 'static').
+        :param category: Actor type (:data:`vehicle`, :data:`walker`, or :data:`static`).
         :param region: Region constraint for selecting the actor to remove.
         """
         actors = getattr(self, f"{category}s")
@@ -470,11 +470,11 @@ class ScenarioDefinition:
         """
         Replace the nearest actor of the given category and region with a new actor.
 
-        :param category: Actor type ('vehicle', 'walker', or 'static').
+        :param category: Actor type (:data:`vehicle`, :data:`walker`, or :data:`static`).
         :param region: Region constraint for selecting the actor to replace.
         :param new_actor: New actor instance to insert.
-        :param mark: Whether to mark the new actor (default: False).
-        :param tilt_dir: Tilt direction to apply ('left', 'right', or None).
+        :param mark: Whether to mark the new actor (default: :data:`False`).
+        :param tilt_dir: Tilt direction to apply (:data:`left`, :data:`right`, or :data:`None`).
         """
         actors = getattr(self, f"{category}s")
         index = ScenarioDefinition._pick_nearest_actor(actors, region)
@@ -489,7 +489,7 @@ class ScenarioDefinition:
         """
         Update a global scenario attribute.
 
-        :param category: Attribute name to update (e.g., 'weather', 'brightness').
+        :param category: Attribute name to update (e.g., :data:`weather`, :data:`brightness`).
         :param value: New value to assign to the attribute.
         """
         setattr(self, category, value)
@@ -498,7 +498,7 @@ class ScenarioDefinition:
         """
         Update an attribute of the ego vehicle.
 
-        :param category: Attribute to update ('position', 'yaw', 'speed', etc.).
+        :param category: Attribute to update (:data:`position`, :data:`yaw`, :data:`speed`, etc.).
         :param value: New value for the attribute.
         """
         if category == "position":
@@ -547,8 +547,8 @@ class ScenarioDefinition:
         """
         Update an attribute for all marked actors of a specific category.
 
-        :param category: Actor type ('vehicle', 'walker', or 'static').
-        :param attribute: Attribute name to update (e.g., 'speed', 'yaw').
+        :param category: Actor type (:data:`vehicle`, :data:`walker`, or :data:`static`).
+        :param attribute: Attribute name to update (e.g., :data:`speed`, :data:`yaw`).
         :param value: New value to assign to the attribute.
         """
         actors = getattr(self, f"{category}s")
@@ -567,7 +567,7 @@ class ScenarioDefinition:
 
         :param actors: List of actor instances to select from.
         :param region: Region to filter actors by (optional).
-        :return: Index of the randomly selected actor, or -1 if none found.
+        :return: Index of the randomly selected actor, or :data:`-1` if :data:`None` found.
         """
         index, count = -1, 0
         for i, actor in enumerate(actors):
@@ -584,7 +584,7 @@ class ScenarioDefinition:
 
         :param actors: List of actor instances to choose from.
         :param region: Region to filter actors by (optional).
-        :return: Index of the actor with minimum radius, or -1 if no actor satisfies conditions.
+        :return: Index of the actor with minimum radius, or :data:`-1` if no actor satisfies conditions.
         """
         candidates = [(i, actor) for i, actor in enumerate(actors)
                       if not actor.mark and (region is None or actor.region == region)]
@@ -595,10 +595,10 @@ class ScenarioDefinition:
         Compute a distance measure between two scenarios.
         The distance accounts for both scenario attributes and actor configurations.
 
-        :param other: Another ScenarioDefinition instance to compare against.
+        :param other: Another :class:`ScenarioDefinition` instance to compare against.
         :param scaling: Scaling factor for discrete differences (default from config).
         :return: Computed distance between two scenarios.
-        :raises ValueError: If 'other' is not a ScenarioDefinition.
+        :raises ValueError: If `other` is not a :class:`ScenarioDefinition`.
         """
         if str(type(other)) != str(type(self)):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
@@ -621,7 +621,7 @@ class ScenarioDefinition:
         """
         Perform tournament selection on a population.
 
-        :param population: List of ScenarioDefinition instances.
+        :param population: List of :class:`ScenarioDefinition` instances.
         :param k: Number of individuals to select (default: 2).
         :return: Selected individuals.
         """
@@ -631,9 +631,9 @@ class ScenarioDefinition:
         """
         Apply uniform crossover on two scenarios by swapping their attributes and actors.
 
-        :param other: Another ScenarioDefinition instance to mate with.
+        :param other: Another :class:`ScenarioDefinition` instance to mate with.
         :param cxpb: Crossover probability (default from config).
-        :raises ValueError: If 'other' is not a ScenarioDefinition.
+        :raises ValueError: If `other` is not a :class:`ScenarioDefinition`.
         """
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
@@ -677,7 +677,7 @@ class ScenarioDefinition:
 
         :param actor_def: Actor definition containing spawn information.
         :param scenario_duration: Total duration of the scenario to compute the trajectory (in seconds).
-        :return: List of trajectory points as dictionaries with 'x' and 'y' keys.
+        :return: List of trajectory points as dictionaries with `x` and `y` keys.
         """
         num_trajectory_points = 30
         spawn_point = actor_def.get_config()['spawn_point']
@@ -715,7 +715,7 @@ class ScenarioDefinition:
 
     def clear_marks(self):
         """
-        Clear the 'mark' attribute for all vehicles, walkers, and statics.
+        Clear the :attr:`mark` attribute for all vehicles, walkers, and statics.
         """
         for actor in self.vehicles + self.walkers + self.statics:
             actor.mark = False
@@ -727,7 +727,7 @@ class ScenarioDefinition:
 
         :param this: First list to compare.
         :param that: Second list to compare.
-        :return: True if lists are equivalent, False otherwise.
+        :return: :data:`True` if lists are equivalent, :data:`False` otherwise.
         """
         if len(this) != len(that): return False
         copy = list(this)
@@ -743,7 +743,7 @@ class ScenarioDefinition:
         Check if two ScenarioDefinition instances are equivalent.
 
         :param other: Another ScenarioDefinition to compare against.
-        :return: True if scenarios are equivalent, False otherwise.
+        :return: :data:`True` if scenarios are equivalent, :data:`False` otherwise.
         """
         # return (isinstance(other, self.__class__) and
         return (str(type(self)) == str(type(other)) and
@@ -758,7 +758,7 @@ class ScenarioDefinition:
 
     def __repr__(self):
         """
-        Generate a string representation of the ScenarioDefinition.
+        Generate a string representation of the :class:`ScenarioDefinition`.
 
         :return: Readable string showing the scenario's key attributes.
         """
@@ -784,7 +784,7 @@ class Actor(ABC):
 
     def __init__(self, radius, angle, yaw, model, *args, **kwargs):
         """
-        Initialize a new Actor instance.
+        Initialize a new :class:`Actor` instance.
 
         :param radius: Distance from the ego vehicle.
         :param angle: Angular direction around the ego vehicle.
@@ -801,7 +801,7 @@ class Actor(ABC):
 
     def update_region(self):
         """
-        Update the region (LEFT, FOCUS, RIGHT) of the actor based on its angle.
+        Update the region (:data:`LEFT`, :data:`FOCUS`, :data:`RIGHT`) of the actor based on its angle.
         """
         self.region = self._BOUNDARY.get_region(self.angle)
 
@@ -825,7 +825,7 @@ class Actor(ABC):
         Generate a random actor with attributes sampled within boundaries.
 
         :param region: Optional region constraint for actor placement.
-        :param none_pb: Probability of returning None for a given attribute.
+        :param none_pb: Probability of returning :data:`None` for a given attribute.
         :return: Randomly generated actor.
         """
         return cls(**{attr: cls._BOUNDARY.random(attr, region, none_pb)
@@ -889,7 +889,7 @@ class Actor(ABC):
         """
         Adjust the actor's angle slightly to left or right.
 
-        :param tilt_dir: Direction of tilt ('left' or 'right').
+        :param tilt_dir: Direction of tilt (:data:`left` or :data:`right`).
         """
         coef = -1 if tilt_dir == "left" else (1 if tilt_dir == "right" else 0)
         self.angle += coef * cfg.CONFIG["boundary"]["tilt_degrees"]
@@ -928,7 +928,7 @@ class Actor(ABC):
         Compare two actors for equality based on key attributes.
 
         :param other: Another actor.
-        :return: True if the actors are equal, False otherwise.
+        :return: :data:`True` if the actors are equal, :data:`False` otherwise.
         """
         return (isinstance(other, self.__class__) and
                 self.radius == other.radius and
@@ -948,7 +948,7 @@ class Actor(ABC):
 
 class Vehicle(Actor):
     """
-    Vehicle class extending Actor, representing a dynamic vehicle in the simulation.
+    :class:`Vehicle` class extending :class:`Actor`, representing a dynamic vehicle in the simulation.
     """
     _ATTRIBUTES = ["speed"]
     _BLUEPRINTS = cfg.CONFIG["blueprint"]["vehicle"]
@@ -956,7 +956,7 @@ class Vehicle(Actor):
 
     def __init__(self, radius, angle, yaw, model, speed):
         """
-        Initialize a Vehicle instance.
+        Initialize a :class:`Vehicle` instance.
 
         :param radius: Distance from the ego vehicle.
         :param angle: Direction angle relative to ego vehicle.
@@ -986,9 +986,9 @@ class Vehicle(Actor):
         Generate a random vehicle, optionally filtering by base model.
 
         :param region: Optional boundary region constraint.
-        :param none_pb: Probability of returning None for an attribute.
+        :param none_pb: Probability of returning :data:`None` for an attribute.
         :param filters: Filters to control base model selection.
-        :return: Randomly generated Vehicle.
+        :return: Randomly generated vehicle.
         """
         vehicle = super().generate_random(region, none_pb)
         if "base_model" in filters:
@@ -1006,15 +1006,15 @@ class Vehicle(Actor):
         """
         Compare two vehicles for equality including speed.
 
-        :param other: Another Vehicle object.
-        :return: True if equal, False otherwise.
+        :param other: Another :class:`Vehicle` object.
+        :return: :data:`True` if equal, :data:`False` otherwise.
         """
         return super().__eq__(other) and self.speed == other.speed
 
 
 class Walker(Actor):
     """
-    Walker class extending Actor, representing a pedestrian in the simulation.
+    :class:`Walker` class extending :class:`Actor`, representing a pedestrian in the simulation.
     """
     _ATTRIBUTES = ["speed"]
     _BLUEPRINTS = cfg.CONFIG["blueprint"]["walker"]
@@ -1022,7 +1022,7 @@ class Walker(Actor):
 
     def __init__(self, radius, angle, yaw, model, speed):
         """
-        Initialize a Walker instance.
+        Initialize a :class:`Walker` instance.
 
         :param radius: Distance from the ego vehicle.
         :param angle: Direction angle relative to ego vehicle.
@@ -1048,15 +1048,15 @@ class Walker(Actor):
         """
         Compare two walkers for equality including speed.
 
-        :param other: Another Walker object.
-        :return: True if equal, False otherwise.
+        :param other: Another :class:`Walker` object.
+        :return: :data:`True` if equal, :data:`False` otherwise.
         """
         return super().__eq__(other) and self.speed == other.speed
 
 
 class Static(Actor):
     """
-    Static class extending Actor, representing a static object (e.g., prop, obstacle) in the simulation.
+    :class:`Static` class extending :class:`Actor`, representing a static object (e.g., prop, obstacle) in the simulation.
     """
     _ATTRIBUTES = []
     _BLUEPRINTS = cfg.CONFIG["blueprint"]["static"]

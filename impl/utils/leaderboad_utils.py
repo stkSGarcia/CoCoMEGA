@@ -123,10 +123,10 @@ def make_yamls():
 
 def vectorize_runtime_data(rt_data):
     """
-    Convert runtime simulation data into a `ScenarioDefinition` object.
+    Convert runtime simulation data into a :class:`ScenarioDefinition` object.
 
     :param rt_data: Dictionary containing runtime simulation data.
-    :return: Generated ScenarioDefinition instance.
+    :return: Generated :class:`ScenarioDefinition` instance.
     """
     scenario_def = ScenarioDefinition._generate_empty_scenario()
     trajectory = rt_data["sim_data"]["trajectory"]

@@ -52,7 +52,7 @@ def parse_list(_type: type, delimeter: str):
 def search(algorithm: str, resume: bool, folder_name: str):
     """Run a search using the specified algorithm.
 
-    :param algorithm: Name of the search algorithm (e.g., 'ccea', 'rs').
+    :param algorithm: Name of the search algorithm (e.g., :data:`ccea`, :data:`rs`, :data:`ga`).
     :param resume: Whether to resume from a previous run.
     :param folder_name: Folder name to resume from.
     """
@@ -80,7 +80,7 @@ def simulate(num: int, file: str):
     """Simulate random or solution-based driving scenarios.
 
     :param num: Number of scenarios to simulate.
-    :param file: Path to a solution file; if None, simulate randomly.
+    :param file: Path to a solution file; if :data:`None`, simulate randomly.
     """
     cfg.init_project_directory("sim")
     if file:
@@ -138,8 +138,7 @@ def collect_runtime_data(agent: str, output: str):
 
 
 def generate_train_data():
-    """Run free simulations to generate training data using rule-based agents.
-    """
+    """Run free simulations to generate training data using rule-based agents."""
 
     logger.info(f"Generating training data...")
 
@@ -248,7 +247,7 @@ def convert2scenarios(directory: str, n: int, towns: List[str]):
     """Convert runtime data files to runtime scenarios.
 
     :param directory: Directory containing runtime data.
-    :param n: Number of scenarios to sample (0 for all).
+    :param n: Number of scenarios to sample (:data:`0` for all).
     :param towns: List of allowed towns for filtering.
     """
     def vectorize(path):

@@ -91,7 +91,7 @@ class MOCCEA(BaseAlgorithm):
         :param pop_scenario: The population of scenarios.
         :param pop_perturbation: The population of perturbations.
         :param evaluated_solutions: The evaluated complete solutions.
-        :return: An archived complete solutions and the number of simulations.
+        :return: Archived complete solutions and the number of simulations.
         """
         # Generate complete solutions from archives.
         complete_solutions = [self.toolbox.collaborate(self.toolbox.clone(scenario), self.toolbox.clone(perturbation))
