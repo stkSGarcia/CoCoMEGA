@@ -35,7 +35,7 @@ class LeaderBoardFactory:
         :param scenario_type: A string indicating the type of scenario to generate.
         :param kwargs: Additional keyword arguments for the generation function.
         :return: Modified scenario object.
-        :raises ValueError: If scenario_type is unknown.
+        :raises ValueError: If `scenario_type` is unknown.
         """
         scenario_types = [name[9:] for name, _ in
                           inspect.getmembers(LeaderBoardFactory, predicate=inspect.isfunction) if
@@ -59,11 +59,11 @@ class LeaderBoardFactory:
         Generate a random lane vehicle scenario.
 
         :param scenario: The scenario object to modify.
-        :param num_vehicles: Number of vehicles to generate. Default is 4.
-        :param distance_between: Distance between vehicles. Default is 15.
-        :param speed: Speed of the vehicles. Default is 10.0.
-        :param vehicle_types: List of vehicle types. Default is ['car', 'truck', 'van'].
-        :param force_crossing: Whether to force crossing vehicles. Default is False.
+        :param num_vehicles: Number of vehicles to generate. Default is :data:`4`.
+        :param distance_between: Distance between vehicles. Default is :data:`15`.
+        :param speed: Speed of the vehicles. Default is :data:`10.0`.
+        :param vehicle_types: List of vehicle types. Default is :data:`['car', 'truck', 'van']`.
+        :param force_crossing: Whether to force crossing vehicles. Default is :data:`False`.
         :return: Modified scenario object.
         """
         if vehicle_types is None:
@@ -82,11 +82,11 @@ class LeaderBoardFactory:
         Generate a crossing negotiation scenario with multiple lane directions.
 
         :param scenario: The scenario object to modify.
-        :param min_vehicles: Minimum number of vehicles on each lane. Default is 1.
-        :param max_vehicles: Maximum number of vehicles on each lane. Default is 2.
-        :param distance_between: Distance between vehicles on each lane. Default is 15.
-        :param speed: Speed of the vehicles. Default is 10.0.
-        :param vehicle_types: List of vehicle types. Default is ['car', 'truck', 'van'].
+        :param min_vehicles: Minimum number of vehicles on each lane. Default is :data:`1`.
+        :param max_vehicles: Maximum number of vehicles on each lane. Default is :data:`2`.
+        :param distance_between: Distance between vehicles on each lane. Default is :data:`15`.
+        :param speed: Speed of the vehicles. Default is :data:`10.0`.
+        :param vehicle_types: List of vehicle types. Default is :data:`['car', 'truck', 'van']`.
         :return: Modified scenario object.
         """
         if vehicle_types is None:
@@ -103,9 +103,9 @@ class LeaderBoardFactory:
         Generate a random lane motorcycle crossing scenario.
 
         :param scenario: The scenario object to modify.
-        :param num_vehicles: Number of vehicles to generate. Default is 4.
-        :param distance_between: Distance between vehicles. Default is 10.
-        :param speed: Speed of the vehicles. Default is 12.0.
+        :param num_vehicles: Number of vehicles to generate. Default is :data:`4`.
+        :param distance_between: Distance between vehicles. Default is :data:`10`.
+        :param speed: Speed of the vehicles. Default is :data:`12.0`.
         :return: Modified scenario object.
         """
         return LeaderBoardFactory.generate_random_lane_vehicles(
@@ -117,9 +117,9 @@ class LeaderBoardFactory:
         Generate a random lane bicycle crossing scenario.
 
         :param scenario: The scenario object to modify.
-        :param num_vehicles: Number of vehicles to generate. Default is 4.
-        :param distance_between: Distance between vehicles. Default is 8.
-        :param speed: Speed of the vehicles. Default is 5.0.
+        :param num_vehicles: Number of vehicles to generate. Default is :data:`4`.
+        :param distance_between: Distance between vehicles. Default is :data:`8`.
+        :param speed: Speed of the vehicles. Default is :data:`5.0`.
         :return: Modified scenario object.
         """
         return LeaderBoardFactory.generate_random_lane_vehicles(
@@ -131,7 +131,7 @@ class LeaderBoardFactory:
         Generate an obstacle avoidance scenario.
 
         :param scenario: The scenario object to modify.
-        :param distance_from_junction: Distance from the junction to place the obstacle. Default is 0.
+        :param distance_from_junction: Distance from the junction to place the obstacle. Default is :data:`0`.
         :return: Modified scenario object.
         """
         return LeaderBoardFactory._generate_obstacle_vehicle(scenario,
@@ -144,8 +144,8 @@ class LeaderBoardFactory:
         Generate a slow moving hazard scenario.
 
         :param scenario: The scenario object to modify.
-        :param distance: Distance from the ego vehicle to generate the hazard. Default is 15.
-        :param speed: Speed of the vehicles. Default is 1.0.
+        :param distance: Distance from the ego vehicle to generate the hazard. Default is :data:`15`.
+        :param speed: Speed of the vehicles. Default is :data:`1.0`.
         :return: Modified scenario object.
         """
         return LeaderBoardFactory._generate_obstacle_vehicle(scenario, ["bicycle", "motorcycle"],
@@ -157,8 +157,8 @@ class LeaderBoardFactory:
         Generate a pedestrian emerging scenario.
 
         :param scenario: The scenario object to modify.
-        :param distance: Distance between the ego vehicle and the pedestrian to be spawned. Default is 10.
-        :param speed: Speed of the pedestrian. Default is 0.8.
+        :param distance: Distance between the ego vehicle and the pedestrian to be spawned. Default is :data:`10`.
+        :param speed: Speed of the pedestrian. Default is :data:`0.8`.
         :return: Modified scenario object.
         """
         from impl.scenario.scenario_definition import Walker
@@ -179,9 +179,9 @@ class LeaderBoardFactory:
 
         :param scenario: The scenario object to modify.
         :param vehicle_types: List of vehicle types.
-        :param distance: Distance from the ego vehicle to generate the hazard. Default is 15.
-        :param distance_from_junction: Distance from the junction to place the obstacle. Default is 0.
-        :param speed: Speed of the vehicles. Default is 0.0.
+        :param distance: Distance from the ego vehicle to generate the hazard. Default is :data:`15`.
+        :param distance_from_junction: Distance from the junction to place the obstacle. Default is :data:`0`.
+        :param speed: Speed of the vehicles. Default is :data:`0.0`.
         :return: Modified scenario object.
         """
         waypoints = [CarlaDataProvider.get_map().get_waypoint(dict_to_location(loc))

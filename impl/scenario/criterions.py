@@ -39,7 +39,6 @@ def _angle_between_vectors(v1, v2):
 
 
 class VehicleMeasurementTest(Criterion):
-
     """Atomic test to record control and positional data of a vehicle during simulation."""
 
     def __init__(self, actor, other_actors, measures, measurement_interval, scenario_def_id, optional=False,
@@ -66,7 +65,7 @@ class VehicleMeasurementTest(Criterion):
     def update(self):
         """Update test status and record data at configured intervals.
 
-        :return: Always returns py_trees.common.Status.RUNNING.
+        :return: Always returns :class:`py_trees.common.Status.RUNNING`.
         """
         new_status = py_trees.common.Status.RUNNING
 
@@ -123,7 +122,7 @@ class VehicleMeasurementTest(Criterion):
         super().terminate(new_status)
 
     def _write_to_file(self):
-        """Write recorded measurements to a CSV file in the 'results' directory."""
+        """Write recorded measurements to a CSV file in the `results` directory."""
         keys = self.values[0].keys()
         with (cfg.CONFIG["workspace"]["sim_result"] / f"{self.scenario_def_id}.csv").open("w", newline="") as f:
             dict_writer = csv.DictWriter(f, keys)

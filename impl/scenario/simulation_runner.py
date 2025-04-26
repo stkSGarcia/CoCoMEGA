@@ -101,7 +101,7 @@ def run_environment(conf):
     Sets environment variables and executes a subprocess to run the simulation.
 
     :param conf: Configuration dictionary for one environment instance.
-    :return: Process return code (0 for success).
+    :return: Process return code (:data:`0` for success).
     """
     global carla_host, carla_port, tm_port
 
@@ -173,13 +173,13 @@ def run_environment(conf):
 
 def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False, additional_config=None):
     """
-    Run a single `ScenarioDefinition` through CARLA simulation.
+    Run a single :class:`ScenarioDefinition` through CARLA simulation.
 
-    :param scenario: ScenarioDefinition object to simulate.
+    :param scenario: :class:`ScenarioDefinition` object to simulate.
     :param agent_name: Name of the agent configuration to use.
     :param rerun: Whether to force rerunning even if results exist.
     :param additional_config: Additional parameters to pass.
-    :return: (Result dataframe, whether simulation was newly executed).
+    :return: (Result `Dataframe`, whether simulation was newly executed).
     """
     global carla_host, carla_port, tm_port, gpu_device
     assert carla_host is not None and carla_port is not None and tm_port is not None and gpu_device is not None
@@ -250,7 +250,7 @@ def run_scenarios(scenarios, agent_name="v1", rerun=False, additional_confs=None
     """
     Run a batch of scenarios either sequentially or in parallel.
 
-    :param scenarios: List of ScenarioDefinition objects to simulate.
+    :param scenarios: List of :class:`ScenarioDefinition` objects to simulate.
     :param agent_name: Name of agent configuration to use.
     :param rerun: Whether to rerun already evaluated scenarios.
     :param additional_confs: Optional additional configurations per scenario.
@@ -291,8 +291,8 @@ def run_solutions(file: str, top: int = -1, verbose=True, agent_name="v1", recor
     Each solution typically contains a source and a follow-up scenario.
 
     :param file: Path to the pickle file containing solutions.
-    :param top: Number of top solutions to run (-1 runs all).
-    :param verbose: If True, run with output logs; otherwise silent.
+    :param top: Number of top solutions to run (:data:`-1` runs all).
+    :param verbose: If :data:`True`, run with output logs; otherwise silent.
     :param agent_name: Agent name to use.
     :param record_video: Whether to record video outputs for the runs.
     """
@@ -334,7 +334,7 @@ def already_recorded(solution_path):
     Check if a recording already exists for a given solution path.
 
     :param solution_path: Path where the source and follow-up recordings are expected.
-    :return: True if already recorded, False otherwise.
+    :return: :data:`True` if already recorded, :data:`False` otherwise.
     """
     try:
         if len(os.listdir(solution_path / "source")) > 0 and len(os.listdir(solution_path / "follow-up")) > 0:

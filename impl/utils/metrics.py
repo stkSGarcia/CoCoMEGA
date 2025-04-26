@@ -52,7 +52,7 @@ def avg_pw_from_matrix(dist_matrix, indices=None):
     Compute the average pairwise distance from a precomputed distance matrix.
 
     :param dist_matrix: A precomputed distance matrix.
-    :param indices: The indices of the solutions to consider. If None, all solutions are considered.
+    :param indices: The indices of the solutions to consider. If :data:`None`, all solutions are considered.
     :return: The average pairwise distance between the selected solutions.
     """
     if indices is None:

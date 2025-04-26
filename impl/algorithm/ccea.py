@@ -112,7 +112,7 @@ class CCEA(BaseAlgorithm):
         :param pop_perturbation: The population of perturbations.
         :param archive_perturbation: The archive of perturbations.
         :param evaluated_solutions: The evaluated complete solutions.
-        :return: An archived complete solutions and the number of simulations.
+        :return: Archived complete solutions and the number of simulations.
         """
         # Generate complete solutions from archives.
         complete_solutions = ([self.toolbox.collaborate(self.toolbox.clone(scenario), self.toolbox.clone(perturbation))
@@ -237,7 +237,7 @@ class CCEA(BaseAlgorithm):
         return offsprings
 
     def _shrink(self, population, size, co_population):
-        """Select from overproduced population based on a heuristic function.
+        """Select from an overproduced population based on a heuristic function.
 
         :param population: The overproduced population.
         :param size: The size of the target population.

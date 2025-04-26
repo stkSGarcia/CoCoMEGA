@@ -54,7 +54,7 @@ class _DirectoryAccessor:
     def __setitem__(self, key, value):
         """Set a directory path for a given key.
 
-        :param key: Directory key (excluding 'root').
+        :param key: Directory key (excluding `root`).
         :param value: Directory path.
         """
         if key == "root":
@@ -80,7 +80,7 @@ class _DirectoryAccessor:
         """Check if the workspace configuration contains the key.
 
         :param key: Key to check.
-        :return: True if key exists, False otherwise.
+        :return: :data:`True` if key exists, :data:`False` otherwise.
         """
         return key in self._config
 
@@ -88,7 +88,7 @@ class _DirectoryAccessor:
         """Get the value for a given key, with optional default.
 
         :param key: Key to look up.
-        :param default: Default value if key is not present.
+        :param default: Default value if `key` is not present.
         :return: Value associated with the key.
         """
         return self._config.get(key, default)

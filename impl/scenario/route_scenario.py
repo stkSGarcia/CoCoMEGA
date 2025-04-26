@@ -75,12 +75,12 @@ def convert_json_to_actor(actor_dict):
 
 def compare_scenarios(scenario_choice, existent_scenario):
     """
-    Compare function for scenarios based on distance of the scenario start position
+    Compare function for scenarios based on the distance of the scenario start position.
     """
 
     def transform_to_pos_vec(scenario):
         """
-        Convert left/right/front to a meaningful CARLA position
+        Convert left/right/front to a meaningful CARLA position.
         """
         position_vec = [scenario['trigger_position']]
         if scenario['other_actors'] is not None:
@@ -115,7 +115,7 @@ def compare_scenarios(scenario_choice, existent_scenario):
 def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot=False,
                       random_location=False, color=None, actor_category="car", speed=0):
     """
-    This method tries to create a new actor, returning it if successful (raises InvalidScenarioConfError otherwise).
+    This method tries to create a new actor, returning it if successful (raises :exc:`InvalidScenarioConfError` otherwise).
     """
     spawn_point = carla.Transform(anchor.transform(spawn_point.location), spawn_point.rotation) \
         if anchor else carla.Transform(spawn_point.location, spawn_point.rotation)
@@ -189,15 +189,15 @@ def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot
 
 class RouteScenario(BasicScenario):
     """
-    Implementation of a RouteScenario, i.e. a scenario that consists of driving along a pre-defined route,
-    along which several smaller scenarios are triggered
+    Implementation of a RouteScenario, i.e., a scenario that consists of driving along a pre-defined route,
+    along which several smaller scenarios are triggered.
     """
 
     category = "RouteScenario"
 
     def __init__(self, world, scenario_definition, agent_instance, debug_mode=0, criteria_enable=True):
         """
-        Setup all relevant parameters and create scenarios along route
+        Setup all relevant parameters and create scenarios along route.
         """
         # self.config = config
         self.route = None
@@ -266,7 +266,7 @@ class RouteScenario(BasicScenario):
 
     def _update_ego_vehicle(self):
         """
-        Set/Update the start position of the ego_vehicle
+        Set/Update the start position of the ego_vehicle.
         """
         # move ego to correct position
         # elevate_transform = self.route[0][0]
@@ -299,7 +299,7 @@ class RouteScenario(BasicScenario):
 
     def _estimate_route_timeout(self):
         """
-        Estimate the duration of the route
+        Estimate the duration of the route.
         """
         route_length = 0.0  # in meters
 
@@ -468,7 +468,7 @@ class RouteScenario(BasicScenario):
         return list_of_actors
 
     def _create_behavior(self):
-        """Define the main behavior tree of the scenario (typically idle)"""
+        """Define the main behavior tree of the scenario (typically idle)."""
         behavior = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL)
         behavior.add_child(py_trees.behaviours.Running(name="Keep Running"))
         return behavior

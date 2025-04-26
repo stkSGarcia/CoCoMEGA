@@ -70,7 +70,7 @@ def calculate_auc_improvements(auc_df):
     """
     Calculate and print the average improvement in AUC (Area Under the Curve) for CoCoMEGA compared to other algorithms.
 
-    :param auc_df: A DataFrame containing the AUC values for different algorithms and thresholds.
+    :param auc_df: A `DataFrame` containing the AUC values for different algorithms and thresholds.
     """
     comparison_df = auc_df.pivot_table(index=['fitness_threshold', 'distance_threshold'],
                                        columns='alg',

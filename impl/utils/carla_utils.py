@@ -102,7 +102,7 @@ def filter_junction_wp_direction(reference_yaw, wp_list, direction='opposite'):
 
     :param reference_yaw: Reference yaw in degrees.
     :param wp_list: List of CARLA waypoints.
-    :param direction: Target direction ('left', 'right', 'forward', or 'opposite').
+    :param direction: Target direction (:data:`left`, :data:`right`, :data:`forward`, or :data:`opposite`).
     :return: Filtered list of waypoints matching the direction.
     """
 
@@ -150,7 +150,7 @@ def get_junction(location, distance_limit=None):
 
     :param location: CARLA location.
     :param distance_limit: Maximum distance to search.
-    :return: (Partial trajectory to junction, junction object or None)
+    :return: (Partial trajectory to junction, junction object or :data:`None`)
     """
     waypoint = CarlaDataProvider.get_map().get_waypoint(location)
     partial_trajectory = [waypoint.transform]
@@ -198,7 +198,7 @@ def transform_to_dict(transform):
     Convert a CARLA transform to a dictionary.
 
     :param transform: CARLA transform.
-    :return: Dictionary with x, y, z, yaw.
+    :return: Dictionary with `x`, `y`, `z`, `yaw`.
     """
     return {
         'x': transform.location.x,
@@ -212,7 +212,7 @@ def dict_to_transform(_dict):
     """
     Convert a dictionary into a CARLA transform.
 
-    :param _dict: Dictionary with x, y, z, yaw keys.
+    :param _dict: Dictionary with `x`, `y`, `z`, `yaw` keys.
     :return: CARLA transform.
     """
     return carla.Transform(
@@ -226,7 +226,7 @@ def location_to_dict(location):
     Convert a CARLA location to a dictionary.
 
     :param location: CARLA location.
-    :return: Dictionary with x, y, z.
+    :return: Dictionary with `x`, `y`, `z`.
     """
     return {
         'x': location.x,
@@ -239,7 +239,7 @@ def dict_to_location(_dict):
     """
     Convert a dictionary into a CARLA location.
 
-    :param _dict: Dictionary with x, y, z keys.
+    :param _dict: Dictionary with `x`, `y`, `z` keys.
     :return: CARLA location.
     """
     return carla.Location(x=_dict["x"], y=_dict["y"], z=_dict["z"])
@@ -296,7 +296,7 @@ def compass_to_yaw(compass):
 
 def get_direction(trajectory):
     """
-    Infer route direction (forward, left, right, or opposite) from a trajectory.
+    Infer route direction (:data:`forward`, :data:`left`, :data:`right`, or :data:`opposite`) from a trajectory.
 
     :param trajectory: List of (location, road option) tuples.
     :return: String representing the general direction.
@@ -350,7 +350,7 @@ def group_junction_directions(junction, reference_yaw):
 
     :param junction: CARLA junction object.
     :param reference_yaw: Yaw to compare against.
-    :return: Dictionary with keys 'forward', 'left', 'right' and lists of waypoints.
+    :return: Dictionary with keys `forward`, `left`, `right` and lists of waypoints.
     """
     _, exit_wps = get_junction_topology(junction)
 
