@@ -14,11 +14,24 @@ logger = logging.getLogger(__name__)
 
 
 class GeneticAlgorithm(BaseAlgorithm):
+    """Standard Genetic Algorithm."""
+
     def __init__(self, toolbox, budget, seed=None, keep_best=False):
+        """Constructor.
+
+        :param toolbox: :class:`deap.base.Toolbox` that defines the problem.
+        :param budget: Search budget.
+        :param seed: Random seed.
+        :param keep_best: Whether to use an archive in the search.
+        """
         super().__init__(toolbox, budget, seed)
         self.keep_best = keep_best
 
     def solve(self, resume=False):
+        """Main optimization loop for GA. Supports resuming from a checkpoint.
+
+        :param resume: Whether to resume from the latest checkpoint.
+        """
         logger.info("Genetic algorithm started.")
         logger.info(self.budget.print_budget())
 
@@ -106,9 +119,9 @@ class GeneticAlgorithm(BaseAlgorithm):
     def _breed(self, population, size):
         """Perform selection, crossover and mutation on individuals.
 
-        @param population: The individuals to be bred.
-        @param size: The size of the offsprings.
-        @return: A list of offsprings.
+        :param population: The individuals to be bred.
+        :param size: The size of the offsprings.
+        :return: A list of offsprings.
         """
         assert len(population) > 0
         offsprings = tools.selTournament(population, k=size, tournsize=CONFIG["scenario"]["tournament"])

@@ -42,6 +42,9 @@ mr12 = MR([vehicle_change_speed, walker_change_speed], steer_keep)
 mr13 = MR([vehicle_add_left, vehicle_add_focus, vehicle_add_right,
            walker_add_left, walker_add_focus, walker_add_right], steer_keep)
 
+#: Predefined MR set 1.
 mr_set1 = MRSet([mr1, mr2, mr3, mr4, mr5])
+#: Predefined MR set 2.
 mr_set2 = MRSet([mr6, mr7])
+#: Predefined MR set 3.
 mr_set3 = MRSet([mr8, mr9, mr10, mr11, mr12, mr13])

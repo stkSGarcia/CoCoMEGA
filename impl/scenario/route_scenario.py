@@ -47,18 +47,15 @@ INITIAL_SECONDS_DELAY = 5.0
 
 
 def convert_json_to_transform(actor_dict):
-    """
-    Convert a JSON string to a CARLA transform
-    """
+    """Convert a JSON dictionary to a CARLA Transform object."""
+
     return carla.Transform(location=carla.Location(x=float(actor_dict['x']), y=float(actor_dict['y']),
                                                    z=float(actor_dict['z'])),
                            rotation=carla.Rotation(roll=0.0, pitch=0.0, yaw=float(actor_dict['yaw'])))
 
 
 def convert_json_to_actor(actor_dict):
-    """
-    Convert a JSON string to an ActorConfigurationData dictionary
-    """
+    """Convert a JSON dictionary to an ActorConfigurationData object."""
     node = ET.Element('waypoint')
     sp = actor_dict['spawn_point']
     node.set('x', sp['x'])
@@ -77,6 +74,13 @@ def convert_json_to_actor(actor_dict):
 
 
 def convert_polar_to_cartesian(radius, angle_degrees):
+    """
+    Convert polar coordinates to Cartesian coordinates.
+
+    :param radius: The polar radius.
+    :param angle_degrees: The polar angle in degrees.
+    :return: A tuple (x, y) containing the Cartesian coordinates.
+    """
     x = radius * math.cos(math.radians(angle_degrees))
     y = radius * math.sin(math.radians(angle_degrees))
     return x, y
@@ -84,12 +88,12 @@ def convert_polar_to_cartesian(radius, angle_degrees):
 
 def compare_scenarios(scenario_choice, existent_scenario):
     """
-    Compare function for scenarios based on distance of the scenario start position
+    Compare function for scenarios based on the distance of the scenario start position.
     """
 
     def transform_to_pos_vec(scenario):
         """
-        Convert left/right/front to a meaningful CARLA position
+        Convert left/right/front to a meaningful CARLA position.
         """
         position_vec = [scenario['trigger_position']]
         if scenario['other_actors'] is not None:
@@ -124,7 +128,7 @@ def compare_scenarios(scenario_choice, existent_scenario):
 def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot=False,
                       random_location=False, color=None, actor_category="car", speed=0):
     """
-    This method tries to create a new actor, returning it if successful (raises InvalidScenarioConfError otherwise).
+    This method tries to create a new actor, returning it if successful (raises :exc:`InvalidScenarioConfError` otherwise).
     """
     spawn_point = carla.Transform(anchor.transform(spawn_point.location), spawn_point.rotation) \
         if anchor else carla.Transform(spawn_point.location, spawn_point.rotation)
@@ -198,15 +202,15 @@ def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot
 
 class RouteScenario(BasicScenario):
     """
-    Implementation of a RouteScenario, i.e. a scenario that consists of driving along a pre-defined route,
-    along which several smaller scenarios are triggered
+    Implementation of a RouteScenario, i.e., a scenario that consists of driving along a pre-defined route,
+    along which several smaller scenarios are triggered.
     """
 
     category = "RouteScenario"
 
     def __init__(self, world, scenario_definition, agent_instance, debug_mode=0, criteria_enable=True):
         """
-        Setup all relevant parameters and create scenarios along route
+        Setup all relevant parameters and create scenarios along route.
         """
         # self.config = config
         self.route = None
@@ -275,7 +279,7 @@ class RouteScenario(BasicScenario):
 
     def _update_ego_vehicle(self):
         """
-        Set/Update the start position of the ego_vehicle
+        Set/Update the start position of the ego_vehicle.
         """
         # move ego to correct position
         # elevate_transform = self.route[0][0]
@@ -308,7 +312,7 @@ class RouteScenario(BasicScenario):
 
     def _estimate_route_timeout(self):
         """
-        Estimate the duration of the route
+        Estimate the duration of the route.
         """
         route_length = 0.0  # in meters
 
@@ -351,6 +355,7 @@ class RouteScenario(BasicScenario):
                                color=carla.Color(255, 0, 0), life_time=persistency)
 
     def _draw_boundary(self, boundary, anchor, tilt=None, z=0.1):
+        """Draw the given boundary. Used for debugging."""
         rads, angs = boundary.value["radius"], boundary.value["angle"]
         coef = -1 if tilt == "left" else (1 if tilt == "right" else 0)
         angs = [ang + coef * CONFIG["boundary"]["tilt_degrees"] for ang in angs]
@@ -370,6 +375,7 @@ class RouteScenario(BasicScenario):
                                                      life_time=CONFIG["simulation"]["scenario_duration"] + 1)
 
     def _draw_route(self, trajectory, z=0.1):
+        """Draw the given trajectory. Used for debugging."""
         for i in range(len(trajectory) - 1):
             start_point = carla.Location(
                 x=trajectory[i]["x"],
@@ -446,6 +452,7 @@ class RouteScenario(BasicScenario):
         return sampled_scenarios
 
     def _build_scenario_configuration(self, scenario_def, ego_vehicle, agent_instance):
+        """Assemble the ScenarioConfiguration object."""
         list_of_actor_conf_instances = self._get_actors_instances(scenario_def.get_other_actors())
         # Create an actor configuration for the ego-vehicle trigger position
 
@@ -465,10 +472,7 @@ class RouteScenario(BasicScenario):
         return scenario_config
 
     def _get_actors_instances(self, list_of_antagonist_actors):
-        """
-        Get the full list of actor instances.
-        Receives a list of actor definitions and creates an actual list of ActorConfigurationObjects
-        """
+        """Convert a list of actor dictionaries to actor instances."""
 
         list_of_actors = []
         for actor_def in list_of_antagonist_actors:
@@ -477,9 +481,7 @@ class RouteScenario(BasicScenario):
         return list_of_actors
 
     def _create_behavior(self):
-        """
-        Basic behavior do nothing, i.e. Idle
-        """
+        """Define the main behavior tree of the scenario (typically idle)."""
 
         behavior = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL)
         behavior.add_child(py_trees.behaviours.Running(name="Keep Running"))
@@ -497,8 +499,7 @@ class RouteScenario(BasicScenario):
         return behavior
 
     def _create_test_criteria(self):
-        """
-        """
+        """Define the success and monitoring criteria for the scenario."""
         criteria = []
         # route = convert_transform_to_location(self.route)
 
@@ -516,7 +517,5 @@ class RouteScenario(BasicScenario):
         return criteria
 
     def __del__(self):
-        """
-        Remove all actors upon deletion
-        """
+        """Ensure proper cleanup of actors on deletion."""
         self.remove_all_actors()

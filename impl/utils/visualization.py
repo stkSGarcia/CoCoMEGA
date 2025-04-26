@@ -58,7 +58,7 @@ skip_map = {"ccea": 5, "ccea-d": 5, "ga": 2, "rs": 1}
 
 class Visualizer:
     """
-        Visualization module with statistics data.
+    Visualization module with statistics data.
     """
 
     @classmethod
@@ -68,12 +68,12 @@ class Visualizer:
     @classmethod
     def visualize_gen_stats(cls, stats, show, out_dir):
         """
-            Visualization of generation statistics data.
-            :param stats: A dictionary containing lists of statistics per generation.
-                              Expected keys are 'gen' for generation numbers,
-                              'avg' for average fitness, 'max' for maximum fitness, etc.
-            :param show: A boolean to determine whether to show the plots or not.
-            :param out_dir: Output directory of plots
+        Visualization of generation statistics data.
+        :param stats: A dictionary containing lists of statistics per generation.
+            Expected keys are :data:`gen` for generation numbers,
+            :data:`avg` for average fitness, :data:`max` for maximum fitness, etc.
+        :param show: A boolean to determine whether to show the plots or not.
+        :param out_dir: Output directory of plots
         """
         stats = pd.DataFrame(stats)
         if len(stats) == 0:
@@ -91,6 +91,17 @@ class Visualizer:
 
     @classmethod
     def plot_histogram(cls, stats, color, show, out_dir, title=None, name=None, verbose_name=None):
+        """
+        Plot a histogram of the provided statistics.
+
+        :param stats: Data to be plotted in the histogram.
+        :param color: Whether the color is for a specific group or not.
+        :param show: Whether to display the plot.
+        :param out_dir: The directory to save the plot.
+        :param title: The title of the histogram.
+        :param name: The name for the histogram.
+        :param verbose_name: More descriptive name for the histogram.
+        """
         fig = go.Figure()
 
         # Adding histogram trace
@@ -122,6 +133,13 @@ class Visualizer:
 
     @classmethod
     def visualize_algorithm_Stats(cls, path, name, out_dir):
+        """
+        Visualize algorithm statistics from a logbook file.
+
+        :param path: The file path of the logbook containing the algorithm statistics.
+        :param name: The name of the algorithm being visualized.
+        :param out_dir: The directory to save the plot.
+        """
         with open(path, "rb") as f:
             logbook = pickle.load(f)
         stats = pd.DataFrame(logbook)
@@ -166,7 +184,11 @@ class Visualizer:
     @classmethod
     def _plot_generation_statistics(cls, stats, out_dir):
         """
-            Generates line plots for evolutionary algorithm statistics across generations.
+        Generate line plots for evolutionary algorithm statistics across generations.
+
+        :param stats: Data containing statistics over generations.
+        :param out_dir: The directory to save the plots.
+        :return: List of figures created during the plotting.
         """
         timestamp = int(round(time.time() * 1000))
         figs = []
@@ -219,14 +241,20 @@ class Visualizer:
     @staticmethod
     def _show_plot(fig):
         """
-            Displays the plot.
+        Display the plot.
+
+        :param fig: The plot figure to display.
         """
         fig.show()
 
     @staticmethod
     def _save_fig(fig, out_dir, name):
         """
-            Saves figure as image
+        Save the figure as an image file.
+
+        :param fig: The figure to save.
+        :param out_dir: The directory where the image should be saved.
+        :param name: The name of the saved file.
         """
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
@@ -236,11 +264,11 @@ class Visualizer:
 def visualize_in_one(data, file_name=None, plot_nan=True, verbose=False, show=False):
     """Plot all statistics data in one figure.
 
-    @param data: Statistics data or data file.
-    @param file_name: Specify the file name for plots when the data is not a file path.
-    @param plot_nan: Plot NaN values.
-    @param verbose: Show plots of populations and archives.
-    @param show: A boolean to determine whether to show the plots or not.
+    :param data: Statistics data or data file.
+    :param file_name: Specify the file name for plots when the data is not a file path.
+    :param plot_nan: Plot NaN values.
+    :param verbose: Show plots of populations and archives.
+    :param show: A boolean to determine whether to show the plots or not.
     """
     if isinstance(data, str):
         file_name = Path(data).stem
@@ -325,17 +353,17 @@ def visualize_comparison(files: Dict[str, List[str]], max_percentile=0.75,
                          plot_nan=True, verbose=False, show=False):
     """Plot comparisons among different algorithms.
 
-    @param files: Statistics data files of different algorithms.
-    @param max_percentile: Plot the given percentile of max fitness.
-    @param box: Show box plots.
-    @param interval: Width of intervals for aggregation.
-    @param avg_line: Show average lines.
-    @param trend_line: Show trend lines.
-    @param regression_degree: Degree of regression.
-    @param all_lines: Show original lines.
-    @param plot_nan: Plot NaN values.
-    @param verbose: Show more plots.
-    @param show: A boolean to determine whether to show the plots or not.
+    :param files: Statistics data files of different algorithms.
+    :param max_percentile: Plot the given percentile of max fitness.
+    :param box: Show box plots.
+    :param interval: Width of intervals for aggregation.
+    :param avg_line: Show average lines.
+    :param trend_line: Show trend lines.
+    :param regression_degree: Degree of regression.
+    :param all_lines: Show original lines.
+    :param plot_nan: Plot NaN values.
+    :param verbose: Show more plots.
+    :param show: A boolean to determine whether to show the plots or not.
     """
     data = {}
     for name, file_list in files.items():
@@ -426,12 +454,12 @@ def visualize_violation(source, follow_up, mr_set, offset=3, verbose=False, show
     """Plot the extent of violation between the source results
     and follow-up results based on the given metamorphic relations.
 
-    @param source: The source results.
-    @param follow_up: The follow-up results.
-    @param mr_set: The given metamorphic relations.
-    @param offset: The offset between the source and follow-up curves.
-    @param verbose: Plot the DTW path and matches of positions.
-    @param show: A boolean to determine whether to show the plots or not.
+    :param source: The source results.
+    :param follow_up: The follow-up results.
+    :param mr_set: The given metamorphic relations.
+    :param offset: The offset between the source and follow-up curves.
+    :param verbose: Plot the DTW path and matches of positions.
+    :param show: A boolean to determine whether to show the plots or not.
     """
     labels = Relation.convert_labels(mr_set.labels)
     matches, origin_df = Relation.pairwise_dataframe(source, follow_up, mr_set.field, labels)
@@ -507,8 +535,8 @@ def visualize_violation(source, follow_up, mr_set, offset=3, verbose=False, show
 def visualize_diversity(files: Dict[str, List[str]], show=False):
     """Plot the solution diversity among different algorithms.
 
-    @param files: Solution data files of different algorithms.
-    @param show: A boolean to determine whether to show the plots or not.
+    :param files: Solution data files of different algorithms.
+    :param show: A boolean to determine whether to show the plots or not.
     """
     data = (defaultdict(list), defaultdict(list), defaultdict(list))
     for name, file_list in files.items():
@@ -554,6 +582,11 @@ def visualize_diversity(files: Dict[str, List[str]], show=False):
 
 
 def visualize_diversity_distribution(file, show=False):
+    """Plot the solution diversity into a 3D space.
+
+    :param file: Solution file name.
+    :param show: A boolean to determine whether to show the plots or not.
+    """
     with open(file, "rb") as f:
         solutions = pickle.load(f)
     if len(solutions) < 2:
@@ -575,12 +608,12 @@ def visualize_archived_distinct_solutions(files: Dict[str, List[str]], fitness_t
                                           distance_thresholds: List[float], mr_set, box=False, show=False):
     """Plot the number of distinct solutions from final archived solutions by applying fitness and distance thresholds.
 
-    @param files: Solution data files of different algorithms. Dict[name_of_algorithm, List[solution_file]].
-    @param fitness_thresholds: A list of fitness thresholds.
-    @param distance_thresholds: A list of distance thresholds.
-    @param mr_set: The given MRs.
-    @param box: Show box plots.
-    @param show: A boolean to determine whether to show the plots or not.
+    :param files: Solution data files of different algorithms. Dict[name_of_algorithm, List[solution_file]].
+    :param fitness_thresholds: A list of fitness thresholds.
+    :param distance_thresholds: A list of distance thresholds.
+    :param mr_set: The given MRs.
+    :param box: Show box plots.
+    :param show: A boolean to determine whether to show the plots or not.
     """
     col_num, height = 3, 4
     title_size, text_size, tick_size = height * 4, height * 4, height * 3
@@ -646,15 +679,15 @@ def visualize_distinct_solution_over_simulations(directory: str, files: Dict[str
                                                  max_sim_num: int, interval=10, mrc=False, mr_set=None, show=False):
     """Plot the number of distinct solutions over simulations by applying fitness and distance thresholds.
 
-    @param directory: The directory of checkpoint files.
-    @param files: Checkpoint files. Dict[name_of_algorithm, List[Tuple(start_checkpoint, end_checkpoint)]].
-    @param fitness_thresholds: A list of fitness thresholds.
-    @param distance_thresholds: A list of distance thresholds.
-    @param max_sim_num: The maximum number of simulations.
-    @param interval: Width of intervals for aggregation (percentage).
-    @param mrc: Show the MR coverage.
-    @param mr_set: The given MRs.
-    @param show: A boolean to determine whether to show the plots or not.
+    :param directory: The directory of checkpoint files.
+    :param files: Checkpoint files. Dict[name_of_algorithm, List[Tuple(start_checkpoint, end_checkpoint)]].
+    :param fitness_thresholds: A list of fitness thresholds.
+    :param distance_thresholds: A list of distance thresholds.
+    :param max_sim_num: The maximum number of simulations.
+    :param interval: Width of intervals for aggregation (percentage).
+    :param mrc: Show the MR coverage.
+    :param mr_set: The given MRs.
+    :param show: A boolean to determine whether to show the plots or not.
     """
     percent_ranges = np.arange(interval, 101, interval)
     ranges = (percent_ranges / 100 * max_sim_num).round(0).astype(int)
@@ -735,21 +768,21 @@ def visualize_archived_solutions_by_gen(directory: str, checkpoints: Dict[str, L
                                         legend_loc='upper right', padding={'top': 1.1, 'bottom': 0.3}):
     """Plot the number of distinct solutions from final archived solutions by applying fitness and distance thresholds.
 
-    @param directory: The directory of checkpoint files.
-    @param checkpoints: Checkpoint files Dict[name_of_algorithm, List[list[checkpoint_file]].
-    @param generation_num: Generation Number. If set to K, plot the solutions found after K generations.
-    @param metric_name: The metric used for comparison. Options are
+    :param directory: The directory of checkpoint files.
+    :param checkpoints: Checkpoint files Dict[name_of_algorithm, List[list[checkpoint_file]].
+    :param generation_num: Generation Number. If set to K, plot the solutions found after K generations.
+    :param metric_name: The metric used for comparison. Options are
         "ds" (Distinct Solutions)
         "avg_pw" (Average Pairwise Distance)
         "pure_div" (Pure Diversity)
         "avg_fitness" (Average Fitness)
-    @param fitness_thresholds: A list of fitness thresholds.
-    @param distance_thresholds: A list of distance thresholds.
-    @param mr_set: The given MRs.
-    @param box: Show box plots.
-    @param show: A boolean to determine whether to show the plots or not.
-    @param legend_loc: Specifies the location of the legend in the plots
-    @oaram padding: Paddings between the extreme chart points and the axis range.
+    :param fitness_thresholds: A list of fitness thresholds.
+    :param distance_thresholds: A list of distance thresholds.
+    :param mr_set: The given MRs.
+    :param box: Show box plots.
+    :param show: A boolean to determine whether to show the plots or not.
+    :param legend_loc: Specifies the location of the legend in the plots
+    :oaram padding: Paddings between the extreme chart points and the axis range.
     """
     col_num, height = 3, 4
     title_size, text_size, tick_size = height * 4, height * 4, height * 3
@@ -829,20 +862,20 @@ def visualize_archive_solution_over_generations(directory: str, files: Dict[str,
                                                 padding={'top': 0.6, 'bottom': 0.3}):
     """Plot the metrics over generations by applying fitness and distance thresholds.
 
-    @param directory: The directory of checkpoint files.
-    @param checkpoints: Checkpoint files Dict[name_of_algorithm, List[list[checkpoint_file]].
-    @param metric_name: The metric used for comparison. Options are
+    :param directory: The directory of checkpoint files.
+    :param checkpoints: Checkpoint files Dict[name_of_algorithm, List[list[checkpoint_file]].
+    :param metric_name: The metric used for comparison. Options are
         "ds" (Distinct Solutions)
         "avg_pw" (Average Pairwise Distance)
         "pure_div" (Pure Diversity)
         "avg_fitness" (Average Fitness)
-    @param fitness_thresholds: A list of fitness thresholds.
-    @param distance_thresholds: A list of distance thresholds.
-    @param mr_set: The given MRs.
-    @param max_gen: The maximum number of generations.
-    @param show: A boolean to determine whether to show the plots or not.
-    @oaram legend_loc: Location of the legend in the plots.
-    @oaram padding: Paddings between the extreme chart points and the axis range.
+    :param fitness_thresholds: A list of fitness thresholds.
+    :param distance_thresholds: A list of distance thresholds.
+    :param mr_set: The given MRs.
+    :param max_gen: The maximum number of generations.
+    :param show: A boolean to determine whether to show the plots or not.
+    :oaram legend_loc: Location of the legend in the plots.
+    :oaram padding: Paddings between the extreme chart points and the axis range.
     """
     col_num, height = 3, 4
     title_size, text_size, tick_size = height * 4, height * 4, height * 3
@@ -916,11 +949,10 @@ def visualize_computational_efficiency(log_file: str, solution_files: Dict[str, 
     """
     Generate a boxplot comparing computational efficiency (duration in hours) across algorithms from a log file.
 
-    @param log_file: Path to the CSV log file containing 'alg', 'start_time', 'end_time' columns.
-    @param solution_files: Solution data files of different algorithms. Dict[name_of_algorithm, List[solution_file]].
-    @param checkpoints: Checkpoint files Dict[name_of_algorithm, List[list[checkpoint_file]].
-    @param show: A boolean to determine whether to show the plots or not.
-
+    :param log_file: Path to the CSV log file containing 'alg', 'start_time', 'end_time' columns.
+    :param solution_files: Solution data files of different algorithms. Dict[name_of_algorithm, List[solution_file]].
+    :param checkpoints: Checkpoint files Dict[name_of_algorithm, List[list[checkpoint_file]].
+    :param show: A boolean to determine whether to show the plots or not.
     """
     df = _generate_execution_time_data(log_file, solution_files, checkpoints)
     algorithms = list(solution_files.keys())

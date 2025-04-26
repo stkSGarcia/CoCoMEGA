@@ -16,6 +16,11 @@ logger = logging.getLogger("impl")
 
 
 def search(algorithm: str, resume: bool):
+    """Run a search using the specified algorithm.
+
+    :param algorithm: Name of the search algorithm (e.g., :data:`ccea`, :data:`rs`, :data:`ga`).
+    :param resume: Whether to resume from a previous run.
+    """
     if algorithm == "ccea":
         solver = CCEA(toolbox=problem.toolbox, budget=problem.budget)
     elif algorithm == "rs":
@@ -30,27 +35,17 @@ def search(algorithm: str, resume: bool):
 
 
 def simulate(num: int, file: str):
+    """Simulate random or solution-based driving scenarios.
+
+    :param num: Number of scenarios to simulate.
+    :param file: Path to a solution file; if :data:`None`, simulate randomly.
+    """
     if file:
         logger.info(f"Loading solution file: {file}.")
         run_solutions(file, num)
     else:
         logger.info(f"Running random scenarios.")
         run_scenarios([ScenarioDefinition.generate_random_or_leaderboard() for _ in range(num)])
-
-
-class StoreDictKeyPair(argparse.Action):
-    def __call__(self, parser, namespace, values, option_string=None):
-        is_kv = ["=" in value for value in values]
-        if all(is_kv):
-            pairs = {}
-            for value in values:
-                k, v = value.split("=")
-                pairs[k] = v.split(",")
-            setattr(namespace, self.dest, pairs)
-        elif not any(is_kv):
-            setattr(namespace, self.dest, values)
-        else:
-            parser.error("expected consistent type of arguments")
 
 
 if __name__ == "__main__":

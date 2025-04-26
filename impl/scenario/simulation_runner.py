@@ -49,6 +49,14 @@ carla_host = carla_port = tm_port = cuda_device = None
 
 
 def _init_carla(instance_configs):
+    """
+    Initialize CARLA connection based on provided instance configuration.
+
+    This sets host, port, traffic manager port, and GPU device.
+    Cleans previous CARLA actors and prepares environment.
+
+    :param instance_configs: Queue providing instance settings.
+    """
     global carla_host, carla_port, tm_port, cuda_device
     carla_host, carla_port, tm_port, cuda_device = instance_configs.get(timeout=10)
     os.environ['CUDA_VISIBLE_DEVICES'] = str(cuda_device)
@@ -57,9 +65,12 @@ def _init_carla(instance_configs):
 
 
 def run_scenario(scenario: ScenarioDefinition, rerun=False):
-    """Run a scenario defined in ScenarioDefinition.
+    """
+    Run a single :class:`ScenarioDefinition` through CARLA simulation.
 
-    @return: The simulation result and whether the scenario was actually executed.
+    :param scenario: :class:`ScenarioDefinition` object to simulate.
+    :param rerun: Whether to force rerunning even if results exist.
+    :return: (Result `Dataframe`, whether simulation was newly executed).
     """
     global carla_host, carla_port, tm_port, cuda_device
     assert carla_host is not None and carla_port is not None and tm_port is not None and cuda_device is not None
@@ -112,9 +123,12 @@ def run_scenario(scenario: ScenarioDefinition, rerun=False):
 
 
 def run_scenarios(scenarios, rerun=False):
-    """Run scenarios.
+    """
+    Run a batch of scenarios either sequentially or in parallel.
 
-    @return: A list of simulation results and the number of simulations.
+    :param scenarios: List of :class:`ScenarioDefinition` objects to simulate.
+    :param rerun: Whether to rerun already evaluated scenarios.
+    :return: (List of results, number of successful runs).
     """
     if CONFIG["simulation"]["parallel"]:
         process_configs = Manager().Queue()
@@ -140,10 +154,14 @@ def run_scenarios(scenarios, rerun=False):
 
 
 def run_solutions(file: str, top: int = 1, verbose=True):
-    """Run scenarios from a solution file.
+    """
+    Load and run scenarios from a saved solution file.
 
-    @param file: The solution file.
-    @param top: Number of top scenarios to run.
+    Each solution typically contains a source and a follow-up scenario.
+
+    :param file: Path to the pickle file containing solutions.
+    :param top: Number of top solutions to run (:data:`-1` runs all).
+    :param verbose: If :data:`True`, run with output logs; otherwise silent.
     """
     with open(file, "rb") as f:
         solutions = pickle.load(f)

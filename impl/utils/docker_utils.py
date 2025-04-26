@@ -13,6 +13,12 @@ if CONFIG["simulation"]["docker"]["enabled"]:
 
 
 def get_container(container_name):
+    """
+    Retrieve a running Docker container by its name.
+
+    :param container_name: Name of the container.
+    :return: Docker container object if running, otherwise :data:`None`.
+    """
     try:
         container = docker_client.containers.get(container_name)
         if container.status != 'running':
@@ -23,6 +29,16 @@ def get_container(container_name):
 
 
 def setup_carla(container_name, port):
+    """
+    Set up and run a CARLA server inside a Docker container.
+
+    If the container is not running, a new one is launched with the correct settings.
+
+    :param container_name: Desired name for the Docker container.
+    :param port: World port to expose for CARLA server.
+    :param gpu_device: GPU device index to assign to the container.
+    :return: Docker container object.
+    """
     carla_container = get_container(container_name)
     if carla_container is None or carla_container.status != 'running':
         logger.info("Setting up Carla...")
@@ -47,6 +63,12 @@ def setup_carla(container_name, port):
 
 
 def restart_carla(container_name, port):
+    """
+    Restart the CARLA server inside a Docker container.
+
+    :param container_name: Desired name for the Docker container.
+    :param port: World port to expose for CARLA server.
+    """
     logger.info("Stopping Carla container to restart...")
     process = subprocess.run([
         f"docker container stop {container_name}"
@@ -62,12 +84,24 @@ def restart_carla(container_name, port):
 
 
 def user_has_processes_in_container(container_id, username):
+    """
+    Check whether a user has any active processes inside a given Docker container.
+
+    :param container_id: ID of the Docker container.
+    :param username: Username inside the container.
+    :return: :data:`True` if processes are found, :data:`False` otherwise.
+    """
     result = subprocess.run(['docker', 'exec', container_id, 'ps', '-u', username],
                             shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     return result.returncode == 0
 
 
 def cleanup_containers():
+    """
+    Stop all Docker containers launched by the current user that match the CARLA Docker image.
+
+    Only containers belonging to the current system user will be affected.
+    """
     logger.info("Cleaning up Carla containers ...")
     container_ids = subprocess.run([
         f'docker ps -a --filter "name=^{CONFIG["simulation"]["docker"]["image"]}-" -q'],

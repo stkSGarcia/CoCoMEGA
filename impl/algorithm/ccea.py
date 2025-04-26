@@ -16,7 +16,13 @@ logger = logging.getLogger(__name__)
 
 
 class CCEA(BaseAlgorithm):
+    """Cooperative Co-Evolutionary Algorithm (CCEA) for co-evolving scenarios and perturbations jointly."""
+
     def solve(self, resume=False):
+        """Main optimization loop for CCEA. Supports resuming from a checkpoint.
+
+        :param resume: Whether to resume from the latest checkpoint.
+        """
         logger.info("CCEA started.")
         logger.info(self.budget.print_budget())
 
@@ -104,12 +110,12 @@ class CCEA(BaseAlgorithm):
     def _evaluate(self, pop_scenario, archive_scenario, pop_perturbation, archive_perturbation, evaluated_solutions):
         """Form complete solutions and evaluate their joint fitness as well as the individual fitness values.
 
-        @param pop_scenario: The population of scenarios.
-        @param archive_scenario: The archive of scenarios.
-        @param pop_perturbation: The population of perturbations.
-        @param archive_perturbation: The archive of perturbations.
-        @param evaluated_solutions: The evaluated complete solutions.
-        @return: An archived complete solutions and the number of simulations.
+        :param pop_scenario: The population of scenarios.
+        :param archive_scenario: The archive of scenarios.
+        :param pop_perturbation: The population of perturbations.
+        :param archive_perturbation: The archive of perturbations.
+        :param evaluated_solutions: The evaluated complete solutions.
+        :return: Archived complete solutions and the number of simulations.
         """
         # Generate complete solutions from archives.
         complete_solutions = ([self.toolbox.collaborate(self.toolbox.clone(scenario), self.toolbox.clone(perturbation))
@@ -173,9 +179,9 @@ class CCEA(BaseAlgorithm):
     def _update_archive(self, population, archive_size):
         """Update the archive.
 
-        @param population: The individuals to be archived.
-        @param archive_size: The size of the archive.
-        @return: An archive of the individuals.
+        :param population: The individuals to be archived.
+        :param archive_size: The size of the archive.
+        :return: An archive of the individuals.
         """
         population = list(map(self.toolbox.clone, population))
         archive = tools.selBest(population, 1)
@@ -209,10 +215,10 @@ class CCEA(BaseAlgorithm):
     def _breed(self, population, size, overproduction_factor=1):
         """Perform selection, crossover and mutation on individuals.
 
-        @param population: The individuals to be bred.
-        @param size: The size of the offsprings.
-        @param overproduction_factor: Overproduction factor
-        @return: A list of offsprings.
+        :param population: The individuals to be bred.
+        :param size: The size of the offsprings.
+        :param overproduction_factor: Overproduction factor.
+        :return: A list of offsprings.
         """
         assert len(population) > 0
         offsprings = []
@@ -237,11 +243,11 @@ class CCEA(BaseAlgorithm):
         return offsprings
 
     def _shrink(self, population, size, co_population):
-        """Select from over-producted population based on a heuristic function.
+        """Select from an overproduced population based on a heuristic function.
 
-        @param population: The over-producted population.
-        @param size: The size of the target population.
-        @param co_population: The coop population
-        @return: A list of selected individuals.
+        :param population: The overproduced population.
+        :param size: The size of the target population.
+        :param co_population: The cooperative population.
+        :return: A list of selected individuals.
         """
         return sorted(population, key=lambda p: trajectory_score(p, co_population), reverse=True)[:size]

@@ -15,6 +15,12 @@ def load_yaml(path):
 
 
 def merge_dict(default: dict, user: dict):
+    """Recursively merge user dictionary into the default dictionary.
+
+    :param default: The default configuration dictionary.
+    :param user: The user-provided configuration dictionary.
+    :return: Merged configuration dictionary.
+    """
     for k, v in user.items():
         if k not in default or not isinstance(default[k], dict):
             default[k] = v
@@ -24,6 +30,10 @@ def merge_dict(default: dict, user: dict):
 
 
 def _update_log_dir(dictionary):
+    """Update log directory paths in the logging configuration.
+
+    :param dictionary: Dictionary of logging configurations.
+    """
     for k, v in dictionary.items():
         if isinstance(v, collections.abc.Mapping):
             _update_log_dir(v)
@@ -32,7 +42,7 @@ def _update_log_dir(dictionary):
 
 
 def init_config():
-    """Load configurations."""
+    """Initialize and load default and custom configurations, set up paths and logging."""
     default_config_base = "conf"
     config_name = "config.yaml"
     log_config_name = "log.yaml"

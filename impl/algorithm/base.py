@@ -17,12 +17,14 @@ logger = logging.getLogger(__name__)
 
 
 class Budget:
+    """Search budget."""
+
     def __init__(self, max_sim, max_time, max_gen):
         """Constructor.
 
-        @param max_sim: The maximum number of simulations for the search.
-        @param max_time: The maximum execution time for the search.
-        @param max_gen: The maximum number of iterations for the search.
+        :param max_sim: The maximum number of simulations for the search.
+        :param max_time: The maximum execution time for the search.
+        :param max_gen: The maximum number of iterations for the search.
         """
         self.max_sim = max_sim
         self.max_time = max_time
@@ -32,6 +34,10 @@ class Budget:
         self.gen_num = None
 
     def initialize(self, other=None):
+        """Initialize the budget.
+
+        :param other: Another Budget that is used to initialize the budget.
+        """
         if other and isinstance(other, self.__class__):
             self.sim_num = other.sim_num
             self.start_time = other.start_time
@@ -42,31 +48,39 @@ class Budget:
             self.gen_num = 0
 
     def acc_sim(self, n):
+        """Accumulate the number of simulations.
+
+        :param n: The number of simulations.
+        """
         self.sim_num += n
 
     def acc_gen(self):
+        """ Accumulate the number of generations by one."""
         self.gen_num += 1
 
     def is_reached(self):
         """Determine if the budget is reached.
 
-        @return: Return `True` if the budget is reached, `False` otherwise.
+        :return: Return :data:`True` if the budget is reached, :data:`False` otherwise.
         """
         return ((self.max_sim is not None and self.sim_num > self.max_sim) or
                 (self.max_time is not None and time.perf_counter() - self.start_time > self.max_time) or
                 (self.max_gen is not None and self.gen_num > self.max_gen))
 
     def print_budget(self):
+        """Print the budget."""
         return f"Budget: max simulations: {self.max_sim}, max time: {self.max_time}, max generations: {self.max_gen}."
 
 
 class BaseAlgorithm:
+    """Base class for search algorithms, providing shared utility functions and structure."""
+
     def __init__(self, toolbox: base.Toolbox, budget: Budget, seed=None):
         """Constructor.
 
-        @param toolbox: `base.Toolbox` that defines the problem.
-        @param budget: `Budget` that defines the searching budget.
-        @param seed: Random seed.
+        :param toolbox: :class:`deap.base.Toolbox` that defines the problem.
+        :param budget: Search budget.
+        :param seed: Random seed.
         """
         self.toolbox = toolbox
         self.budget = budget
@@ -89,23 +103,30 @@ class BaseAlgorithm:
 
     @abstractmethod
     def solve(self, resume=False):
-        """Run the algorithm."""
+        """Run the algorithm.
+
+        :param resume: Whether to resume from the latest checkpoint.
+        """
         raise NotImplementedError
 
     def record_statistics(self, population: List, gen_num: int, pop_name: str = "", sim_num: int = None):
         """Record the statistics of the population.
 
-        @param population: The population that requires recording statistics.
-        @param gen_num: The number of generations.
-        @param pop_name: The name of the population.
-        @param sim_num: The number of simulations actually run.
+        :param population: The population that requires recording statistics.
+        :param gen_num: The number of generations.
+        :param pop_name: The name of the population.
+        :param sim_num: The number of simulations actually runs.
         """
         record = self.stats.compile(population) if len(population) > 0 \
             else {"avg": [np.nan], "std": [np.nan], "min": [np.nan], "max": [np.nan]}
         self.logbook.record(pop=pop_name, gen=gen_num, len=len(population), sim=sim_num, **record)
 
     def dump_results(self, results, evaluated_solutions, name=None):
-        """Dump results and statistics."""
+        """Dump results and statistics.
+
+        :param results: The solutions identified by the algorithm.
+        :param evaluated_solutions: All the evaluated solutions during the search.
+        """
         suffix = (f"{name}-" if name else "") + str(int(round(time.time() * 1000)))
         with open(os.path.join(CONFIG["workspace"]["solution"], f"solutions-{suffix}.pickle"), "wb") as f:
             pickle.dump(results, f)
@@ -119,10 +140,10 @@ class BaseAlgorithm:
     def fitness_sharing(self, population, punishment=1.0, scaling=1.0):
         """Adjust the fitness using fitness sharing.
 
-        @param population: The population whose fitness needs to be adjusted.
-        @param punishment: Punishment factor.
-        @param scaling: Scaling factor.
-        @return: The population with fitness adjusted.
+        :param population: The population whose fitness needs to be adjusted.
+        :param punishment: Punishment factor.
+        :param scaling: Scaling factor.
+        :return: The population with fitness adjusted.
         """
         if len(population) == 0: return
         dist_matrix = squareform(pdist(np.array(population, dtype=object).reshape((len(population), -1)),
@@ -142,9 +163,9 @@ class BaseAlgorithm:
     def fitness_clearing(self, population, capacity=2):
         """Adjust the fitness using fitness clearing.
 
-        @param population: The population whose fitness needs to be adjusted.
-        @param capacity: The maximum number of winners in a niche.
-        @return: The population with fitness adjusted.
+        :param population: The population whose fitness needs to be adjusted.
+        :param capacity: The maximum number of winners in a niche.
+        :return: The population with fitness adjusted.
         """
         if len(population) == 0: return
         dist_matrix = squareform(pdist(np.array(population, dtype=object).reshape((len(population), -1)),
@@ -165,7 +186,10 @@ class BaseAlgorithm:
 
     @staticmethod
     def population_diversity(population):
-        """Calculate the Pure Diversity (PD) of the given population."""
+        """Calculate the Pure Diversity (PD) of the given population.
+
+        :param population: The population to be evaluated.
+        """
         n = len(population)
         if n == 0: return 0.0
         connected = np.eye(n, dtype=bool)
@@ -200,9 +224,9 @@ class BaseAlgorithm:
     @staticmethod
     def _dominates(this, other, obj: List = None):
         """DO NOT CALL THIS FUNCTION.
-        It is used to replace the original `dominates` function in `deap`.
+        It is used to replace the original :func:`dominates` function in :mod:`deap`.
 
-        @param obj: Indices indicating on which objectives the domination is tested.
+        :param obj: Indices indicating on which objectives the domination is tested.
         """
         if not obj:
             obj = slice(None)

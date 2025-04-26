@@ -32,6 +32,7 @@ toolbox.register("perturbation", tools.initIterate, creator.Perturbation, mr_set
 
 
 def _pop_scenario():
+    """Initialize the scenario of populations"""
     pop_scenario = tools.initRepeat(list, toolbox.scenario,
                                     n=CONFIG["scenario"]["pop_size"] * CONFIG["scenario"]["init_selection_factor"])
     if CONFIG["scenario"]["init_selection_factor"] > 1:
@@ -51,9 +52,10 @@ toolbox.register("collaborate", lambda scenario, perturbation: creator.Solution(
 def _fitness(source, follow_up, mr_set=mr_set):
     """Calculate the fitness value and check if it violates the relation.
 
-    @param source: Simulation results of the source scenario.
-    @param follow_up: Simulation results of the follow-up scenario.
-    @return: A tuple containing a bool value indicating whether it violates the relation and the fitness value.
+    :param source: Simulation results of the source scenario.
+    :param follow_up: Simulation results of the follow-up scenario.
+    :param mr_set: The set of metamorphic relations to be violated.
+    :return: A tuple containing a bool value indicating whether it violates the relation and the fitness value.
     """
     if mr_set.field == "velocity":
         func = lambda row: math.sqrt(row.velocity_x ** 2 + row.velocity_y ** 2)
@@ -66,7 +68,8 @@ def _fitness(source, follow_up, mr_set=mr_set):
 def _evaluate_solutions(solutions):
     """Evaluate the complete solutions.
 
-    @return: A list of complete solutions evaluated and the number of simulations.
+    :param solutions: List of complete solutions.
+    :return: A list of complete solutions evaluated and the number of simulations.
     """
     scenarios = []
     reeval = []
@@ -102,6 +105,11 @@ def _evaluate_solutions(solutions):
 
 
 def _reevaluate(solutions):
+    """Reevaluate selected solutions multiple times and aggregate the results.
+
+    :param solutions: List of solutions flagged for reevaluation.
+    :return: Total number of simulations performed during reevaluation.
+    """
     if len(solutions) == 0:
         return 0
     repeat = CONFIG["violation"]["reevaluation"]["repeat"]
@@ -170,9 +178,9 @@ def _reevaluate(solutions):
 def _evaluate_individual(individual, complete_solutions):
     """Evaluate the individual fitness of a scenario or a sequence of perturbations.
 
-    @param individual: The individual to be evaluated.
-    @param complete_solutions: The list of complete solutions with fitness evaluated.
-    @return: The individual with fitness evaluated.
+    :param individual: The individual to be evaluated.
+    :param complete_solutions: The list of complete solutions with fitness evaluated.
+    :return: The individual with fitness evaluated.
     """
     index = 0 if str(type(individual)) == str(creator.Scenario) else 1
     involved = []
