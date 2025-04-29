@@ -29,7 +29,7 @@ Test Cases for Autonomous Driving Systems* by Hossein Yousefizadeh, Shenghui Gu,
 1. Setup CoCoMEGA
 
    ```shell
-   git clone https://github.com/stkSGarcia/CoCoMEGA.git
+   git clone git@github.com:stkSGarcia/CoCoMEGA.git
    cd CoCoMEGA 
    python3.7 -m venv .venv
    source .venv/bin/activate
@@ -50,7 +50,12 @@ Test Cases for Autonomous Driving Systems* by Hossein Yousefizadeh, Shenghui Gu,
 
    ```shell
    cd ..
-   ./setup_carla.sh
+   mkdir carla
+   cd carla
+   wget https://carla-releases.s3.us-east-005.backblazeb2.com/Linux/CARLA_0.9.10.1.tar.gz
+   tar -xf CARLA_0.9.10.1.tar.gz
+   rm CARLA_0.9.10.1.tar.gz
+   cd ..
    easy_install carla/PythonAPI/carla/dist/carla-0.9.10-py3.7-linux-x86_64.egg
    ```
 
@@ -73,7 +78,7 @@ Test Cases for Autonomous Driving Systems* by Hossein Yousefizadeh, Shenghui Gu,
    ```shell
    docker build -t [tag_name] .
    ```
-   The `tag_name` should be consistent with that defined in the configuration file located in `docker:image`.
+   The `tag_name` should be consistent with that defined in the configuration file located in `docker:image` (default is `carla-0.9.10`).
 
 2. Local configurations
 

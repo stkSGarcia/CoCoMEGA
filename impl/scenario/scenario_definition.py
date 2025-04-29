@@ -346,7 +346,7 @@ class ScenarioDefinition:
                                             distance_limit=cfg.CONFIG["trajectory"]["junction_distance_limit"])
         is_junction = (junction is not None)
         if trajectory_def["direction"] is None:
-            waypoint = trajectory[-1]
+            waypoint = CarlaDataProvider.get_map().get_waypoint(trajectory[-1].location)
             for i in range(cfg.CONFIG["trajectory"]["junction_distance_limit"]):
                 waypoint = waypoint.next(1)[0]
                 trajectory.append(waypoint.transform)

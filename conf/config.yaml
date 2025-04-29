@@ -113,7 +113,7 @@ search:
   diff_testing: true
   runtime_data_as_seeds: false
   constraint:
-    enable: true
+    enable: false
     threshold: 0.5
     penalty_base: 2.71828
     penalty_amplifier: 6.66
@@ -134,7 +134,7 @@ search:
 scenario:
   pop_size: &pop 7
   archive_size: &arc 3
-  leaderboard_pb: 0.8
+  leaderboard_pb: 0.0
   init_pb:
     vehicle: 0.4
     walker: 0.5
@@ -204,6 +204,8 @@ trajectory:
         z: 0.0
         yaw: 90.0
         speed: 0
+      direction:
+        - forward
 
 boundary:
   tilt_degrees: 15
