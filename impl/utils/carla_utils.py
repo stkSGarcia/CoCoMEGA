@@ -46,6 +46,40 @@ def initialize_carla(host=None, port=None, tm_port=None, gpu_device=None, seed=2
         logger.error(f"Error initializing Carla: {e}")
         raise e
 
+def carla_partial_cleanup():
+    """
+    Partially cleanup by destroying all spawned actors and clearing actor-related maps,
+    but keeping the client alive for reloading the world.
+    """
+    DestroyActor = carla.command.DestroyActor
+    batch = []
+
+    # Destroy all actors that are alive
+    for actor_id in CarlaDataProvider._carla_actor_pool.copy():
+        actor = CarlaDataProvider._carla_actor_pool[actor_id]
+        if actor.is_alive:
+            batch.append(DestroyActor(actor))
+
+    # Apply the batch destruction safely
+    if CarlaDataProvider._client:
+        try:
+            CarlaDataProvider._client.apply_batch_sync(batch)
+        except RuntimeError as e:
+            if "time-out" in str(e):
+                pass
+            else:
+                raise e
+
+    # Now only clear actor-related internal maps
+    CarlaDataProvider._actor_velocity_map.clear()
+    CarlaDataProvider._actor_location_map.clear()
+    CarlaDataProvider._actor_transform_map.clear()
+    CarlaDataProvider._traffic_light_map.clear()
+    CarlaDataProvider._carla_actor_pool.clear()
+
+    CarlaDataProvider._spawn_points = None
+    CarlaDataProvider._spawn_index = 0
+    CarlaDataProvider._ego_vehicle_route = None
 
 def get_junction_topology(junction):
     """
@@ -266,15 +300,18 @@ def copy_transform(transform):
     )
 
 
-def load_world(town):
+def load_world(town, cleanup=True):
     """
     Load a CARLA world by town name if not already loaded.
 
     :param town: Name of the CARLA map/town.
     """
+
     if CarlaDataProvider.get_client() is None:
         initialize_carla()
     if CarlaDataProvider.get_world() is None or CarlaDataProvider.get_world().get_map().name.lower() != town.lower():
+        if cleanup:
+            carla_partial_cleanup()
         world = CarlaDataProvider.get_client().load_world(town)
         CarlaDataProvider.set_world(world)
 

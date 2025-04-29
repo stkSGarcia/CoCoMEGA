@@ -48,6 +48,7 @@ class GeneticAlgorithm(BaseAlgorithm):
                 self.budget.initialize(other=pickle.load(f))
                 self.logbook = pickle.load(f)
         else:
+            logger.info("Initializing population...")
             complete_solutions = [self.toolbox.collaborate(self.toolbox.scenario(), self.toolbox.perturbation())
                                   for _ in range(cfg.CONFIG["scenario"]["pop_size"])]
             archive_solution = []
