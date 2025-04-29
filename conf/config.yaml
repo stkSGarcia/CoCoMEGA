@@ -123,6 +123,8 @@ trajectory:
       y: 50.0
       z: 0.0
       yaw: 90.0
+    direction:
+      - forward
 
 boundary:
   tilt_degrees: 15

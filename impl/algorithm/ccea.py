@@ -44,6 +44,7 @@ class CCEA(BaseAlgorithm):
                 self.budget.initialize(other=pickle.load(f))
                 self.logbook = pickle.load(f)
         else:
+            logger.info("Initializing populations...")
             pop_scenario = self.toolbox.pop_scenario()
             pop_perturbation = self.toolbox.pop_perturbation()
             archive_scenario = pop_scenario
