@@ -27,10 +27,12 @@ class Budget:
         :param other: Another Budget that is used to initialize the budget.
         """
         if other and isinstance(other, self.__class__):
+            # Copy counters from another budget
             self.sim_num = other.sim_num
             self.start_time = other.start_time
             self.gen_num = other.gen_num
         else:
+            # Start new counters
             self.sim_num = 0
             self.start_time = time.perf_counter()
             self.gen_num = 0

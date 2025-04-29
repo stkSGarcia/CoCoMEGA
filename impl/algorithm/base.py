@@ -37,7 +37,7 @@ class BaseAlgorithm:
             logger.debug("Replace `dominates` function of fitness.")
             setattr(creator.Fitness, "dominates", BaseAlgorithm._dominates)
 
-        # Initialize the statistics object.
+        # Statistics collector for DEAP population
         self.stats = tools.Statistics(lambda ind: ind.fitness.values if ind.fitness.valid else (np.nan,) * self.n_obj)
         self.stats.register("avg", np.nanmean, axis=0)
         self.stats.register("std", np.nanstd, axis=0)
