@@ -332,7 +332,7 @@ Perturbation population parameters for CCEA:
 - `cxpb`: Crossover rate.
 - `mutpb`: Mutation rate.
 
-Violation Detection (`violation`)
+### Violation Detection (`violation`)
 
 Mechanisms for detecting violations of metamorphic relations:
 
