@@ -102,6 +102,8 @@ Test Cases for Autonomous Driving Systems* by Hossein Yousefizadeh, Shenghui Gu,
 
 ## Architecture Overview
 
+![workflow](workflow.png)
+
 Below is an overview of the code structure, showing its key modules:
 
 ```
@@ -142,12 +144,13 @@ Below is an overview of the code structure, showing its key modules:
 - `config.py` – Configuration management module. It loads settings from config YAML file (located in `conf/config.yaml`)
   and makes them available via a global CONFIG object. All other parts of the code use this for parameters like search
   budget, population sizes, scenario settings, file paths, Docker image configs, etc.
-- `problem.py` – Defines the optimization problem and integrates all components. This sets up the evolutionary
+- `problem.py` (Steps ③ and ④) – Defines the optimization problem and integrates all components. This sets up the
+  evolutionary
   framework: it registers genetic operators, and defines the fitness function. The `problem.py` ties together scenarios
   from `scenario/`, perturbations/MRs from `mr/`, and algorithms from `algorithm/`.
-- `algorithm/`: Contains implementations of search algorithms used to generate diverse test cases.
-- `mr/`: Defines metamorphic relations and mechanisms to evaluate them.
-- `scenario/`: Manages scenario definition, execution, and evaluation in simulation environments.
+- `algorithm/` (Steps ⑤ and ⑥): Contains implementations of search algorithms used to generate diverse test cases.
+- `mr/` (Steps ③, ④, and ⑤): Defines metamorphic relations and mechanisms to evaluate them.
+- `scenario/` (Steps ③ and ⑤): Manages scenario definition, execution, and evaluation in simulation environments.
 - `utils/`: Offers utility functions supporting simulation interaction, mathematical operations, and result
   visualization.
 
@@ -240,44 +243,18 @@ Paths for saving different types of results and intermediate data:
 
 Subdirectories include:
 
-- `logs`: Logs
-- `results`: Execution Results
-- `visualizations`: Generated visualizations
+- `log`: Log files.
 - `test_result`: Results of executed tests.
-
-### InterFuser Agent Settings (`interfuser`)
-
-Configurations related to the InterFuser driving agent:
-
-- `repo`: Path to the InterFuser repository.
-
-- `agent_path`: Path to the agent implementation.
-
-- `versions`: Multiple agent configurations (v1, v2).
-
-### Data Collection (`data_collection`)
-
-Configurations related to collecting training data for Interfuser.
-
-### Training Settings (`training`)
-
-Parameters for Interfuser model training, including: GPU allocation, training epochs, batch size, learning rate,
-optimization method,
-town and weather configurations for training and validation data.
-
-### Docker Configuration (`docker`)
-
-Docker configuration for carla:
-
-- `enabled`: Enable Docker usage.
-- `image`: Built docker image name.
-- `memory`: Dedicated memory size.
-- `shared_memory`: Shared memory size.
+- `checkpoint`: Checkpoints of each run.
+- `solution`: Final solutions of the search.
+- `visualization`: Generated visualizations.
+- `sim_result`: Execution Results.
 
 ### Simulation Parameters (`simulation`)
 
 Settings to control the simulation execution:
 
+- `repo`: Path to the InterFuser repository.
 - `parallel`: Parallelize simulation execution.
 - `retry_times`: Number of retries if simulation execution failed.
 - `display_agent`: Display Agent Interface.
@@ -286,37 +263,22 @@ Settings to control the simulation execution:
 - `frame_rate`: Number of frames (ticks) per second.
 - `high_graphics`: Use Fidelity Mode with better visuals.
 - `autopilot`: Enable autopilot for other vehicles.
-- `disable_spectator`: Disable the simulation specsator for efficiency.
-- `instances`: Configuration of docker instances for carla (controls the extent of parallelization for scenario
-  execution).
+- `disable_spectator`: Disable the simulation spectator for efficiency.
+- `docker`: Docker configuration for CARLA.
+    - `enabled`: Enable Docker usage.
+    - `image`: Built docker image name.
+    - `memory`: Dedicated memory size.
+    - `shared_memory`: Shared memory size.
+    - `instances`: Configuration of docker instances for CARLA (controls the extent of parallelization for scenario
+      execution).
 
-### Runtime Settings (`runtime`)
+### Search Budget (`budget`)
 
-Control the runtime environments for runtime data collection:
+Settings for the search budget:
 
-- `parallel`: Parallelize runtime data collection with multiple runtime environments.
-- `agent`: Agent to use for data collection.
-- `routes`: Route types to use for data collection.
-- `towns`: Towns to use for data collection.
-- `weathers`: Weather indices to use for data collection.
-- `collection_delay`: Contains **\[lower, upper\]** in seconds. For each route, data collection starts after a random
-  time between lower and upper.
-- `collection_duration`: The duration of data collection (in seconds).
-- `collection_interval`: The interval between each data collection (in seconds).
-- `collection_route_limit`: Maximum number of collected runtime data for each route (use 0 for no-limit).
-- `instances` Carla docker instances for simulating runtime environments (controls the extent of parallelization for
-  data collection).
-
-### Search Algorithm Parameters
-
-Defines the budget and strategy of the search process:
-
-- `budget`: Specifies the search budget. Can limit max number of simulations, max generation, and/or max execution time.
-- `diff_testing`: Enable differential testing.
-- `runtime_data_as_seeds`: Use collected runtime data for scenario initialization.
-- `constraint`: Apply Constraints to penalize solutions based on distance from runtime scenarios.
-- `multi_objective`: Enable multi-objective search.
-- `opt`: Configure diversity optimization and niching strategies.
+- `max_sim`: Maximum number of simulations.
+- `max_time`: Maximum execution time.
+- `max_gen`: Maximum number of generations.
 
 ### Scenario Population (`scenario`)
 
@@ -327,16 +289,20 @@ Scenario population parameters for CCEA:
 - `leaderboard_pb`: Probability of generating leaderboard-type scenarios.
 - `init_pb`: Probabilities of generating different types of actors within a scenario.
 - `max_actors`: Maximum actors allowed for scenario initialization.
+- `dist_scaling`: The distance between two categorical values.
 - `tournament`: Tournament size for tournament selection.
 - `cxpb`: Crossover rate.
 - `mutpb`: Mutation rate.
+- `mut_add`: The probability of adding an actor when mutating.
+- `mut_del`: The probability of deleting an actor when mutating.
 
-### Perturbation Population (`perturbation`):
+### Perturbation Population (`perturbation`)
 
 Perturbation population parameters for CCEA:
 
 - `pop_size`: Perturbation population size.
 - `archive_size`: Perturbation archive size.
+- `dist_scaling`: The distance between two categorical values.
 - `tournament`: Tournament size for tournament selection.
 - `cxpb`: Crossover rate.
 - `mutpb`: Mutation rate.
@@ -350,14 +316,21 @@ Mechanisms for detecting violations of metamorphic relations:
 - `dtw`: Enable DTW matching.
 - `reevaluation`: Configuration of the re-evaluation mechanism to aggregate fitness values.
 
+### Diversity Optimization (`opt`)
+
+Configurations for diversity optimization and niching strategies:
+
+- `niching`:
+    - `strategy`: niching strategy. Options are fitness sharing `sharing`, fitness clearing `clearing`, or not using
+      niching `None`.
+    - `punishment`: Punishment factor for fitness sharing.
+    - `scaling`: Scaling factor for fitness sharing.
+    - `capacity`: Number of winners in a niche when using fitness clearing.
+- `diversity`: Enable diversity optimization.
+
 ### Trajectory Generation (`trajectory`)
 
-Parameters for trajectory generation in scenarios:
-
-- `towns`: List of available towns for trajectory generation.
-- `initial_speed_limit`: Maximum initial speed for ego vehicle.
-- `junction_distance_limit`: Maximum distance from the closest junction to consider `left`, `right`, directions.
-- `predefined`: List of predefined trajectories.
+List of predefined trajectories.
 
 ### Boundary (`boundary`)
 

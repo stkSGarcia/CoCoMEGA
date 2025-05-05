@@ -45,12 +45,12 @@ class CCEA(BaseAlgorithm):
                 self.logbook = pickle.load(f)
         else:
             logger.info("Initializing populations...")
-            pop_scenario = self.toolbox.pop_scenario()
-            pop_perturbation = self.toolbox.pop_perturbation()
-            archive_scenario = pop_scenario
-            archive_perturbation = pop_perturbation
-            archive_solution = []
-            evaluated_solutions = []
+            pop_scenario = self.toolbox.pop_scenario()  # Population of scenarios.
+            pop_perturbation = self.toolbox.pop_perturbation()  # Population of perturbations.
+            archive_scenario = pop_scenario  # Scenario archive.
+            archive_perturbation = pop_perturbation  # Perturbation archive.
+            archive_solution = []  # Archive of all violated solutions.
+            evaluated_solutions = []  # List of all evaluated solutions.
             self.budget.initialize()
 
         while not self.budget.is_reached():

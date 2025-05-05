@@ -72,7 +72,7 @@ def _evaluate_solutions(solutions):
     :return: A list of complete solutions evaluated and the number of simulations.
     """
     scenarios = []
-    reeval = []
+    reeval = []  # Solutions need to be reevaluated.
     for solution in solutions:
         scenarios.append(solution[0])
         follow_up = toolbox.clone(solution[0])

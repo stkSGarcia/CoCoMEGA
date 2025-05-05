@@ -29,9 +29,9 @@ class Budget:
         self.max_sim = max_sim
         self.max_time = max_time
         self.max_gen = max_gen
-        self.sim_num = None
-        self.start_time = None
-        self.gen_num = None
+        self.sim_num = None  # The number of simulations actually runs.
+        self.start_time = None  # The start time of the search.
+        self.gen_num = None  # The current number of generations.
 
     def initialize(self, other=None):
         """Initialize the budget.
@@ -39,10 +39,12 @@ class Budget:
         :param other: Another Budget that is used to initialize the budget.
         """
         if other and isinstance(other, self.__class__):
+            # Copy counters from another budget.
             self.sim_num = other.sim_num
             self.start_time = other.start_time
             self.gen_num = other.gen_num
         else:
+            # Start new counters.
             self.sim_num = 0
             self.start_time = time.perf_counter()
             self.gen_num = 0
@@ -91,14 +93,14 @@ class BaseAlgorithm:
             logger.debug("Replace `dominates` function of fitness.")
             setattr(creator.Fitness, "dominates", BaseAlgorithm._dominates)
 
-        # Initialize statistics object.
+        # Initialize statistics collector for `deap` population.
         self.stats = tools.Statistics(lambda ind: ind.fitness.values if ind.fitness.valid else (np.nan,))
         self.stats.register("avg", np.nanmean, axis=0)
         self.stats.register("std", np.nanstd, axis=0)
         self.stats.register("min", np.nanmin, axis=0)
         self.stats.register("max", np.nanmax, axis=0)
 
-        self.logbook = tools.Logbook()
+        self.logbook = tools.Logbook()  # Logbook for recording statistics.
         self.logbook.header = "pop", "gen", "len", "sim", "std", "min", "avg", "max"
 
     @abstractmethod
@@ -146,12 +148,13 @@ class BaseAlgorithm:
         :return: The population with fitness adjusted.
         """
         if len(population) == 0: return
+        # Calculate the pairwise distance matrix.
         dist_matrix = squareform(pdist(np.array(population, dtype=object).reshape((len(population), -1)),
                                        lambda x, y: x[0].dist(y[0])))
-        max_dist = np.max(dist_matrix)
-        radius = max_dist / (2 * len(population))  # TODO: to be justified.
+        max_dist = np.max(dist_matrix)  # Maximum distance between any two individuals.
+        radius = max_dist / (2 * len(population))  # Fitness sharing radius.
         sharing_func = np.vectorize(lambda raw: 1 - pow(raw / radius, punishment) if raw < radius else 0)
-        dist_matrix = sharing_func(dist_matrix)
+        dist_matrix = sharing_func(dist_matrix)  # Apply the sharing function to the distance matrix.
         if radius == 0.0:
             np.fill_diagonal(dist_matrix, 1.0)
         dist_sum = dist_matrix.sum(axis=1)
@@ -168,10 +171,11 @@ class BaseAlgorithm:
         :return: The population with fitness adjusted.
         """
         if len(population) == 0: return
+        # Calculate the pairwise distance matrix.
         dist_matrix = squareform(pdist(np.array(population, dtype=object).reshape((len(population), -1)),
                                        lambda x, y: x[0].dist(y[0])))
-        max_dist = np.max(dist_matrix)
-        radius = max_dist / (2 * len(population))  # TODO: to be justified.
+        max_dist = np.max(dist_matrix)  # Maximum distance between any two individuals.
+        radius = max_dist / (2 * len(population))  # Fitness clearing radius.
 
         individuals = sorted(population, key=attrgetter("fitness"), reverse=True)
         for i in range(len(individuals)):
@@ -192,12 +196,13 @@ class BaseAlgorithm:
         """
         n = len(population)
         if n == 0: return 0.0
-        connected = np.eye(n, dtype=bool)
+        connected = np.eye(n, dtype=bool)  # Matrix denoting the connection between individuals.
+        # Calculate the pairwise distance matrix.
         dist_matrix = population.copy() if isinstance(population, np.ndarray) \
             else squareform(pdist(np.array(population, dtype=object).reshape((len(population), -1)),
                                   lambda x, y: x[0].dist(y[0])))
         np.fill_diagonal(dist_matrix, np.inf)
-        pd = 0.0
+        pd = 0.0  # PD value.
         for _ in range(n - 1):
             while True:
                 d, indices = np.min(dist_matrix, axis=1), np.argmin(dist_matrix, axis=1)
