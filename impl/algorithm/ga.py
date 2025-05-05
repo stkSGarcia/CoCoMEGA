@@ -50,9 +50,9 @@ class GeneticAlgorithm(BaseAlgorithm):
         else:
             logger.info("Initializing population...")
             complete_solutions = [self.toolbox.collaborate(self.toolbox.scenario(), self.toolbox.perturbation())
-                                  for _ in range(cfg.CONFIG["scenario"]["pop_size"])]
-            archive_solution = []
-            evaluated_solutions = []
+                                  for _ in range(cfg.CONFIG["scenario"]["pop_size"])]  # Current complete solutions.
+            archive_solution = []  # Archive of all violated solutions.
+            evaluated_solutions = []  # List of all evaluated solutions.
             self.budget.initialize()
 
         while not self.budget.is_reached():

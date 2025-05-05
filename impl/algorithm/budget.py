@@ -17,9 +17,9 @@ class Budget:
         self.max_sim = max_sim
         self.max_time = max_time
         self.max_gen = max_gen
-        self.sim_num = None
-        self.start_time = None
-        self.gen_num = None
+        self.sim_num = None  # The number of simulations actually runs.
+        self.start_time = None  # The start time of the search.
+        self.gen_num = None  # The current number of generations.
 
     def initialize(self, other=None):
         """Initialize the budget.
@@ -27,12 +27,12 @@ class Budget:
         :param other: Another Budget that is used to initialize the budget.
         """
         if other and isinstance(other, self.__class__):
-            # Copy counters from another budget
+            # Copy counters from another budget.
             self.sim_num = other.sim_num
             self.start_time = other.start_time
             self.gen_num = other.gen_num
         else:
-            # Start new counters
+            # Start new counters.
             self.sim_num = 0
             self.start_time = time.perf_counter()
             self.gen_num = 0

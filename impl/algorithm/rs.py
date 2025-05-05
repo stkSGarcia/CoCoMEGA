@@ -38,8 +38,8 @@ class RandomSearch(BaseAlgorithm):
                 self.budget.initialize(other=pickle.load(f))
                 self.logbook = pickle.load(f)
         else:
-            archive_solution = []
-            evaluated_solutions = []
+            archive_solution = []  # Archive of all violated solutions.
+            evaluated_solutions = []  # List of all evaluated solutions.
             self.budget.initialize()
 
         while not self.budget.is_reached():

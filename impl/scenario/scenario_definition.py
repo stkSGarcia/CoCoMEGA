@@ -132,7 +132,7 @@ def _mutate_attrs(this, attrs, boundary: Boundary, mutpb, eta, std):
         x = getattr(this, attr)
         if isinstance(lower, float):
             if lower == upper: continue
-            if lower <= x <= upper:  # Polynomial mutation
+            if lower <= x <= upper:  # Polynomial mutation.
                 delta_1 = (x - lower) / (upper - lower)
                 delta_2 = (upper - x) / (upper - lower)
                 rand = random.random()
@@ -149,7 +149,7 @@ def _mutate_attrs(this, attrs, boundary: Boundary, mutpb, eta, std):
 
                 x = x + delta_q * (upper - lower)
                 x = min(max(x, lower), upper)
-            else:  # Gaussian mutation
+            else:  # Gaussian mutation.
                 x = random.gauss(x, std)
             setattr(this, attr, x)
         elif isinstance(lower, int):

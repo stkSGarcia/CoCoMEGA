@@ -29,7 +29,7 @@ class selRNSGA2WithMemory:
         :param nd: Non-dominated sorting method (:data:`standard` or :data:`log`).
         """
         self.ref_points = np.array(ref_points)
-        n_obj = self.ref_points.shape[1]
+        n_obj = self.ref_points.shape[1]  # Number of objectives.
         self.ideal_point = np.full(n_obj, np.inf)
         self.nadir_point = np.full(n_obj, -np.inf)
         self.epsilon = epsilon
@@ -77,7 +77,7 @@ def selRNSGA2(individuals, k, ref_points, ideal_point, nadir_point, epsilon=0.01
     else:
         raise Exception(f"selRNSGA2: The choice of non-dominated sorting method '{nd}' is invalid.")
 
-    n_obj = ref_points.shape[1]
+    n_obj = ref_points.shape[1]  # Number of objectives.
 
     # Extract fitnesses as a numpy array in the nd-sort order.
     # Use wvalues * -1 to tackle always as a minimization problem.

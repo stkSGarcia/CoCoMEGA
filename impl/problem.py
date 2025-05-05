@@ -76,7 +76,7 @@ toolbox.register("collaborate", lambda scenario, perturbation: creator.Solution(
 
 # Define the multi-objective configurations.
 if cfg.CONFIG["search"]["multi_objective"]["enable"]:
-    ref_points = np.array(cfg.CONFIG["search"]["multi_objective"]["ref_points"])
+    ref_points = np.array(cfg.CONFIG["search"]["multi_objective"]["ref_points"])  # Reference points.
     if cfg.CONFIG["search"]["multi_objective"]["algorithm"] == "rnsga3":
         P = 5
         n_obj = 2
@@ -127,7 +127,7 @@ def _evaluate_solutions(solutions):
     :return: Tuple (evaluated_solutions, number_of_simulations).
     """
     scenarios = []
-    reeval = []
+    reeval = []  # Solutions need to be reevaluated.
     agent_name = cfg.CONFIG["interfuser"]["versions"][0]["name"]
     for solution in solutions:
         scenarios.append(solution[0])
@@ -157,6 +157,7 @@ def _evaluate_solutions(solutions):
 
     reeval_sim_num = _reevaluate(reeval)
     return solutions, sim_num + reeval_sim_num
+
 
 def _evaluate_solutions_dt(solutions):
     """Evaluate complete solutions using the Differential Testing approach.

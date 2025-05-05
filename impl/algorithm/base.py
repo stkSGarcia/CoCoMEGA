@@ -30,21 +30,21 @@ class BaseAlgorithm:
         random.seed(seed)
         self.toolbox = toolbox
         self.budget = budget
-        self.n_obj = len(creator.Fitness.weights)
+        self.n_obj = len(creator.Fitness.weights)  # Number of objectives.
 
         # Replace the original `dominates` function.
         if getattr(creator.Fitness, "dominates", None) is not None:
             logger.debug("Replace `dominates` function of fitness.")
             setattr(creator.Fitness, "dominates", BaseAlgorithm._dominates)
 
-        # Statistics collector for DEAP population
+        # Initialize statistics collector for `deap` population.
         self.stats = tools.Statistics(lambda ind: ind.fitness.values if ind.fitness.valid else (np.nan,) * self.n_obj)
         self.stats.register("avg", np.nanmean, axis=0)
         self.stats.register("std", np.nanstd, axis=0)
         self.stats.register("min", np.nanmin, axis=0)
         self.stats.register("max", np.nanmax, axis=0)
 
-        self.logbook = tools.Logbook()
+        self.logbook = tools.Logbook()  # Logbook for recording statistics.
         self.logbook.header = "pop", "gen", "len", "sim", "std", "min", "avg", "max"
 
     def solve(self, resume=False):
@@ -108,12 +108,13 @@ class BaseAlgorithm:
         :return: The population with fitness adjusted.
         """
         if len(population) == 0: return
+        # Calculate the pairwise distance matrix.
         dist_matrix = squareform(pdist(np.array(population, dtype=object).reshape((len(population), -1)),
                                        lambda x, y: x[0].dist(y[0])))
-        max_dist = np.max(dist_matrix)
-        radius = max_dist / (2 * len(population))
+        max_dist = np.max(dist_matrix)  # Maximum distance between any two individuals.
+        radius = max_dist / (2 * len(population))  # Fitness sharing radius.
         sharing_func = np.vectorize(lambda raw: 1 - pow(raw / radius, punishment) if raw < radius else 0)
-        dist_matrix = sharing_func(dist_matrix)
+        dist_matrix = sharing_func(dist_matrix)  # Apply the sharing function to the distance matrix.
         if radius == 0.0:
             np.fill_diagonal(dist_matrix, 1.0)
         dist_sum = dist_matrix.sum(axis=1)
@@ -131,10 +132,11 @@ class BaseAlgorithm:
         :return: The population with fitness adjusted.
         """
         if len(population) == 0: return
+        # Calculate the pairwise distance matrix.
         dist_matrix = squareform(pdist(np.array(population, dtype=object).reshape((len(population), -1)),
                                        lambda x, y: x[0].dist(y[0])))
-        max_dist = np.max(dist_matrix)
-        radius = max_dist / (2 * len(population))
+        max_dist = np.max(dist_matrix)  # Maximum distance between any two individuals.
+        radius = max_dist / (2 * len(population))  # Fitness clearing radius.
 
         individuals = sorted(population, key=attrgetter("fitness"), reverse=True)
         for i in range(len(individuals)):
@@ -155,12 +157,13 @@ class BaseAlgorithm:
         """
         n = len(population)
         if n == 0: return 0.0
-        connected = np.eye(n, dtype=bool)
+        connected = np.eye(n, dtype=bool)  # Matrix denoting the connection between individuals.
+        # Calculate the pairwise distance matrix.
         dist_matrix = population.copy() if isinstance(population, np.ndarray) \
             else squareform(pdist(np.array(population, dtype=object).reshape((len(population), -1)),
                                   lambda x, y: x[0].dist(y[0])))
         np.fill_diagonal(dist_matrix, np.inf)
-        pd = 0.0
+        pd = 0.0  # PD value.
         for _ in range(n - 1):
             while True:
                 d, indices = np.min(dist_matrix, axis=1), np.argmin(dist_matrix, axis=1)

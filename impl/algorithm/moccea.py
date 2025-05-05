@@ -37,10 +37,10 @@ class MOCCEA(BaseAlgorithm):
                 self.budget.initialize(other=pickle.load(f))
                 self.logbook = pickle.load(f)
         else:
-            pop_scenario = self.toolbox.pop_scenario()
-            pop_perturbation = self.toolbox.pop_perturbation()
-            archive_solution = []
-            evaluated_solutions = []
+            pop_scenario = self.toolbox.pop_scenario()  # Population of scenarios.
+            pop_perturbation = self.toolbox.pop_perturbation()  # Population of perturbations.
+            archive_solution = []  # Archive of all violated solutions.
+            evaluated_solutions = []  # List of all evaluated solutions.
             self.budget.initialize()
 
         while not self.budget.is_reached():
