@@ -7,11 +7,14 @@ Welcome to CoCoMEGA's documentation!
 ====================================
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 3
 
    intro
    install
    usage
+   conf
+   arch
+   mrs
    api
 
 Indices and tables
