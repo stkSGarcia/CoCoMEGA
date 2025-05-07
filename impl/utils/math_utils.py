@@ -2,6 +2,8 @@ import math
 
 import numpy as np
 
+from impl.utils.visualization import skip_map
+
 
 def cartesian_to_polar(x, y):
     """
@@ -48,8 +50,9 @@ def calculate_ds_improvements(mean_df):
     comparison_df = mean_df.pivot_table(index=['fitness_threshold', 'distance_threshold'],
                                         columns='alg',
                                         values='mean_ds').reset_index()
-    for alg in ('ga', 'rs', 'ccea-d'):
-        if alg in comparison_df.columns:
+    if 'ccea' not in comparison_df.columns: return
+    for alg in skip_map:
+        if alg != 'ccea' and alg in comparison_df.columns:
             comparison_df[f'ccea/{alg}'] = (comparison_df['ccea'] - comparison_df[alg]) / comparison_df[alg] * 100
             print(f"Average improvement of CoCoMEGA compared to {alg}: {comparison_df[f'ccea/{alg}'].mean():.2f}%")
 
@@ -76,7 +79,8 @@ def calculate_auc_improvements(auc_df):
                                        columns='alg',
                                        values='auc').reset_index()
 
-    for alg in ('ga', 'rs', 'ccea-d'):
-        if alg in comparison_df.columns:
+    if 'ccea' not in comparison_df.columns: return
+    for alg in skip_map:
+        if alg != 'ccea' and alg in comparison_df.columns:
             comparison_df[f'ccea/{alg}'] = (comparison_df['ccea'] - comparison_df[alg]) / comparison_df[alg] * 100
             print(f"Average improvement of CoCoMEGA compared to {alg}: {comparison_df[f'ccea/{alg}'].mean():.2f}%")
