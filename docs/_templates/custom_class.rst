@@ -10,6 +10,11 @@
    {% block methods %}
    .. automethod:: __init__
 
+   .. rubric:: {{ _('Inheritance Diagram') }}
+
+   .. inheritance-diagram:: {{ objname }}
+      :parts: 1
+
    {% if methods %}
    .. rubric:: {{ _('Methods') }}
 
