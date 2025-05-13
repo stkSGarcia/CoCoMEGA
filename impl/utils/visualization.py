@@ -41,7 +41,9 @@ verbose_map = {
     "ccea+ri": "CoCoMEGA+RI",
     "ccea-c+ri": "CoCoMEGA\c+RI",
     "rs": "RS",
+    "rs-c": "RS\c",
     "ga": "SGA",
+    "ga-c": "SGA\c",
     "gawa": "SGA with Archives",
     "distinct_solution_num": "Average $DS$",
     "ds": "$DS$",
@@ -57,7 +59,9 @@ style_map = {
     "ccea+ri": {"color": "C4", "marker": "P"},
     "ccea-c+ri": {"color": "C5", "marker": "P"},
     "ga": {"color": "C2", "marker": "*"},
-    "rs": {"color": "C0", "marker": "x"}
+    "ga-c": {"color": "C6", "marker": "*"},
+    "rs": {"color": "C0", "marker": "x"},
+    "rs-c": {"color": "C7", "marker": "x"},
 }
 
 skip_map = {
@@ -67,7 +71,9 @@ skip_map = {
     "ccea+ri": 5,
     "ccea-c+ri": 5,
     "ga": 2,
+    "ga-c": 2,
     "rs": 1,
+    "rs-c": 1,
 }
 
 
