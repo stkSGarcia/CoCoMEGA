@@ -38,12 +38,12 @@ verbose_map = {
     "ccea": "CoCoMEGA",
     "ccea-c": "CoCoMEGA\c",
     "ccea-d": "CoCoMEGA\d",
-    "ccea+ri": "CoCoMEGA+RI",
-    "ccea-c+ri": "CoCoMEGA\c+RI",
+    "ccea+ri": "CoCoMEGA with RI",
+    "ccea-c+ri": "CoCoMEGA\c with RI",
     "rs": "RS",
-    "rs-c": "RS\c",
+    "rs+ri": "RS with RI",
     "ga": "SGA",
-    "ga-c": "SGA\c",
+    "ga+ri": "SGA with RI",
     "gawa": "SGA with Archives",
     "distinct_solution_num": "Average $DS$",
     "ds": "$DS$",
@@ -59,22 +59,23 @@ style_map = {
     "ccea+ri": {"color": "C4", "marker": "P"},
     "ccea-c+ri": {"color": "C5", "marker": "P"},
     "ga": {"color": "C2", "marker": "*"},
-    "ga-c": {"color": "C6", "marker": "*"},
+    "ga+ri": {"color": "C6", "marker": "*"},
     "rs": {"color": "C0", "marker": "x"},
-    "rs-c": {"color": "C7", "marker": "x"},
+    "rs+ri": {"color": "C7", "marker": "x"},
 }
+default_style = {"color": "C8", "marker": "o"}
 
-skip_map = {
-    "ccea": 5,
-    "ccea-c": 5,
-    "ccea-d": 5,
-    "ccea+ri": 5,
-    "ccea-c+ri": 5,
-    "ga": 2,
-    "ga-c": 2,
-    "rs": 1,
-    "rs-c": 1,
-}
+
+def get_skip(name):
+    skip_map = {
+        "ccea": 5,
+        "ga": 2,
+        "rs": 1,
+    }
+    for alg in skip_map:
+        if alg in name:
+            return skip_map[alg]
+    return None
 
 
 class Visualizer:
@@ -248,7 +249,7 @@ class Visualizer:
             ))
 
             fig.update_layout(
-                title=f'Evolutionary Algorithm Generation Statistics for {verbose_map[pop_name]} population',
+                title=f'Evolutionary Algorithm Generation Statistics for {verbose_map.get(pop_name, pop_name)} population',
                 xaxis_title='Generation',
                 yaxis_title='Fitness',
                 legend_title='Metrics',
@@ -339,7 +340,7 @@ def visualize_in_one(project, plot_nan=True, verbose=False, save_path=None, show
     def _plot_metrics(_ax, _pop, _name, xlabel=False, ylabel=False, legend=False):
         for _metric, _fmt in [("std", ":C0"), ("min", "--C1"), ("avg", "o-C2"), ("max", "--C3")]:
             _ax.plot(_pop["gen"], _pop[_metric], _fmt, label=_metric)
-        _ax.set_title(verbose_map[_name], fontsize=title_size)
+        _ax.set_title(verbose_map.get(_name, _name), fontsize=title_size)
         _ax.tick_params(labelsize=tick_size)
         _ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         if xlabel: _ax.set_xlabel("Generation", fontsize=text_size)
@@ -455,16 +456,18 @@ def visualize_comparison(projects: Dict[str, List[str]], max_percentile=0.75,
             full, merged, agg = full[pop_name], merged[pop_name], agg[pop_name]
             if box:
                 ax.boxplot(agg[metric], positions=agg.index.values, widths=2, patch_artist=True, manage_ticks=False,
-                           whis=(0, 100), boxprops=dict(facecolor=style_map[name]["color"], alpha=0.4))
-            if avg_line: ax.plot(agg.index.values, agg[metric].apply(np.nanmean), **style_map[name])
+                           whis=(0, 100),
+                           boxprops=dict(facecolor=style_map.get(name, default_style)["color"], alpha=0.4))
+            if avg_line: ax.plot(agg.index.values, agg[metric].apply(np.nanmean), **style_map.get(name, default_style))
             if trend_line:
                 f = np.poly1d(np.polyfit(merged["sim"], merged[metric], regression_degree))
-                ax.plot(merged["sim"], f(merged["sim"]), lw=2, color=style_map[name]["color"])
+                ax.plot(merged["sim"], f(merged["sim"]), lw=2, color=style_map.get(name, default_style)["color"])
             if all_lines:
                 for line in full:
-                    ax.plot(line["sim"], line[metric], "--", lw=1, **style_map[name], alpha=0.6)
+                    ax.plot(line["sim"], line[metric], "--", lw=1, **style_map.get(name, default_style), alpha=0.6)
             if name not in legend_elements:
-                legend_elements[name] = Line2D([0], [0], **style_map[name], label=verbose_map[name])
+                legend_elements[name] = Line2D([0], [0], **style_map.get(name, default_style),
+                                               label=verbose_map.get(name, name))
         ax.set_title(title, fontsize=title_size)
         ax.tick_params(labelsize=tick_size)
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -607,10 +610,10 @@ def visualize_diversity(projects: Dict[str, List[str]], save_path=None, show=Fal
     for ax, diversities, title in zip(axs, data, ("Average pairwise distance",
                                                   "Pure diversity",
                                                   "Average nearest\nneighbor distance")):
-        bplot = ax.boxplot(diversities.values(), labels=[verbose_map[l] for l in diversities.keys()],
+        bplot = ax.boxplot(diversities.values(), labels=[verbose_map.get(l, l) for l in diversities.keys()],
                            patch_artist=True, whis=(0, 100))
         for patch, name in zip(bplot["boxes"], diversities.keys()):
-            patch.set_facecolor(style_map[name]["color"])
+            patch.set_facecolor(style_map.get(name, default_style)["color"])
             patch.set_alpha(0.6)
         ax.set_title(title, fontsize=title_size)
         ax.tick_params(labelsize=tick_size)
@@ -700,10 +703,10 @@ def visualize_archived_distinct_solutions(projects: Dict[str, List[str]], fitnes
             mean_df = pd.concat([mean_df, gp_means], ignore_index=True)
             ax.errorbar(distance_thresholds, mean_val,
                         yerr=values.apply(lambda row: 0.95 * np.std(row) / np.sqrt(len(row))),
-                        **style_map[name], capsize=2, label=verbose_map[name], alpha=0.7)
+                        **style_map.get(name, default_style), capsize=2, label=verbose_map.get(name, name), alpha=0.7)
             if box: ax.boxplot(group["distinct_solution_num"], positions=group.index.values, widths=0.05,
                                patch_artist=True, manage_ticks=False, whis=(0, 100),
-                               boxprops=dict(facecolor=style_map[name]["color"], alpha=0.4))
+                               boxprops=dict(facecolor=style_map.get(name, default_style)["color"], alpha=0.4))
             ax.set_title(f"Fitness threshold ($\\theta_f={gp_name}$)", fontsize=title_size)
             ax.tick_params(labelsize=tick_size)
             ax.set_xlabel("Distance threshold ($\\theta_d$)", fontsize=text_size)
@@ -762,7 +765,7 @@ def visualize_distinct_solution_over_simulations(projects: Dict[str, List[str]],
             df = pd.DataFrame()
             for checkpoint in checkpoints:
                 with checkpoint.open("rb") as f:
-                    for _ in range(skip_map[name]): pickle.load(f)
+                    for _ in range(get_skip(name)): pickle.load(f)
                     solutions = pickle.load(f)
                     for _ in range(2): pickle.load(f)
                     budget = pickle.load(f)
@@ -795,7 +798,7 @@ def visualize_distinct_solution_over_simulations(projects: Dict[str, List[str]],
                 "distance_threshold": gp_name[1],
                 "auc": area_under_curve(np.array([0, *percent_ranges]), np.array([0, *y]))
             }])], ignore_index=True)
-            ax.plot(percent_ranges, y, **style_map[name], label=verbose_map[name])
+            ax.plot(percent_ranges, y, **style_map.get(name, default_style), label=verbose_map.get(name, name))
             ax.set_title(
                 f"Fitness threshold ($\\theta_f={gp_name[0]}$),\nDistance threshold ($\\theta_d={gp_name[1]}$)",
                 fontsize=title_size)
@@ -856,7 +859,7 @@ def visualize_archived_solutions_by_gen(projects: Dict[str, List[str]], generati
                 cp = run[generation_num - 1]
 
             with cp.open("rb") as f:
-                for _ in range(skip_map[alg]): pickle.load(f)
+                for _ in range(get_skip(alg)): pickle.load(f)
                 solutions = pickle.load(f)
 
             solution_df = _filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds, mr_set,
@@ -883,15 +886,15 @@ def visualize_archived_solutions_by_gen(projects: Dict[str, List[str]], generati
             ax.errorbar(fitness_thresholds, values.apply(np.nanmean),
                         yerr=values.apply(
                             lambda row: 0.95 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row)))),
-                        **style_map[alg], capsize=2, label=verbose_map[alg])
+                        **style_map.get(alg, default_style), capsize=2, label=verbose_map.get(alg, alg))
 
             if box: ax.boxplot(group["distinct_solution_num"], positions=group.index.values, widths=0.05,
                                patch_artist=True, manage_ticks=False, whis=(0, 100),
-                               boxprops=dict(facecolor=style_map[alg]["color"], alpha=0.4))
+                               boxprops=dict(facecolor=style_map.get(alg, default_style)["color"], alpha=0.4))
             ax.set_title(f"Distance threshold ($\\theta_d={gp_name}$)", fontsize=title_size)
             ax.tick_params(labelsize=tick_size)
             ax.set_xlabel("Fitness threshold ($\\theta_f$)", fontsize=text_size)
-            ax.set_ylabel(verbose_map[metric_name], fontsize=text_size)
+            ax.set_ylabel(verbose_map.get(metric_name, metric_name), fontsize=text_size)
 
             curr_y_min, curr_y_max = ax.get_ylim()
 
@@ -948,7 +951,7 @@ def visualize_archive_solution_over_generations(projects: Dict[str, List[str]], 
             for i, file in enumerate(file_list):
                 if i == max_gen: break
                 with file.open("rb") as f:
-                    for _ in range(skip_map[alg]): pickle.load(f)
+                    for _ in range(get_skip(alg)): pickle.load(f)
                     solutions = pickle.load(f)
                 ckp_df = _filter_by_thresholds(solutions, fitness_thresholds, distance_thresholds, mr_set,
                                                additional_metrics=[metric_name])
@@ -975,7 +978,7 @@ def visualize_archive_solution_over_generations(projects: Dict[str, List[str]], 
 
             ax.plot(group["gen"],
                     group[f'{metric_name}_mean'],
-                    **style_map[alg], label=verbose_map[alg])
+                    **style_map.get(alg, default_style), label=verbose_map.get(alg, alg))
             ax.set_title(
                 f"Fitness threshold ($\\theta_f={gp_name[0]}$),\nDistance threshold ($\\theta_d={gp_name[1]}$)",
                 fontsize=title_size)
@@ -983,7 +986,7 @@ def visualize_archive_solution_over_generations(projects: Dict[str, List[str]], 
             # ax.xaxis.set_major_locator(MultipleLocator(interval))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=1))
             ax.set_xlabel("Generation", fontsize=text_size)
-            ax.set_ylabel(verbose_map[metric_name], fontsize=text_size)
+            ax.set_ylabel(verbose_map.get(metric_name, metric_name), fontsize=text_size)
             curr_y_min, curr_y_max = ax.get_ylim()
             if y_max + padding["top"] > curr_y_max:
                 ax.set_ylim(top=y_max + padding["top"])
@@ -1011,12 +1014,12 @@ def visualize_computational_efficiency(log_file: str, projects: Dict[str, List[s
     df = _generate_execution_time_data(log_file, projects)
     algorithms = list(projects.keys())
     durations = [df[df['alg'] == alg]['duration_hours'] for alg in algorithms]
-    colors = [style_map[alg]['color'] for alg in algorithms]
+    colors = [style_map.get(alg, default_style)['color'] for alg in algorithms]
 
     height = 4
     title_size, text_size, tick_size = height * 5, height * 4, height * 3
     fig = plt.figure(figsize=(height * 2, height * 2))
-    box = plt.boxplot(durations, labels=[verbose_map[alg] for alg in algorithms], patch_artist=True,
+    box = plt.boxplot(durations, labels=[verbose_map.get(alg, alg) for alg in algorithms], patch_artist=True,
                       showmeans=True, medianprops=dict(color='black'),
                       meanprops=dict(marker='D', markerfacecolor='black', markeredgecolor='black', alpha=0.7),
                       showfliers=False)
