@@ -165,6 +165,7 @@ violation:
   strategy: position  # Options: curve, position
   max_ego_distance: 5 # Maximum distance in meters between ego-vehicle and closest object in simulation-based strategy
   dtw: true
+  clip_negative: true # clip negative violations to zero
   reevaluation:
     threshold: 0.2
     repeat: 3
