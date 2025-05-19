@@ -108,7 +108,7 @@ def _fitness(source, follow_up, mr_set=mr_set):
         follow_up[mr_set.field] = follow_up.apply(func, axis=1, result_type="reduce")
     is_violated, extent = mr_set.is_violated(source, follow_up)
     if cfg.CONFIG["violation"]["clip_negative"] and extent is not None:
-        extent = extent if extent > 0 else 0
+        extent = extent if extent > 0 else 0.0
     return is_violated, (extent,) if extent is not None else None
 
 
