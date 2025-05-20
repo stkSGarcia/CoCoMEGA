@@ -65,13 +65,13 @@ style_map = {
 }
 default_style = {"color": "C8", "marker": "o"}
 
+skip_map = {
+    "ccea": 5,
+    "ga": 2,
+    "rs": 1,
+}
 
 def get_skip(name):
-    skip_map = {
-        "ccea": 5,
-        "ga": 2,
-        "rs": 1,
-    }
     for alg in skip_map:
         if alg in name:
             return skip_map[alg]
