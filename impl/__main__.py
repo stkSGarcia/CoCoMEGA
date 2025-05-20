@@ -406,4 +406,4 @@ if __name__ == "__main__":
         sys.exit(1)
     arguments = parser.parse_args()
     arguments.func(arguments)
-    cleanup_containers()
+    # cleanup_containers()
