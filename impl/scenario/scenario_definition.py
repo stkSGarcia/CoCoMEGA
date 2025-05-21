@@ -9,6 +9,7 @@ from enum import Enum
 
 import carla
 import numpy as np
+import pandas as pd
 from deap import tools
 from scipy.spatial.distance import cdist
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
@@ -720,6 +721,43 @@ class ScenarioDefinition:
         for actor in self.vehicles + self.walkers + self.statics:
             actor.mark = False
 
+    def vectorize(self, max_actors: int, prefix: str):
+        """Vectorize the scenario.
+
+        :param max_actors: Maximum number of actors.
+            It should be greater than the value configured in `scenario:max_actors`.
+        :param prefix: The string added before the feature names.
+        :return: A :class:`DataFrame` representing the vector.
+        """
+        # Vectorize global attributes.
+        df = pd.DataFrame({f"{prefix}_town": [self.town]}).join(
+            pd.DataFrame({f"{prefix}_{attr}": [getattr(self, attr, None)] for attr in self.ATTRIBUTES})
+        )
+
+        # Vectorize the ego vehicle.
+        df = df.join(self.ego_vehicle.vectorize(prefix=f"{prefix}_ego"))
+
+        # Vectorize the trajectory.
+        df = df.join(pd.DataFrame({f"{prefix}_traj_start_{k}": [v] for k, v in self.trajectory["start"].items()}))
+        df = df.join(pd.DataFrame({f"{prefix}_traj_direction": [self.trajectory["direction"]]}))
+
+        # Vectorize actors.
+        for attr in self.DYNAMIC:
+            actors = getattr(self, f"{attr}s")
+            if len(actors) > max_actors:
+                raise ValueError(f"The number of actors ({len(actors)}) should be less than or equal to "
+                                 f"the maximum number of actors ({max_actors}).")
+            df = df.join(pd.DataFrame({f"{prefix}_num_{attr}": [len(actors)]}))
+            for i, actor in enumerate(actors):
+                df = df.join(actor.vectorize(prefix=f"{prefix}_{attr}_{i}"))
+            i = len(actors)
+            while i < max_actors:
+                cls = getattr(sys.modules[__name__], attr.capitalize())
+                df = df.join(cls.vectorize_padding(prefix=f"{prefix}_{attr}_{i}"))
+                i += 1
+
+        return df
+
     @staticmethod
     def _list_eq(this, that):
         """
@@ -922,6 +960,25 @@ class Actor(ABC):
             },
             "model": self._BLUEPRINTS["model"][self.model]
         }
+
+    def vectorize(self, prefix: str):
+        """Vectorize the actor.
+
+        :param prefix: The string added before the actor's attribute name.
+        :return: A :class:`DataFrame` representing the vector.
+        """
+        return pd.DataFrame({f"{prefix}_{attr}": [getattr(self, attr, None)]
+                             for attr in Actor._ATTRIBUTES + self._ATTRIBUTES})
+
+    @classmethod
+    def vectorize_padding(cls, prefix: str):
+        """Generate a padding vector for an actor.
+
+        :param prefix: The string added before the actor's attribute name.
+        :return: A :class:`DataFrame` representing the vector.
+        """
+        return pd.DataFrame({f"{prefix}_{attr}": [None]
+                             for attr in Actor._ATTRIBUTES + cls._ATTRIBUTES})
 
     def __eq__(self, other):
         """
