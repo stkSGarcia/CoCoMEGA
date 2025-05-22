@@ -73,14 +73,15 @@ def user_has_processes_in_container(container_id, username):
     return result.returncode == 0
 
 
-def cleanup_containers():
+def cleanup_containers(tag=None):
     """
     Stop all Docker containers launched by the current user that match the CARLA Docker image.
 
     Only containers belonging to the current system user will be affected.
     """
+    pattern = f'{cfg.CONFIG["docker"]["image"]}-{tag if tag is not None else ""}'
     logger.info("Cleaning up Carla containers ...")
-    command = f'docker ps -a --filter "name=^{cfg.CONFIG["docker"]["image"]}" -q | while read container; do ' \
+    command = f'docker ps -a --filter "name=^{pattern}" -q | while read container; do ' \
               'pid=$(docker inspect --format "{{{{ .State.Pid }}}}" "$container" 2>/dev/null); ' \
               'if [ -n "$pid" ] && [ -d "/proc/$pid" ]; then ' \
               'owner_uid=$(stat -c %u /proc/$pid/); ' \
