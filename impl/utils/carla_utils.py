@@ -1,5 +1,7 @@
 import logging
 import math
+import os
+
 import numpy as np
 
 import carla
@@ -11,7 +13,7 @@ from leaderboard.utils.route_manipulation import interpolate_trajectory
 logger = logging.getLogger(__name__)
 
 
-def initialize_carla(host=None, port=None, tm_port=None, gpu_device=None, seed=2000):
+def initialize_carla(host=None, port=None, tm_port=None, gpu_device=None, seed=2000, tag="default"):
     """
     Initialize the CARLA client and data provider.
 
@@ -22,6 +24,7 @@ def initialize_carla(host=None, port=None, tm_port=None, gpu_device=None, seed=2
     :param tm_port: Port of the traffic manager.
     :param gpu_device: GPU device ID to use.
     :param seed: Random seed for reproducibility.
+    :param tag: A specific tag used in container name.
     """
     try:
         # Initialize the Carla client and the world
@@ -31,7 +34,7 @@ def initialize_carla(host=None, port=None, tm_port=None, gpu_device=None, seed=2
         tm_port = tm_port or conf["tm_port"]
         gpu_device = gpu_device or conf["gpu_device"]
         if cfg.CONFIG["docker"]["enabled"]:
-            setup_carla(container_name=f"{cfg.CONFIG['docker']['image']}-{port}",
+            setup_carla(container_name=f"{cfg.CONFIG['docker']['image']}-{tag}-{port}",
                         port=port,
                         gpu_device=gpu_device,
                         )
@@ -45,6 +48,7 @@ def initialize_carla(host=None, port=None, tm_port=None, gpu_device=None, seed=2
     except Exception as e:
         logger.error(f"Error initializing Carla: {e}")
         raise e
+
 
 def carla_partial_cleanup():
     """
@@ -80,6 +84,7 @@ def carla_partial_cleanup():
     CarlaDataProvider._spawn_points = None
     CarlaDataProvider._spawn_index = 0
     CarlaDataProvider._ego_vehicle_route = None
+
 
 def get_junction_topology(junction):
     """
@@ -308,7 +313,8 @@ def load_world(town, cleanup=True):
     """
 
     if CarlaDataProvider.get_client() is None:
-        initialize_carla()
+        tag = os.environ.get("tag", "default")
+        initialize_carla(tag=tag)
     if CarlaDataProvider.get_world() is None or CarlaDataProvider.get_world().get_map().name.lower() != town.lower():
         if cleanup:
             carla_partial_cleanup()

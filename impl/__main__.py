@@ -32,6 +32,7 @@ def parse_list(_type: type, delimeter: str):
     :param delimeter: The delimiter used to split the input string.
     :return: A function that parses the input string into a list of values.
     """
+
     def parse_func(arg_str: str):
         """Parse a comma-separated list of values into a list of specified type.
 
@@ -57,6 +58,7 @@ def search(algorithm: str, resume: bool, folder_name: str):
     :param folder_name: Folder name to resume from.
     """
     from impl import problem
+    os.environ["tag"] = "search"
     if resume:
         cfg.init_project_directory(folder_name, resume)
     else:
@@ -82,6 +84,7 @@ def simulate(num: int, file: str):
     :param num: Number of scenarios to simulate.
     :param file: Path to a solution file; if :data:`None`, simulate randomly.
     """
+    os.environ["tag"] = "sim"
     cfg.init_project_directory("sim")
     if file:
         logger.info(f"Loading solution file: {file}.")
@@ -97,6 +100,7 @@ def collect_runtime_data(agent: str, output: str):
     :param agent: Name or version of the agent.
     :param output: Path to save the collected runtime data.
     """
+    os.environ["tag"] = "collect_rt"
     if output is None:
         output = cfg.CONFIG["workspace"]["runtime_data"]
         cp_root = cfg.CONFIG["workspace"]["data_collection_checkpoint"]
@@ -140,6 +144,7 @@ def collect_runtime_data(agent: str, output: str):
 def generate_train_data():
     """Run free simulations to generate training data using rule-based agents."""
 
+    os.environ["tag"] = "gen_tr"
     logger.info(f"Generating training data...")
 
     os.makedirs(cfg.CONFIG["workspace"]["data_gen_checkpoint"], exist_ok=True)
@@ -171,6 +176,7 @@ def train_interfuser(args):
     :param args: Parsed training arguments.
     :return: Return code of the training process.
     """
+    os.environ["tag"] = "train"
     logger.info(f"Creating dataset index...")
     create_dataset_index(cfg.CONFIG["workspace"]["train_data"],
                          weathers=args.train_weathers + args.val_weathers,
@@ -250,6 +256,7 @@ def convert2scenarios(directory: str, n: int, towns: List[str]):
     :param n: Number of scenarios to sample (:data:`0` for all).
     :param towns: List of allowed towns for filtering.
     """
+
     def vectorize(path):
         """Helper function to vectorize a runtime data file if it matches town criteria.
 
@@ -267,6 +274,7 @@ def convert2scenarios(directory: str, n: int, towns: List[str]):
             logger.error(f"Failed to vectorize runtime data from {path}, error message {e}.")
             return None
 
+    os.environ["tag"] = "conv"
     scenarios = []
     if n < 1:
         for data_path in Path(directory).rglob("*.pkl"):

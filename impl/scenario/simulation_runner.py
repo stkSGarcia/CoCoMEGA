@@ -48,7 +48,7 @@ from impl.scenario.interfuser_scenario_evaluator import ScenarioEvaluator
 logger = logging.getLogger(__name__)
 config = type("", (object,), {arg: value for _, arg, value in arguments})()
 evaluated_scenarios = Manager().dict()
-carla_host = carla_port = tm_port = gpu_device = None
+carla_host = carla_port = tm_port = gpu_device = tag = None
 
 
 def _init_carla(instance_configs):
@@ -60,11 +60,11 @@ def _init_carla(instance_configs):
 
     :param instance_configs: Queue providing instance settings.
     """
-    global carla_host, carla_port, tm_port, gpu_device
-    carla_host, carla_port, tm_port, gpu_device = instance_configs.get(timeout=10)
-    os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_device)
+    global carla_host, carla_port, tm_port, gpu_device, tag
+    carla_host, carla_port, tm_port, gpu_device, tag = instance_configs.get(timeout=10)
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_device)
     CarlaDataProvider.cleanup()
-    initialize_carla(carla_host, carla_port, tm_port, gpu_device)
+    initialize_carla(carla_host, carla_port, tm_port, gpu_device, tag=tag)
 
 
 def run_free_environments(confs):
@@ -74,10 +74,12 @@ def run_free_environments(confs):
     :param confs: List of configuration dictionaries for each environment run.
     :return: A list of results from each environment.
     """
+    tag = os.environ.get("tag", "default")
     if cfg.CONFIG["runtime"]["parallel"]:
         process_configs = Manager().Queue()
         for instance in cfg.CONFIG["runtime"]["instances"]:
-            process_configs.put((instance["host"], instance["port"], instance["tm_port"], instance["gpu_device"]))
+            process_configs.put(
+                (instance["host"], instance["port"], instance["tm_port"], instance["gpu_device"], tag))
         with ProcessPoolExecutor(max_workers=len(cfg.CONFIG["runtime"]["instances"]),
                                  initializer=_init_carla, initargs=(process_configs,)) as executor:
             results = executor.map(run_environment, confs)
@@ -88,7 +90,7 @@ def run_free_environments(confs):
                                                        instance["tm_port"], instance["gpu_device"])
         os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_device)
         CarlaDataProvider.cleanup()
-        initialize_carla(carla_host, carla_port, tm_port, gpu_device)
+        initialize_carla(carla_host, carla_port, tm_port, gpu_device, tag=tag)
         results = map(run_environment, confs)
         results = zip(*results)
     return results
@@ -214,7 +216,7 @@ def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False, addition
             is_successful = True
             break
         except InvalidScenarioDefinitionError as e:
-            #logger.error(f"Scenario failed: {scenario}, message: {e}.")
+            # logger.error(f"Scenario failed: {scenario}, message: {e}.")
             logger.error(f"Scenario failed, message: {e}.")
             is_successful = False
             break
@@ -256,13 +258,14 @@ def run_scenarios(scenarios, agent_name="v1", rerun=False, additional_confs=None
     :param additional_confs: Optional additional configurations per scenario.
     :return: (List of results, number of successful runs).
     """
+    tag = os.environ.get("tag", "default")
     if additional_confs is None:
         additional_confs = list(itertools.repeat(None, len(scenarios)))
     assert len(additional_confs) == len(scenarios)
     if cfg.CONFIG["simulation"]["parallel"]:
         process_configs = Manager().Queue()
         for instance in cfg.CONFIG["simulation"]["instances"]:
-            process_configs.put((instance["host"], instance["port"], instance["tm_port"], instance["gpu_device"]))
+            process_configs.put((instance["host"], instance["port"], instance["tm_port"], instance["gpu_device"], tag))
         # FIXME: Traffic manager may cause memory leak.
         # https://github.com/carla-simulator/carla/issues/3584
         # https://github.com/carla-simulator/carla/issues/3540

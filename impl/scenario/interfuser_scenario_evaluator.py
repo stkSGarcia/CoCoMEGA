@@ -90,7 +90,8 @@ class ScenarioEvaluator(object):
         # to the simulator. Here we'll assume the simulator is accepting
         # requests in the localhost at port 2000.
         if CarlaDataProvider.get_client() is None:
-            initialize_carla()
+            tag = os.environ.get("tag", "default")
+            initialize_carla(tag=tag)
 
         self.client = CarlaDataProvider.get_client()
 
