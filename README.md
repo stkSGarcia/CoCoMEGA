@@ -280,7 +280,7 @@ Settings to control the simulation execution:
 - `frame_rate`: Number of frames (ticks) per second.
 - `high_graphics`: Use Fidelity Mode with better visuals.
 - `autopilot`: Enable autopilot for other vehicles.
-- `disable_spectator`: Disable the simulation specsator for efficiency.
+- `disable_spectator`: Disable the simulation spectator for efficiency.
 - `instances`: Configuration of docker instances for carla (controls the extent of parallelization for scenario execution).
 
 ### Runtime Settings (`runtime`)
