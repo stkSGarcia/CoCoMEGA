@@ -8,11 +8,11 @@ from sklearn.preprocessing import OneHotEncoder
 from impl.scenario.scenario_definition import ScenarioDefinition
 
 
-def vectorize(solutions):
-    max_actors = 0
+def vectorize(solutions, encode_stats=False):
     fitnesses = []
     source_scens = []
     follow_up_scens = []
+    max_actors = 0
     for solution in solutions:
         fitnesses.append(solution.fitness.values[0])
         source = solution[0]
@@ -21,15 +21,22 @@ def vectorize(solutions):
         perturbation = solution[1]
         perturbation.perturb(follow_up)
         follow_up_scens.append(follow_up)
-        for attr in ScenarioDefinition.DYNAMIC:
-            source_actors = getattr(source, f"{attr}s")
-            follow_up_actors = getattr(follow_up, f"{attr}s")
-            max_actors = max(max_actors, len(source_actors), len(follow_up_actors))
+        if not encode_stats:
+            for attr in ScenarioDefinition.DYNAMIC:
+                source_actors = getattr(source, f"{attr}s")
+                follow_up_actors = getattr(follow_up, f"{attr}s")
+                max_actors = max(max_actors, len(source_actors), len(follow_up_actors))
 
-    vector_dfs = [pd.concat([
-        source.vectorize(max_actors, prefix="source"),
-        follow_up.vectorize(max_actors, prefix="follow_up")
-    ], axis=1) for source, follow_up in zip(source_scens, follow_up_scens)]
+    if encode_stats:
+        vector_dfs = [pd.concat([
+            source.vectorize(max_actors, prefix="source", encode_stats=True),
+            follow_up.vectorize(max_actors, prefix="follow_up", encode_stats=True),
+        ], axis=1) for source, follow_up in zip(source_scens, follow_up_scens)]
+    else:
+        vector_dfs = [pd.concat([
+            source.vectorize(max_actors, prefix="source"),
+            follow_up.vectorize(max_actors, prefix="follow_up")
+        ], axis=1) for source, follow_up in zip(source_scens, follow_up_scens)]
     raw_vectors = pd.concat(vector_dfs, ignore_index=True)
 
     categorical_cols = [col for col in raw_vectors.columns

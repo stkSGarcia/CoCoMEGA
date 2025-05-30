@@ -721,12 +721,13 @@ class ScenarioDefinition:
         for actor in self.vehicles + self.walkers + self.statics:
             actor.mark = False
 
-    def vectorize(self, max_actors: int, prefix: str):
+    def vectorize(self, max_actors: int, prefix: str, encode_stats=False):
         """Vectorize the scenario.
 
         :param max_actors: Maximum number of actors.
             It should be greater than the value configured in `scenario:max_actors`.
         :param prefix: The string added before the feature names.
+        :param encode_stats: Whether to encode statistics of actors (default: :data:`False`).
         :return: A :class:`DataFrame` representing the vector.
         """
         # Vectorize global attributes.
@@ -742,19 +743,50 @@ class ScenarioDefinition:
         df = df.join(pd.DataFrame({f"{prefix}_traj_direction": [self.trajectory["direction"]]}))
 
         # Vectorize actors.
-        for attr in self.DYNAMIC:
-            actors = getattr(self, f"{attr}s")
-            if len(actors) > max_actors:
-                raise ValueError(f"The number of actors ({len(actors)}) should be less than or equal to "
-                                 f"the maximum number of actors ({max_actors}).")
-            df = df.join(pd.DataFrame({f"{prefix}_num_{attr}": [len(actors)]}))
-            for i, actor in enumerate(actors):
-                df = df.join(actor.vectorize(prefix=f"{prefix}_{attr}_{i}"))
-            i = len(actors)
-            while i < max_actors:
-                cls = getattr(sys.modules[__name__], attr.capitalize())
-                df = df.join(cls.vectorize_padding(prefix=f"{prefix}_{attr}_{i}"))
-                i += 1
+        if encode_stats:
+            for category in self.DYNAMIC:
+                actors = getattr(self, f"{category}s")
+                df = df.join(pd.DataFrame({f"{prefix}_num_{category}": [len(actors)]}))
+                if len(actors) > 0:
+                    actor_df = pd.concat([actor.vectorize(prefix=f"{prefix}_{category}") for actor in actors])
+                    stats = {}
+                    for col in actor_df.columns:
+                        if "model" in col: continue
+                        stats.update({
+                            f"{col}_min": [actor_df[col].min()],
+                            f"{col}_max": [actor_df[col].max()],
+                            f"{col}_mean": [actor_df[col].mean()],
+                            f"{col}_median": [actor_df[col].median()],
+                        })
+                    df = df.join(pd.DataFrame(stats))
+                else:
+                    cls = getattr(sys.modules[__name__], category.capitalize())
+                    empty_df = cls.vectorize_padding(prefix=f"{prefix}_{category}")
+                    stats = {}
+                    for col in empty_df.columns:
+                        if "model" in col: continue
+                        stats.update({
+                            f"{col}_min": [0.0],
+                            f"{col}_max": [0.0],
+                            f"{col}_mean": [0.0],
+                            f"{col}_median": [0.0],
+                        })
+                    df = df.join(pd.DataFrame(stats))
+        else:
+            for category in self.DYNAMIC:
+                actors = getattr(self, f"{category}s")
+                if len(actors) > max_actors:
+                    raise ValueError(f"The number of actors ({len(actors)}) should be less than or equal to "
+                                     f"the maximum number of actors ({max_actors}).")
+                df = df.join(pd.DataFrame({f"{prefix}_num_{category}": [len(actors)]}))
+                actors = sorted(actors, key=lambda x: x.radius)
+                for i, actor in enumerate(actors):
+                    df = df.join(actor.vectorize(prefix=f"{prefix}_{category}_{i}"))
+                i = len(actors)
+                while i < max_actors:
+                    cls = getattr(sys.modules[__name__], category.capitalize())
+                    df = df.join(cls.vectorize_padding(prefix=f"{prefix}_{category}_{i}"))
+                    i += 1
 
         return df
 
