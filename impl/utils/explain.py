@@ -5,6 +5,7 @@ from imodels import RuleFitRegressor
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
 
+from impl import problem
 from impl.scenario.scenario_definition import ScenarioDefinition
 
 
@@ -14,7 +15,8 @@ def vectorize(solutions, encode_stats=False):
     follow_up_scens = []
     max_actors = 0
     for solution in solutions:
-        fitnesses.append(solution.fitness.values[0])
+        fitnesses.append(solution.fitness.values[0] if solution.fitness_type == problem.test_version
+                         else -solution.fitness.values[0])
         source = solution[0]
         source_scens.append(source)
         follow_up = deepcopy(source)
@@ -56,6 +58,6 @@ def vectorize(solutions, encode_stats=False):
 
 
 def generate_rules(x, y, features):
-    rulefit = RuleFitRegressor(max_rules=10)
-    rulefit.fit(x, y, feature_names=features)
-    return rulefit
+    model = RuleFitRegressor(max_rules=12)
+    model.fit(x, y, feature_names=features)
+    return model
