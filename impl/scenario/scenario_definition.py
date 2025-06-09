@@ -6,6 +6,7 @@ import uuid
 from abc import ABC
 from copy import deepcopy
 from enum import Enum
+from itertools import groupby
 
 import carla
 import numpy as np
@@ -721,13 +722,14 @@ class ScenarioDefinition:
         for actor in self.vehicles + self.walkers + self.statics:
             actor.mark = False
 
-    def vectorize(self, max_actors: int, prefix: str, encode_stats=False):
+    def vectorize(self, max_actors: int, prefix: str, mode="stats"):
         """Vectorize the scenario.
 
         :param max_actors: Maximum number of actors.
             It should be greater than the value configured in `scenario:max_actors`.
         :param prefix: The string added before the feature names.
-        :param encode_stats: Whether to encode statistics of actors (default: :data:`False`).
+        :param mode: The way to encode actors. Options are :data:`stats` for encoding statistics
+            or :data:`padding` for padding shorter lists of actors (default: :data:`stats`).
         :return: A :class:`DataFrame` representing the vector.
         """
         # Vectorize global attributes.
@@ -743,36 +745,7 @@ class ScenarioDefinition:
         df = df.join(pd.DataFrame({f"{prefix}_traj_direction": [self.trajectory["direction"]]}))
 
         # Vectorize actors.
-        if encode_stats:
-            for category in self.DYNAMIC:
-                actors = getattr(self, f"{category}s")
-                df = df.join(pd.DataFrame({f"{prefix}_num_{category}": [len(actors)]}))
-                if len(actors) > 0:
-                    actor_df = pd.concat([actor.vectorize(prefix=f"{prefix}_{category}") for actor in actors])
-                    stats = {}
-                    for col in actor_df.columns:
-                        if "model" in col: continue
-                        stats.update({
-                            f"{col}_min": [actor_df[col].min()],
-                            f"{col}_max": [actor_df[col].max()],
-                            f"{col}_mean": [actor_df[col].mean()],
-                            f"{col}_median": [actor_df[col].median()],
-                        })
-                    df = df.join(pd.DataFrame(stats))
-                else:
-                    cls = getattr(sys.modules[__name__], category.capitalize())
-                    empty_df = cls.vectorize_padding(prefix=f"{prefix}_{category}")
-                    stats = {}
-                    for col in empty_df.columns:
-                        if "model" in col: continue
-                        stats.update({
-                            f"{col}_min": [0.0],
-                            f"{col}_max": [0.0],
-                            f"{col}_mean": [0.0],
-                            f"{col}_median": [0.0],
-                        })
-                    df = df.join(pd.DataFrame(stats))
-        else:
+        if mode == "padding":
             for category in self.DYNAMIC:
                 actors = getattr(self, f"{category}s")
                 if len(actors) > max_actors:
@@ -787,6 +760,40 @@ class ScenarioDefinition:
                     cls = getattr(sys.modules[__name__], category.capitalize())
                     df = df.join(cls.vectorize_padding(prefix=f"{prefix}_{category}_{i}"))
                     i += 1
+        else:
+            for category in self.DYNAMIC:
+                actors = getattr(self, f"{category}s")
+                df = df.join(pd.DataFrame({f"{prefix}_num_{category}": [len(actors)]}))
+                regions = {k: list(v) for k, v in groupby(actors, lambda x: x.region)}
+                for region in list(Boundary.Region) + [None]:
+                    region_name = region.name.lower() if region else None
+                    actor_list = regions.get(region_name, [])
+                    if len(actor_list) > 0:
+                        actor_df = pd.concat([actor.vectorize(prefix=f"{prefix}_{category}_{region_name}")
+                                              for actor in actor_list])
+                        stats = {}
+                        for col in actor_df.columns:
+                            if "model" in col: continue
+                            stats.update({
+                                f"{col}_min": [actor_df[col].min()],
+                                f"{col}_max": [actor_df[col].max()],
+                                f"{col}_mean": [actor_df[col].mean()],
+                                f"{col}_median": [actor_df[col].median()],
+                            })
+                        df = df.join(pd.DataFrame(stats))
+                    else:
+                        cls = getattr(sys.modules[__name__], category.capitalize())
+                        empty_df = cls.vectorize_padding(prefix=f"{prefix}_{category}_{region_name}")
+                        stats = {}
+                        for col in empty_df.columns:
+                            if "model" in col: continue
+                            stats.update({
+                                f"{col}_min": [0.0],
+                                f"{col}_max": [0.0],
+                                f"{col}_mean": [0.0],
+                                f"{col}_median": [0.0],
+                            })
+                        df = df.join(pd.DataFrame(stats))
 
         return df
 
