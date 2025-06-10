@@ -1,9 +1,9 @@
 from copy import deepcopy
 from unittest import TestCase
 
-from impl.mr.mr import PerturbationFactory, Operation
-from impl.scenario.scenario_definition import Boundary, ScenarioDefinition, Vehicle
-from impl.utils.carla_utils import initialize_carla
+from impl.ads.mr.mr import PerturbationFactory, Operation
+from impl.ads.scenario.scenario_definition import Boundary, ScenarioDefinition, Vehicle
+from impl.ads.utils.carla_utils import initialize_carla
 
 
 class TestMR(TestCase):

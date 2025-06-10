@@ -10,7 +10,7 @@ import subprocess
 import pandas as pd
 import test
 
-from impl.utils.visualization import Visualizer
+from impl.ads.utils.visualization import Visualizer
 
 config = test.CONFIG
 logger = logging.getLogger("impl")

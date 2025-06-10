@@ -13,14 +13,15 @@ import argformat
 import torch
 
 from impl import config as cfg
-from impl.algorithm.ccea import CCEA
-from impl.algorithm.ga import GeneticAlgorithm
-from impl.algorithm.moccea import MOCCEA
-from impl.algorithm.rs import RandomSearch
-from impl.scenario.scenario_definition import ScenarioDefinition
-from impl.scenario.simulation_runner import run_scenarios, run_solutions, run_free_environments
-from impl.utils.docker_utils import cleanup_containers
-from impl.utils.leaderboad_utils import get_enviroment_confs, make_yamls, create_dataset_index, vectorize_runtime_data
+from impl.ads.evaluation.simulation_runner import ADSEvaluator
+from impl.core.algorithm.ccea import CCEA
+from impl.core.algorithm.ga import GeneticAlgorithm
+from impl.core.algorithm.moccea import MOCCEA
+from impl.core.algorithm.rs import RandomSearch
+from impl.ads.scenario.scenario_definition import ScenarioDefinition
+from impl.ads.utils.docker_utils import cleanup_containers
+from impl.ads.utils.leaderboad_utils import get_enviroment_confs, make_yamls, create_dataset_index, \
+    vectorize_runtime_data
 
 logger = logging.getLogger("impl")
 
@@ -64,15 +65,15 @@ def search(algorithm: str, resume: bool, folder_name: str):
     else:
         cfg.init_project_directory(algorithm, resume)
     if algorithm == "ccea":
-        solver = CCEA(toolbox=problem.toolbox, budget=problem.budget)
+        solver = CCEA(toolbox=problem.toolbox, budget=problem.budget, mr_set=problem.mr_set)
     elif algorithm == "moccea":
-        solver = MOCCEA(toolbox=problem.toolbox, budget=problem.budget)
+        solver = MOCCEA(toolbox=problem.toolbox, budget=problem.budget, mr_set=problem.mr_set)
     elif algorithm == "rs":
-        solver = RandomSearch(toolbox=problem.toolbox, budget=problem.budget)
+        solver = RandomSearch(toolbox=problem.toolbox, budget=problem.budget, mr_set=problem.mr_set)
     elif algorithm == "ga":
-        solver = GeneticAlgorithm(toolbox=problem.toolbox, budget=problem.budget)
+        solver = GeneticAlgorithm(toolbox=problem.toolbox, budget=problem.budget, mr_set=problem.mr_set)
     elif algorithm == "gawa":
-        solver = GeneticAlgorithm(toolbox=problem.toolbox, budget=problem.budget, keep_best=True)
+        solver = GeneticAlgorithm(toolbox=problem.toolbox, budget=problem.budget, mr_set=problem.mr_set, keep_best=True)
     else:
         raise ValueError(f"Unsupported algorithm: {algorithm}.")
     solver.solve(resume=resume)
@@ -84,6 +85,7 @@ def simulate(num: int, file: str):
     :param num: Number of scenarios to simulate.
     :param file: Path to a solution file; if :data:`None`, simulate randomly.
     """
+    from impl.ads.evaluation.simulation_runner import run_solutions
     os.environ["tag"] = "simulate"
     cfg.init_project_directory("sim")
     if file:
@@ -91,7 +93,8 @@ def simulate(num: int, file: str):
         run_solutions(file, num)
     else:
         logger.info(f"Running random scenarios.")
-        run_scenarios([ScenarioDefinition.generate_random_or_leaderboard() for _ in range(num)])
+        ADSEvaluator(mr_set=None).run_scenarios(
+            [ScenarioDefinition.generate_random_or_leaderboard() for _ in range(num)])
 
 
 def collect_runtime_data(agent: str, output: str):
@@ -100,6 +103,7 @@ def collect_runtime_data(agent: str, output: str):
     :param agent: Name or version of the agent.
     :param output: Path to save the collected runtime data.
     """
+    from impl.ads.evaluation.simulation_runner import run_free_environments
     os.environ["tag"] = "collect_runtime_data"
     if output is None:
         output = cfg.CONFIG["workspace"]["runtime_data"]
@@ -144,6 +148,7 @@ def collect_runtime_data(agent: str, output: str):
 def generate_train_data():
     """Run free simulations to generate training data using rule-based agents."""
 
+    from impl.ads.evaluation.simulation_runner import run_free_environments
     os.environ["tag"] = "generate_train_data"
     logger.info(f"Generating training data...")
 
@@ -263,7 +268,7 @@ def convert2scenarios(directory: str, n: int, towns: List[str]):
         :param path: Path to the .pkl file.
         :return: Vectorized scenario (None if failed).
         """
-        towns_lower = [name.lower() for name in towns]
+        towns_lower = [name.lower() for name in towns] if isinstance(towns, list) else None
         try:
             runtime_data = pickle.loads(path.read_bytes())
             if towns is not None and runtime_data["sim_data"]["town"].lower() not in towns_lower:
