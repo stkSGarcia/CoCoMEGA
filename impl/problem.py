@@ -11,8 +11,8 @@ from impl.core.algorithm.rnsga3 import selRNSGA3WithMemory
 from impl.core.domain_factory import DomainFactory
 
 # Define domain
-# domain = DomainFactory("ads")
-domain = DomainFactory("sorting")
+domain = DomainFactory("ads")
+# domain = DomainFactory("sorting")
 
 # Define the metamorphic relation set.
 mr_set = domain.get_mr_set()
