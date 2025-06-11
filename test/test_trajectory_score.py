@@ -1,16 +1,15 @@
-import random
 from copy import deepcopy
-from unittest import TestCase
 
 import test
 import os
 import time
 import pandas as pd
-from impl.mr.mr import PerturbationFactory, Operation, Decreasing, MR, MRSet
-from impl.utils.carla_utils import initialize_carla
-from impl.scenario.scenario_definition import Boundary, ScenarioDefinition
-from impl.scenario.simulation_runner import run_scenarios
-from impl.utils.trajectory import single_trajectory_score
+
+from impl.ads.evaluation.simulation_runner import ADSEvaluator
+from impl.ads.mr.mr import PerturbationFactory, Operation
+from impl.ads.utils.carla_utils import initialize_carla
+from impl.ads.scenario.scenario_definition import Boundary, ScenarioDefinition
+from impl.ads.utils.trajectory import single_trajectory_score
 
 config = test.CONFIG
 
@@ -41,7 +40,7 @@ class TestTrajectoryScore:
             scenario.assign_new_id()
             pert.perturb(scenario)
             perturbed.append(scenario)
-            pert_route = scenario.build_actor_trajectory(pert.value, scenario_duration = 20)
+            pert_route = scenario.build_actor_trajectory(pert.value, scenario_duration=20)
             traj_score += single_trajectory_score([t[0] for t in scenario.trajectory["route"]], pert_route)
             results = pd.concat([results, pd.DataFrame([{
                 "scen_id": scenario.id_,
@@ -49,7 +48,7 @@ class TestTrajectoryScore:
                 "traj_score": traj_score,
             }])], ignore_index=True)
 
-        run_scenarios(perturbed)
+        ADSEvaluator(mr_set=None).run_scenarios(perturbed)
         results.to_csv(os.path.join(self.out_dir, "results.csv"))
 
 

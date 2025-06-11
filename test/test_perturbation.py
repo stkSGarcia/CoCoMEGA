@@ -2,8 +2,9 @@ import random
 from copy import deepcopy
 from unittest import TestCase
 
-from impl.mr.mr import PerturbationFactory, Operation, Decreasing, MR, MRSet
-from impl.scenario.scenario_definition import Boundary
+from impl.ads.mr.mr import PerturbationFactory, Operation, Decreasing
+from impl.core.mr.base_mr import MRSet, MR
+from impl.ads.scenario.scenario_definition import Boundary
 
 
 class TestPerturbation(TestCase):

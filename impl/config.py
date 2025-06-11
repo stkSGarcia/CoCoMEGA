@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 CONFIG = {}  # Always use this variable by using `from impl import config as cfg; cfg.CONFIG`
 
 
-def _merge_dict(default: dict, user: dict):
+def merge_dict(default: dict, user: dict):
     """Recursively merge user dictionary into the default dictionary.
 
     :param default: The default configuration dictionary.
@@ -24,7 +24,7 @@ def _merge_dict(default: dict, user: dict):
         if k not in default or not isinstance(default[k], dict):
             default[k] = v
         else:
-            default[k] = _merge_dict(default[k], v)
+            default[k] = merge_dict(default[k], v)
     return default
 
 
@@ -108,7 +108,7 @@ def init_config():
     else:
         raise ValueError("Cannot find default configuration file.")
     custom_config = yaml.safe_load(config_name.read_text()) if config_name.is_file() else {}
-    CONFIG = _merge_dict(default_config, custom_config)
+    CONFIG = merge_dict(default_config, custom_config)
 
     # Set up workspace root and create other directories on-demand.
     CONFIG["workspace"]["root"] = Path(__file__).parent.parent / CONFIG["workspace"]["root"]
@@ -119,7 +119,7 @@ def init_config():
     default_log_config = yaml.safe_load(default_log_config_path.read_text()) \
         if default_log_config_path.is_file() else {}
     custom_log_config = yaml.safe_load(log_config_name.read_text()) if log_config_name.is_file() else {}
-    log_config = _merge_dict(default_log_config, custom_log_config)
+    log_config = merge_dict(default_log_config, custom_log_config)
     if log_config:
         _update_log_dir(log_config)
         logging.config.dictConfig(log_config)
