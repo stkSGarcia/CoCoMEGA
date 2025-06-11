@@ -44,7 +44,6 @@ def _pop_scenario():
 DOMAIN_REGISTRY = {
     "Scenario": ScenarioDefinition,
     "ScenarioInit": _pop_scenario,
-    "PerturbationFactory": PerturbationFactory,
     "Perturbation": Perturbations,
     "Evaluation": ADSEvaluator,
     "MRSet": mr_set1,

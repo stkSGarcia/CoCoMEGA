@@ -74,7 +74,8 @@ class BaseEvaluator(ABC):
         :return: A tuple containing a bool value indicating whether it violates the relation and the fitness value.
 
         """
-        return self.mr_set.is_violated(source, follow_up)
+        is_violated, extent = self.mr_set.is_violated(source, follow_up)
+        return is_violated, (extent,)
 
     @abstractmethod
     def run_scenarios(self, scenarios: List[AbstractScenarioDefinition], **kwargs):

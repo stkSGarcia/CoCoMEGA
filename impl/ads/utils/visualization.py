@@ -21,9 +21,9 @@ from sklearn.manifold import MDS
 
 from impl import config as cfg
 from impl.config import init_project_directory
-from impl.ads.mr import Relation
+from impl.ads.mr.mr import Relation
 from impl.ads.utils.math_utils import calculate_auc_improvements, area_under_curve, calculate_ds_improvements
-from impl.utils.metrics import metrics, pairwise_distance, avg_pw_from_matrix
+from impl.ads.utils.metrics import metrics, pairwise_distance, avg_pw_from_matrix
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +70,7 @@ skip_map = {
     "ga": 2,
     "rs": 1,
 }
+
 
 def get_skip(name):
     for alg in skip_map:

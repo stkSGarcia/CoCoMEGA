@@ -16,3 +16,4 @@
         mr_set1 = MRSet([mr1, mr2], source_gen_func=func1)
         mr_set2 = MRSet([mr3], source_gen_func=func2)
 '''
+mr_set = None

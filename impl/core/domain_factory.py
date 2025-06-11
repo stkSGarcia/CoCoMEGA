@@ -16,8 +16,6 @@ class DomainFactory:
         except ModuleNotFoundError as e:
             raise ImportError(f"Domain {domain_name} not found") from e
 
-
-
         try:
             self.domain_dict = getattr(self.domain_registry, "DOMAIN_REGISTRY")
         except AttributeError:
@@ -31,7 +29,8 @@ class DomainFactory:
             config_path = self.domain_path / config
             if config_path.is_file():
                 domain_config = yaml.safe_load(config_path.read_text())
-                cfg.CONFIG = cfg.merge_dict(cfg.CONFIG, domain_config)
+                if domain_config is not None:
+                    cfg.CONFIG = cfg.merge_dict(cfg.CONFIG, domain_config)
             else:
                 logger.warning(f"Domain config path does not exist: '{config_path}'.")
         except KeyError:
