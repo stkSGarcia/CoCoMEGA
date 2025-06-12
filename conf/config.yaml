@@ -13,6 +13,7 @@ workspace:
   train_data: train_data
   trained_models: trained_models
   recordings: recordings
+  exp_result: exp_results
 
 interfuser:
   repo: "../InterFuser"
@@ -172,7 +173,7 @@ violation:
     aggregation: median # Options: mean, median
 
 trajectory:
-  towns: ["town05"]
+  towns: [ "town05" ]
   initial_speed_limit: 5
   junction_distance_limit: 50
   predefined:
