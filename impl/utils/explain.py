@@ -11,6 +11,7 @@ from imodels import RuleFitRegressor
 from matplotlib import pyplot as plt
 from scipy import stats
 from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split, GridSearchCV
@@ -76,53 +77,45 @@ def vectorize(solutions, mode="stats"):
     return vectors, fitnesses, features
 
 
-def generate_rules(X, y, features):
-    """Train the rule model.
-
-    :param X: Vectors.
-    :param y: Target values.
-    :param features: Feature names.
-    :return: Rule model.
-    """
-    model = RuleFitRegressor(max_rules=12)
-    model.fit(X, y, feature_names=features)
-    return model
-
-
 def model_fit(X, y):
-    """Train a XGBoost model to fit the data.
+    """Train a tree-based model to fit the data.
 
     :param X: Vectors.
     :param y: Target values.
     :return: The best model.
     """
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, np.array(y), test_size=0.2, random_state=42)
 
     logger.info(f"\n{'=' * 50}\nCOMPREHENSIVE GRID SEARCH\n{'=' * 50}")
     param_grid = {
-        "n_estimators": [100, 200, 300, 500],
+        "n_estimators": [50, 100, 200, 300, 500],
         "max_depth": [3, 4, 5, 6, 7, 8],
         "learning_rate": [0.01, 0.05, 0.1, 0.15, 0.2],
         "subsample": [0.7, 0.8, 0.9, 1.0],
-        "colsample_bytree": [0.7, 0.8, 0.9, 1.0],
-        "reg_alpha": [0, 0.1, 0.5, 1.0],
-        "reg_lambda": [0.5, 1.0, 1.5, 2.0],
-        "min_child_weight": [1, 3, 5, 7]
+        "min_samples_split": [2, 5, 10, 20],
+        "min_samples_leaf": [1, 2, 4, 8],
+        # "colsample_bytree": [0.7, 0.8, 0.9, 1.0],
+        # "reg_alpha": [0, 0.1, 0.5, 1.0],
+        # "reg_lambda": [0.5, 1.0, 1.5, 2.0],
+        # "min_child_weight": [1, 3, 5, 7],
     }
     param_grid_fast = {
-        "n_estimators": [100, 200, 300],
+        "n_estimators": [50, 100, 200],
         "max_depth": [4, 6, 8],
-        "learning_rate": [0.05, 0.1, 0.2],
+        "learning_rate": [0.01, 0.1, 0.2],
         "subsample": [0.8, 0.9, 1.0],
-        "colsample_bytree": [0.8, 0.9, 1.0],
-        "reg_alpha": [0, 0.1, 1.0],
-        "reg_lambda": [1.0, 1.5, 2.0]
+        "min_samples_split": [2, 10],
+        "min_samples_leaf": [1, 4]
+        # "colsample_bytree": [0.8, 0.9, 1.0],
+        # "reg_alpha": [0, 0.1, 1.0],
+        # "reg_lambda": [1.0, 1.5, 2.0],
     }
     param_grid = param_grid_fast
 
     logger.info(f"Testing {np.prod([len(v) for v in param_grid.values()])} parameter combinations...")
     grid_search = GridSearchCV(
-        estimator=xgb.XGBRegressor(random_state=42, n_jobs=-1),
+        # estimator=xgb.XGBRegressor(random_state=42, n_jobs=-1),
+        estimator=GradientBoostingRegressor(random_state=42),
         param_grid=param_grid,
         scoring="neg_mean_squared_error",
         cv=5,
@@ -198,30 +191,7 @@ def model_fit(X, y):
     joblib.dump(grid_search, grid_filename)
     logger.info(f"✓ Grid search results saved as '{grid_filename}'.")
 
-    return best_model, {
-        "X_train": X_train,
-        "X_test": X_test,
-        "y_train": y_train,
-        "y_test": y_test,
-        "y_pred_best": y_pred_best,
-        "best_mse": best_mse,
-        "best_rmse": best_rmse,
-        "best_mae": best_mae,
-        "best_r2": best_r2,
-        "cv_scores": cv_scores,
-        "cv_rmse": cv_rmse,
-        "cv_std": cv_std,
-    }
-
-
-def model_visualization(model, data):
-    """Visualize the statistics of the trained model.
-
-    :param model: The trained model.
-    :param data: Data from :func:`model_fit`.
-    """
-    X_test, y_test, y_pred_best, best_r2 = (data["X_test"], np.array(data["y_test"]),
-                                            np.array(data["y_pred_best"]), data["best_r2"])
+    logger.info(f"\n{'=' * 50}\nMODEL VISUALIZATION\n{'=' * 50}")
     fig, axes = plt.subplots(2, 2, figsize=(15, 10))
 
     # 1. Actual vs. Predicted
@@ -244,7 +214,7 @@ def model_visualization(model, data):
     axes[0, 1].grid(True, alpha=0.3)
 
     # 3. Feature Importance
-    feature_importance = model.feature_importances_
+    feature_importance = best_model.feature_importances_
     importance_df = pd.DataFrame({
         "feature_name": X_test.columns,
         "importance": feature_importance
@@ -275,12 +245,30 @@ def model_visualization(model, data):
     plt.tight_layout()
     plt.show()
 
+    return best_model
 
-def explain(model, X):
+
+def generate_rules(X, y, features, base_model=None):
+    """Train the rule model.
+
+    :param X: Vectors.
+    :param y: Target values.
+    :param features: Feature names.
+    :param base_model: Tree-based model.
+    :return: Rule model.
+    """
+    model = RuleFitRegressor(max_rules=10, tree_generator=base_model, exp_rand_tree_size=False) \
+        if base_model else RuleFitRegressor(max_rules=10)
+    model.fit(X, y, feature_names=features)
+    return model._get_rules()
+
+
+def explain(model, X, dependence_plot=False):
     """Explain the trained model and vectors using SHAP.
 
     :param model: The trained model.
     :param X: The data.
+    :param dependence_plot: Whether to show the dependence plots.
     :return: :class:`Explanation` Object.
     """
     shap.plots.initjs()
@@ -290,8 +278,9 @@ def explain(model, X):
     shap.plots.beeswarm(explanation, max_display=20)
     shap.plots.bar(explanation, max_display=20)
 
-    top_inds = np.argsort(-np.sum(np.abs(explanation.values), 0))
-    for i in range(10):
-        shap.plots.scatter(explanation[:, top_inds[i]], color=explanation)
+    if dependence_plot:
+        top_inds = np.argsort(-np.sum(np.abs(explanation.values), 0))
+        for i in range(10):
+            shap.plots.scatter(explanation[:, top_inds[i]], color=explanation)
 
     return explanation
