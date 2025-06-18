@@ -29,14 +29,19 @@ def vectorize(solutions, mode="stats"):
     :param solutions: Solutions to vectorize.
     :param mode: The way to encode actors. Options are :data:`stats` for encoding statistics
         or :data:`padding` for padding shorter lists of actors (default: :data:`stats`).
-    :return: A tuple of vectors, target values, and corresponding feature names.
+    :return: A tuple of vectors, target values (solution fitnesses, v1 fitnesses, and v2 fitnesses),
+        and corresponding feature names.
     """
     fitnesses = []
+    fitnesses_v1 = []
+    fitnesses_v2 = []
     source_scens = []
     follow_up_scens = []
     max_actors = 0
     for solution in solutions:
         fitnesses.append(solution.fitness.values[0])
+        fitnesses_v1.append(solution.v1.fitness[0])
+        fitnesses_v2.append(solution.v2.fitness[0])
         source = solution[0]
         source_scens.append(source)
         follow_up = deepcopy(source)
@@ -74,7 +79,7 @@ def vectorize(solutions, mode="stats"):
     transformed_array = preprocessor.fit_transform(raw_vectors)
     features = preprocessor.get_feature_names_out()
     vectors = pd.DataFrame(transformed_array, columns=features).fillna(-999)
-    return vectors, fitnesses, features
+    return vectors, fitnesses, fitnesses_v1, fitnesses_v2, features
 
 
 def model_fit(X, y):
@@ -94,10 +99,12 @@ def model_fit(X, y):
         "subsample": [0.7, 0.8, 0.9, 1.0],
         "min_samples_split": [2, 5, 10, 20],
         "min_samples_leaf": [1, 2, 4, 8],
+        "max_features": [0.7, 0.8, 0.9, 1.0, "sqrt", "log2"],
+        "alpha": [0.1, 0.5, 0.9],
+        # "min_child_weight": [1, 3, 5, 7],
         # "colsample_bytree": [0.7, 0.8, 0.9, 1.0],
         # "reg_alpha": [0, 0.1, 0.5, 1.0],
         # "reg_lambda": [0.5, 1.0, 1.5, 2.0],
-        # "min_child_weight": [1, 3, 5, 7],
     }
     param_grid_fast = {
         "n_estimators": [50, 100, 200],
@@ -105,7 +112,10 @@ def model_fit(X, y):
         "learning_rate": [0.01, 0.1, 0.2],
         "subsample": [0.8, 0.9, 1.0],
         "min_samples_split": [2, 10],
-        "min_samples_leaf": [1, 4]
+        "min_samples_leaf": [1, 4],
+        "max_features": [0.8, 1.0, "sqrt", "log2"],
+        "alpha": [0.1, 0.5, 0.9],
+        # "min_child_weight": [1, 3, 5, 7],
         # "colsample_bytree": [0.8, 0.9, 1.0],
         # "reg_alpha": [0, 0.1, 1.0],
         # "reg_lambda": [1.0, 1.5, 2.0],
@@ -153,7 +163,7 @@ def model_fit(X, y):
             param_performance = results_df.groupby(param_col)["mean_test_score"].mean()
             best_value = param_performance.idxmax()
             best_score = np.sqrt(-param_performance.max())
-            log_str += f"\n\t{param:<20}: best value = {best_value:5.2f}, best RMSE = {best_score:.6f}"
+            log_str += f"\n\t{param:<20}: best value = {best_value:<10}, best RMSE = {best_score:.6f}"
     logger.info(log_str)
 
     logger.info(f"\n{'=' * 50}\nBEST MODEL EVALUATION\n{'=' * 50}")
@@ -263,24 +273,55 @@ def generate_rules(X, y, features, base_model=None):
     return model._get_rules()
 
 
-def explain(model, X, dependence_plot=False):
+def explain(model, X, dependence_plot=False, show=True):
     """Explain the trained model and vectors using SHAP.
 
     :param model: The trained model.
     :param X: The data.
     :param dependence_plot: Whether to show the dependence plots.
+    :param show: Whether to show the plots.
     :return: :class:`Explanation` Object.
     """
     shap.plots.initjs()
     explainer = shap.TreeExplainer(model)
     explanation = explainer(X)
 
-    shap.plots.beeswarm(explanation, max_display=20)
-    shap.plots.bar(explanation, max_display=20)
+    if show:
+        shap.plots.beeswarm(explanation, max_display=20)
+        shap.plots.bar(explanation, max_display=20)
 
-    if dependence_plot:
-        top_inds = np.argsort(-np.sum(np.abs(explanation.values), 0))
-        for i in range(10):
-            shap.plots.scatter(explanation[:, top_inds[i]], color=explanation)
+        if dependence_plot:
+            top_inds = np.argsort(-np.sum(np.abs(explanation.values), 0))
+            for i in range(10):
+                shap.plots.scatter(explanation[:, top_inds[i]], color=explanation)
 
     return explanation
+
+
+def scoring(model_v1, model_v2, X):
+    """Scoring the updated model.
+
+    :param model_v1: Original model.
+    :param model_v2: Updated model.
+    :param X: The data.
+    :return: Score of the difference between the original and updated model.
+    """
+    explanation_v1 = explain(model_v1, X, show=False)
+    explanation_v2 = explain(model_v2, X, show=False)
+
+    abs_mean_v1 = np.mean(abs(explanation_v1.values), axis=0)
+    abs_mean_v2 = np.mean(abs(explanation_v2.values), axis=0)
+    weights = (abs_mean_v1 + abs_mean_v2) / 2
+    weights = weights / np.sum(weights)
+
+    e_mean = np.mean(np.stack((abs(explanation_v1.values), abs(explanation_v2.values))))
+    mean_v1 = np.mean(explanation_v1.values, axis=0)
+    mean_v2 = np.mean(explanation_v2.values, axis=0)
+    mean_score = (mean_v1 - mean_v2) / np.where(abs(mean_v1) == 0, e_mean, abs(mean_v1))
+    std_v1 = np.std(explanation_v1.values, axis=0)
+    std_v2 = np.std(explanation_v2.values, axis=0)
+    e_std = np.mean(np.stack((std_v1, std_v2)))
+    std_score = (std_v1 - std_v2) / np.where(std_v1 == 0, e_std, std_v1)
+
+    scores = (mean_score + std_score) * 0.5 * weights
+    return sum(scores)
