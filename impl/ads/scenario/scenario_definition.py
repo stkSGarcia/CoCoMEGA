@@ -14,12 +14,12 @@ from scipy.spatial.distance import cdist
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
 from impl import config as cfg
-from impl.ads.scenario.Leaderboard_factory import LeaderBoardFactory
 from impl.ads.evaluation.exceptions import InvalidScenarioDefinitionError
-from impl.core.scenario.base_scenario import AbstractScenarioDefinition
+from impl.ads.scenario.Leaderboard_factory import LeaderBoardFactory
 from impl.ads.utils.carla_utils import load_world, trajectory_interpolation, get_available_directions, get_junction, \
     location_to_dict, dict_to_location, group_junction_directions, get_closest_wp
 from impl.ads.utils.trajectory import rotate_vector, single_trajectory_score
+from impl.core.scenario.base_scenario import AbstractScenarioDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -218,7 +218,7 @@ class ScenarioDefinition(AbstractScenarioDefinition):
                 dist_matrix = cdist(np.array(actors, dtype=object).reshape((-1, 1)),
                                     np.array(other_actors, dtype=object).reshape((-1, 1)),
                                     lambda x, y: x[0].dist(y[0]))
-                dist += dist_matrix.min(axis=1 if len(actors) > len(other_actors) else 0).sum()
+                dist += np.power(dist_matrix.min(axis=1 if len(actors) > len(other_actors) else 0), 2).sum()
         return math.sqrt(dist)
 
     def mate(self, other, cxpb=cfg.CONFIG["scenario"]["cxpb"], **kwargs):
@@ -909,8 +909,8 @@ class Actor(ABC):
         """
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        return math.sqrt(
-            _dist_attrs(self, other, Actor._ATTRIBUTES + self._ATTRIBUTES, self._BOUNDARY, scaling=scaling))
+        return math.sqrt(_dist_attrs(self, other, Actor._ATTRIBUTES + self._ATTRIBUTES,
+                                     self._BOUNDARY, scaling=scaling))
 
     def mate(self, other, cxpb=cfg.CONFIG["scenario"]["cxpb"]):
         """
