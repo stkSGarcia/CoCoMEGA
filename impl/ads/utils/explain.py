@@ -18,7 +18,7 @@ from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import OneHotEncoder
 
 from impl import config as cfg
-from impl.scenario.scenario_definition import ScenarioDefinition
+from impl.ads.scenario.scenario_definition import ScenarioDefinition
 
 logger = logging.getLogger(__name__)
 
