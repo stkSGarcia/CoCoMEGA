@@ -6,7 +6,6 @@ import joblib
 import numpy as np
 import pandas as pd
 import shap
-import xgboost as xgb
 from imodels import RuleFitRegressor
 from matplotlib import pyplot as plt
 from scipy import stats
@@ -17,7 +16,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import OneHotEncoder
 
-from impl import config as cfg
+from impl import config as cfg, problem
 from impl.scenario.scenario_definition import ScenarioDefinition
 
 logger = logging.getLogger(__name__)
@@ -39,7 +38,8 @@ def vectorize(solutions, mode="stats"):
     follow_up_scens = []
     max_actors = 0
     for solution in solutions:
-        fitnesses.append(solution.fitness.values[0])
+        fitnesses.append(solution.fitness.values[0] if solution.fitness_type == problem.test_version
+                         else -solution.fitness.values[0])
         fitnesses_v1.append(solution.v1.fitness[0])
         fitnesses_v2.append(solution.v2.fitness[0])
         source = solution[0]

@@ -747,14 +747,14 @@ class ScenarioDefinition:
         waypoints = self.trajectory["route"]
         n_wps = len(waypoints)
         assert n_wps >= 4
+        start_wp = waypoints[0][0]
         percentiles = {
-            "start": waypoints[0],
             "1q": waypoints[int((n_wps - 1) * 0.25)],
             "middle": waypoints[int((n_wps - 1) * 0.5)],
             "3q": waypoints[int((n_wps - 1) * 0.75)],
             "end": waypoints[-1],
         }
-        df = df.join(pd.DataFrame({f"{prefix}_traj_{i}_{k}": [v]
+        df = df.join(pd.DataFrame({f"{prefix}_traj_{i}_{k}": [v - start_wp[k]]
                                    for i, wp in percentiles.items()
                                    for k, v in wp[0].items()}))
 
