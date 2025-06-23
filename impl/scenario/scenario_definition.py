@@ -734,15 +734,29 @@ class ScenarioDefinition:
         """
         # Vectorize global attributes.
         df = pd.DataFrame({f"{prefix}_town": [self.town]}).join(
-            pd.DataFrame({f"{prefix}_{attr}": [getattr(self, attr, None)] for attr in self.ATTRIBUTES})
+            pd.DataFrame({f"{prefix}_{attr}": [getattr(self, attr, None)]
+                          for attr in self.ATTRIBUTES
+                          if attr not in ("stop_sign_est", "red_light_est", "is_junction_est")})
         )
 
         # Vectorize the ego vehicle.
         df = df.join(self.ego_vehicle.vectorize(prefix=f"{prefix}_ego"))
 
         # Vectorize the trajectory.
-        df = df.join(pd.DataFrame({f"{prefix}_traj_start_{k}": [v] for k, v in self.trajectory["start"].items()}))
         df = df.join(pd.DataFrame({f"{prefix}_traj_direction": [self.trajectory["direction"]]}))
+        waypoints = self.trajectory["route"]
+        n_wps = len(waypoints)
+        assert n_wps >= 4
+        percentiles = {
+            "start": waypoints[0],
+            "1q": waypoints[int((n_wps - 1) * 0.25)],
+            "middle": waypoints[int((n_wps - 1) * 0.5)],
+            "3q": waypoints[int((n_wps - 1) * 0.75)],
+            "end": waypoints[-1],
+        }
+        df = df.join(pd.DataFrame({f"{prefix}_traj_{i}_{k}": [v]
+                                   for i, wp in percentiles.items()
+                                   for k, v in wp[0].items()}))
 
         # Vectorize actors.
         if mode == "padding":
