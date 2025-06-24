@@ -168,7 +168,6 @@ class Perturbation(AbstractPerturbation):
         if isinstance(lower, float):
             return abs(this - that) / (upper - lower) if upper != lower else 0
         elif isinstance(lower, int):
-            # TODO: within the same category.
             return scaling * (0.0 if this == that else 1.0)
         else:
             raise ValueError(f"Unsupported boundaries: [{lower}, {upper}].")
