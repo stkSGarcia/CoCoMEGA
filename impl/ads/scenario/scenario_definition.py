@@ -833,8 +833,7 @@ class Actor(ABC):
         """
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
-        return math.sqrt(
-            _dist_attrs(self, other, Actor._ATTRIBUTES + self._ATTRIBUTES, self._BOUNDARY, scaling=scaling))
+        return _dist_attrs(self, other, Actor._ATTRIBUTES + self._ATTRIBUTES, self._BOUNDARY, scaling=scaling)
 
     def mate(self, other, cxpb=cfg.CONFIG["scenario"]["cxpb"]):
         """
