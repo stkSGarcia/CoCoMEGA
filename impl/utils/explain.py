@@ -21,6 +21,13 @@ from impl.scenario.scenario_definition import ScenarioDefinition
 
 logger = logging.getLogger(__name__)
 
+CATEGORIES = {
+    "town": ["town01", "town02", "town03", "town04", "town05", "town06", "town07", "town10"],
+    "weather": list(range(0, 12)),
+    "traj_direction": ["forward", "left", "right"],
+    "model": list(range(0, 23)),
+}
+
 
 def vectorize(solutions, mode="stats"):
     """Vectorize the solutions.
@@ -66,11 +73,20 @@ def vectorize(solutions, mode="stats"):
         ], axis=1) for source, follow_up in zip(source_scens, follow_up_scens)]
     raw_vectors = pd.concat(vector_dfs, ignore_index=True)
 
-    categorical_cols = [col for col in raw_vectors.columns
-                        if any(key in col for key in ("town", "weather", "traj_direction", "model"))]
+    categorical_cols, categories_list = [], []
+    for col in raw_vectors.columns:
+        if all(key not in col for key in CATEGORIES.keys()): continue
+        categorical_cols.append(col)
+        for keyword in CATEGORIES.keys():
+            if keyword in col:
+                categories_list.append(CATEGORIES[keyword])
+                break
+        else:
+            categories_list.append("auto")  # Fallback: let encoder auto-detect categories for this column.
+
     preprocessor = ColumnTransformer(
         transformers=[
-            ("categorical", OneHotEncoder(sparse=False), categorical_cols),
+            ("categorical", OneHotEncoder(categories=categories_list, sparse=False), categorical_cols),
         ],
         remainder="passthrough",
         verbose_feature_names_out=False,
