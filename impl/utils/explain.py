@@ -258,70 +258,77 @@ def model_fit(X, y):
     return best_model
 
 
-def generate_rules(X, y, features, base_model=None):
+def generate_rules(X, y, features, base_model=None, max_rules=10):
     """Train the rule model.
 
     :param X: Vectors.
     :param y: Target values.
     :param features: Feature names.
     :param base_model: Tree-based model.
+    :param max_rules: Maximum number of rules to generate.
     :return: Rule model.
     """
-    model = RuleFitRegressor(max_rules=10, tree_generator=base_model, exp_rand_tree_size=False) \
-        if base_model else RuleFitRegressor(max_rules=10)
+    model = RuleFitRegressor(max_rules=max_rules, tree_generator=base_model, exp_rand_tree_size=False) \
+        if base_model else RuleFitRegressor(max_rules=max_rules)
     model.fit(X, y, feature_names=features)
-    return model._get_rules()
+    return model
 
 
-def explain(model, X, dependence_plot=False, show=True):
+def explain(model, X):
     """Explain the trained model and vectors using SHAP.
 
     :param model: The trained model.
     :param X: The data.
+    :return: :class:`Explanation` object.
+    """
+    explainer = shap.TreeExplainer(model)
+    return explainer(X)
+
+
+def visualize_explanation(explanation, dependence_plot=False):
+    """Visualize the explanation.
+
+    :param explanation: :class:`Explanation` object to visualize.
     :param dependence_plot: Whether to show the dependence plots.
-    :param show: Whether to show the plots.
-    :return: :class:`Explanation` Object.
     """
     shap.plots.initjs()
-    explainer = shap.TreeExplainer(model)
-    explanation = explainer(X)
+    plt.figure()
+    shap.plots.beeswarm(explanation, max_display=20, show=False)
+    plt.savefig(cfg.CONFIG["workspace"]["visualization"] / "summary.png", bbox_inches="tight")
+    plt.figure()
+    shap.plots.bar(explanation, max_display=20, show=False)
+    plt.savefig(cfg.CONFIG["workspace"]["visualization"] / "importance.png", bbox_inches="tight")
 
-    if show:
-        shap.plots.beeswarm(explanation, max_display=20)
-        shap.plots.bar(explanation, max_display=20)
-
-        if dependence_plot:
-            top_inds = np.argsort(-np.sum(np.abs(explanation.values), 0))
-            for i in range(10):
-                shap.plots.scatter(explanation[:, top_inds[i]], color=explanation)
-
-    return explanation
+    if dependence_plot:
+        top_inds = np.argsort(-np.sum(np.abs(explanation.values), 0))
+        for i in range(10):
+            shap.plots.scatter(explanation[:, top_inds[i]], color=explanation)
 
 
-def scoring(model_v1, model_v2, X):
+def scoring(model_v1, model_v2, X, clip=2.0, alpha=0.5, epsilon=1e-6):
     """Scoring the updated model.
 
     :param model_v1: Original model.
     :param model_v2: Updated model.
     :param X: The data.
+    :param clip: Sets the symmetric clipping bound for the adjusted ratio, ensuring it never drops below 1/x or exceeds x.
+    :param alpha: Controls the strength of the standard deviation adjustment by raising the raw ratio to this power.
+        Values closer to zero weaken the effect.
+    :param epsilon: A tiny positive constant added to standard deviations to prevent division by zero when forming ratios.
     :return: Score of the difference between the original and updated model.
     """
-    explanation_v1 = explain(model_v1, X, show=False)
-    explanation_v2 = explain(model_v2, X, show=False)
+    explanation_v1 = explain(model_v1, X)
+    explanation_v2 = explain(model_v2, X)
+    A, B = explanation_v1.values, explanation_v2.values
 
-    abs_mean_v1 = np.mean(abs(explanation_v1.values), axis=0)
-    abs_mean_v2 = np.mean(abs(explanation_v2.values), axis=0)
-    weights = (abs_mean_v1 + abs_mean_v2) / 2
-    weights = weights / np.sum(weights)
+    D = A - B
+    abs_sum = np.abs(A) + np.abs(B)
+    W = abs_sum / abs_sum.sum(axis=1, keepdims=True)
 
-    e_mean = np.mean(np.stack((abs(explanation_v1.values), abs(explanation_v2.values))))
-    mean_v1 = np.mean(explanation_v1.values, axis=0)
-    mean_v2 = np.mean(explanation_v2.values, axis=0)
-    mean_score = (mean_v1 - mean_v2) / np.where(abs(mean_v1) == 0, e_mean, abs(mean_v1))
-    std_v1 = np.std(explanation_v1.values, axis=0)
-    std_v2 = np.std(explanation_v2.values, axis=0)
-    e_std = np.mean(np.stack((std_v1, std_v2)))
-    std_score = (std_v1 - std_v2) / np.where(std_v1 == 0, e_std, std_v1)
+    f_raw = (np.std(A, axis=0) + epsilon) / (np.std(B, axis=0) + epsilon)
+    f_decay = np.power(f_raw, alpha)
+    f_clipped = np.clip(f_decay, 1 / clip, clip)
+    sign_D = np.sign(D)
+    G = np.power(f_clipped, sign_D)
 
-    scores = (mean_score + std_score) * 0.5 * weights
-    return sum(scores)
+    return np.sum(W * D * G)
