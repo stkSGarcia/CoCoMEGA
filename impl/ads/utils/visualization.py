@@ -656,7 +656,7 @@ def visualize_diversity_distribution(project, save_path=None, show=False):
 
 
 def visualize_archived_distinct_solutions(projects: Dict[str, List[str]], fitness_thresholds: List[float],
-                                          distance_thresholds: List[float], mr_set,
+                                          distance_thresholds: List[float], mr_set, tick_rate=0.2,
                                           box=False, save_path=None, show=False):
     """Plot the number of distinct solutions from final archived solutions by applying fitness and distance thresholds.
 
@@ -712,7 +712,7 @@ def visualize_archived_distinct_solutions(projects: Dict[str, List[str]], fitnes
             ax.tick_params(labelsize=tick_size)
             ax.set_xlabel("Distance threshold ($\\theta_d$)", fontsize=text_size)
             ax.set_ylabel("Average $DS$", fontsize=text_size)
-            ax.xaxis.set_major_locator(MultipleLocator(0.2))
+            ax.xaxis.set_major_locator(MultipleLocator(tick_rate))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=1))
             ax.legend()
             ax.grid(True, which="both")

@@ -309,7 +309,7 @@ class ScenarioEvaluator(object):
             self._agent_watchdog.stop()
 
         except SensorConfigurationInvalid as e:
-            # The sensors are invalid -> set the ejecution to rejected and stop
+            # The sensors are invalid -> set the execution to rejected and stop
             logger.error(f"\n\033[91mThe sensor's configuration used is invalid: {e}")
             # traceback.print_exc()
             self._cleanup()
