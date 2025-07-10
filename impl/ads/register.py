@@ -1,8 +1,8 @@
 import random
 import pickle
-from deap import tools, creator
+import sys
+from deap import creator
 from impl.ads.evaluation.simulation_runner import ADSEvaluator
-from impl.ads.mr.mr import PerturbationFactory
 from impl.ads.mr.predefined import mr_set1
 from impl.ads.scenario.scenario_definition import ScenarioDefinition
 from impl.core.mr.base_mr import Perturbations
@@ -20,6 +20,10 @@ if (cfg.CONFIG["search"]["runtime_data_as_seeds"] or
         cfg.CONFIG["search"]["constraint"]["enable"] or
         cfg.CONFIG["search"]["multi_objective"]["enable"]):
     runtime_scenarios = []
+
+    import impl.ads.scenario.scenario_definition as scen_def_module
+    sys.modules["impl.scenario.scenario_definition"] = scen_def_module
+
     for data_path in cfg.CONFIG["workspace"]["runtime_scenario"].rglob("*.*"):
         runtime_scenarios += pickle.loads(data_path.read_bytes())
     if len(runtime_scenarios) == 0:
