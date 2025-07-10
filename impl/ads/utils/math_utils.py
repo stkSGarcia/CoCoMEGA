@@ -49,7 +49,7 @@ def calculate_ds_improvements(mean_df):
                                         columns='alg',
                                         values='mean_ds').reset_index()
     if 'ccea' not in comparison_df.columns: return
-    from impl.utils.visualization import skip_map
+    from impl.ads.utils.visualization import skip_map
     for alg in skip_map:
         if alg != 'ccea' and alg in comparison_df.columns:
             comparison_df[f'ccea/{alg}'] = (comparison_df['ccea'] - comparison_df[alg]) / comparison_df[alg] * 100
@@ -79,7 +79,7 @@ def calculate_auc_improvements(auc_df):
                                        values='auc').reset_index()
 
     if 'ccea' not in comparison_df.columns: return
-    from impl.utils.visualization import skip_map
+    from impl.ads.utils.visualization import skip_map
     for alg in skip_map:
         if alg != 'ccea' and alg in comparison_df.columns:
             comparison_df[f'ccea/{alg}'] = (comparison_df['ccea'] - comparison_df[alg]) / comparison_df[alg] * 100
