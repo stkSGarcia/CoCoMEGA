@@ -5,6 +5,7 @@ import impl.config as cfg
 
 
 class ScenarioDefinition(AbstractScenarioDefinition):
+    """Base class for scenario definitions in a domain-specific implementation."""
 
     def dist(self, other: 'AbstractScenarioDefinition', **kwargs) -> float:
         """
@@ -37,5 +38,8 @@ class ScenarioDefinition(AbstractScenarioDefinition):
         pass
 
     def __eq__(self, other: Any) -> bool:
+        """
+        Check if this scenario is equal to another scenario.
+        """
         # TODO Implement equality criteria
         pass

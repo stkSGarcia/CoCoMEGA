@@ -224,6 +224,7 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+docs/html/
 docs/_autosummary/
 
 # PyBuilder

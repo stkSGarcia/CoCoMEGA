@@ -25,14 +25,24 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.graphviz',
     'sphinx.ext.inheritance_diagram',
+    'sphinx.ext.napoleon',  # Support for Google/NumPy style docstrings
+    'sphinx.ext.intersphinx',  # Link to other project's documentation
+    'sphinx_rtd_theme',  # Add the theme as an extension
 ]
-autosummary_generate = True
 
+# General settings
+language = 'en'
+autosummary_generate = True
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
+
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
-
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
+
+# Intersphinx configuration
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+}

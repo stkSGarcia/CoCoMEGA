@@ -208,8 +208,7 @@ class ScenarioEvaluator(object):
         if not wait_for_ego_vehicles:
             for vehicle in ego_vehicles:
                 self.ego_vehicles.append(CarlaDataProvider.request_new_actor(vehicle.model,
-                                                                             vehicle.transform,
-                                                                             vehicle.rolename,
+                                                                             vehicle.transform, vehicle.rolename,
                                                                              color=vehicle.color,
                                                                              vehicle_category=vehicle.category))
 

@@ -7,8 +7,12 @@ def sut_sort(scenario):
 
 
 class SortEvaluator(BaseEvaluator):
+    """Evaluator for sorting scenarios."""
 
     def run_scenarios(self, scenarios, **kwargs):
+        """
+        Run the sorting scenarios and return the outputs.
+        """
         outputs = []
         for scenario in scenarios:
             outputs.append(sut_sort(scenario))

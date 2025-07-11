@@ -66,12 +66,17 @@ class AbstractPerturbation(ABC):
         return 0
 
     def is_enabled(self) -> bool:
+        """
+        Check whether this perturbation is enabled.
+        """
         return self.enabled
 
     def enable(self):
+        """Enable this perturbation."""
         self.enabled = True
 
     def disable(self):
+        """Disable this perturbation."""
         self.enabled = False
 
 
@@ -104,6 +109,8 @@ class Perturbations(list):
     def score(self, co_population, **kwargs):
         """
         An optional score function for offspring selection.
+
+        :param co_population: The co-population of perturbations.
         """
         score = 0
         for perturbation in self:
@@ -136,16 +143,13 @@ class Perturbations(list):
         """Mutate this sequence of perturbation in place.
 
         :param mutpb: Mutation probability.
-        :param eta: Crowding degree of the mutation. A high eta will produce a mutant resembling its parent,
-            while a small eta will produce a solution much more different.
-        :param std: Standard deviation for the gaussian addition mutation.
         """
         for perturbation in self:
             perturbation.mutate(mutpb, **kwargs)
 
     def correct(self):
         """Correction function after breeding."""
-        pass
+        return
 
 
 class AbstractPerturbationFactory(ABC):
@@ -202,7 +206,8 @@ class MR:
         return perturbations
 
     def has(self, perturbations: Perturbations) -> bool:
-        """Check whether `perturbations` contain this perturbation.
+        """
+        Check whether `perturbations` contain this perturbation.
 
         :param perturbations: A sequence of perturbations.
         :return: Whether the `perturbations` contain this perturbation.
@@ -217,7 +222,8 @@ class MRSet:
     """Representation of a set of metamorphic relations sharing common source scenario constraints and output relation."""
 
     def __init__(self, mrs: List[MR], source_gen_func):
-        """Constructor.
+        """
+        Constructor.
 
         :param mrs: A list of :class:`MR` instances.
         :param source_gen_func: A function that generates random source scenarios suitable for this MR set.
@@ -231,7 +237,8 @@ class MRSet:
         self.relation = mrs[0].relation
 
     def is_violated(self, source, follow_up, **kwargs) -> (bool, float):
-        """Determine if this relation is violated and quantify the extent of violation.
+        """
+        Determine if this relation is violated and quantify the extent of violation.
 
         :param source: The :class:`DataFrame` of the source result.
         :param follow_up: The :class:`DataFrame` of the follow-up result.
@@ -241,7 +248,8 @@ class MRSet:
         return self.relation.is_violated(source, follow_up, **kwargs)
 
     def violated_mrs(self, perturbations_list: List[Perturbations]) -> List[List[int]]:
-        """Determine the violated metamorphic relations within the list of perturbation sequences.
+        """
+        Determine the violated metamorphic relations within the list of perturbation sequences.
 
         :param perturbations_list: A list of perturbation sequences.
         :return: The indices of the violated metamorphic relations.

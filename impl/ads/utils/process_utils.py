@@ -1,3 +1,11 @@
+import os
+import sys
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 def run_silently(func, *args):
     """
         Executes a function while suppressing all output (stdout, stderr) and logging messages.
