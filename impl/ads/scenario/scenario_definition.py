@@ -213,7 +213,7 @@ class ScenarioDefinition(AbstractScenarioDefinition):
             if len(actors) == 0 and len(other_actors) == 0:
                 continue
             elif len(actors) == 0 or len(other_actors) == 0:
-                dist += max(len(actors), len(other_actors)) * pow(cfg.CONFIG["scenario"]["dist_scaling"], 2)
+                dist += max(len(actors), len(other_actors)) * pow(scaling, 2)
             else:
                 dist_matrix = cdist(np.array(actors, dtype=object).reshape((-1, 1)),
                                     np.array(other_actors, dtype=object).reshape((-1, 1)),
