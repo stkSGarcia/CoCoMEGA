@@ -733,7 +733,7 @@ class ScenarioDefinition:
         :return: A :class:`DataFrame` representing the vector.
         """
         # Vectorize global attributes.
-        df = pd.DataFrame({f"{prefix}_town": [self.town]}).join(
+        df = pd.DataFrame({f"{prefix}_town": [self.town.lower()]}).join(
             pd.DataFrame({f"{prefix}_{attr}": [getattr(self, attr, None)]
                           for attr in self.ATTRIBUTES
                           if attr not in ("stop_sign_est", "red_light_est", "is_junction_est")})
