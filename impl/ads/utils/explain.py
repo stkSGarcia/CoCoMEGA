@@ -16,7 +16,7 @@ from sklearn.model_selection import cross_val_score, RandomizedSearchCV
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 
-from impl import config as cfg, problem
+from impl import config as cfg
 from impl.ads.scenario.scenario_definition import ScenarioDefinition
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,8 @@ def vectorize(solutions, mode="stats"):
     follow_up_scens = []
     max_actors = 0
     for solution in solutions:
-        fitnesses.append(solution.fitness.values[0] if solution.fitness_type == problem.test_version
+        fitnesses.append(solution.fitness.values[0]
+                         if solution.fitness_type == cfg.CONFIG["search"]["diff_testing"]["test"]
                          else -solution.fitness.values[0])
         fitnesses_v1.append(solution.v1.fitness[0])
         fitnesses_v2.append(solution.v2.fitness[0])
