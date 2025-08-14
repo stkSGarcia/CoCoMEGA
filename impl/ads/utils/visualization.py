@@ -703,7 +703,7 @@ def visualize_archived_distinct_solutions(projects: Dict[str, List[str]], fitnes
             gp_means["alg"] = name
             mean_df = pd.concat([mean_df, gp_means], ignore_index=True)
             ax.errorbar(distance_thresholds, mean_val,
-                        yerr=values.apply(lambda row: 0.95 * np.std(row) / np.sqrt(len(row))),
+                        yerr=values.apply(lambda row: 1.96 * np.std(row) / np.sqrt(len(row))),
                         **style_map.get(name, default_style), capsize=2, label=verbose_map.get(name, name), alpha=0.7)
             if box: ax.boxplot(group["distinct_solution_num"], positions=group.index.values, widths=0.05,
                                patch_artist=True, manage_ticks=False, whis=(0, 100),
@@ -876,9 +876,9 @@ def visualize_archived_solutions_by_gen(projects: Dict[str, List[str]], generati
             values = group[metric_name]
 
             chart_y_max = max(
-                [np.nanmean(row) + 0.95 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row))) for row in values])
+                [np.nanmean(row) + 1.96 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row))) for row in values])
             chart_y_min = min(
-                [np.nanmean(row) - 0.95 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row))) for row in values])
+                [np.nanmean(row) - 1.96 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row))) for row in values])
 
             if not y_max or y_max < chart_y_max: y_max = chart_y_max
             if not y_min or y_min > chart_y_min: y_min = chart_y_min
@@ -886,7 +886,7 @@ def visualize_archived_solutions_by_gen(projects: Dict[str, List[str]], generati
             ax = ax_map[gp_name]
             ax.errorbar(fitness_thresholds, values.apply(np.nanmean),
                         yerr=values.apply(
-                            lambda row: 0.95 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row)))),
+                            lambda row: 1.96 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row)))),
                         **style_map.get(alg, default_style), capsize=2, label=verbose_map.get(alg, alg))
 
             if box: ax.boxplot(group["distinct_solution_num"], positions=group.index.values, widths=0.05,
