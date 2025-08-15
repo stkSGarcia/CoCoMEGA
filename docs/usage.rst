@@ -24,7 +24,7 @@ Basic Usage
    .. code-block:: shell
       :linenos:
 
-      python -m impl search -a [algorithm]
+      python -m impl search -a ['ccea' | 'ga' | 'rs']
 
 #. Use ``--help`` for more options
 
@@ -62,3 +62,8 @@ To train an Interfuser model, use the command below:
    :linenos:
 
    python -m impl train
+
+Build Your Own Domain
+---------------------
+
+Please refer to :doc:`guide`.

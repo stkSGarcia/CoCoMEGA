@@ -1,26 +1,26 @@
 Installation
 ============
 
-Before you begin
+Before You Begin
 ----------------
 
-The following requirements should be fulfilled before installing CoCoMEGA:
+The following requirements should be fulfilled before installing CoCoMagic:
 
 - Python 3.7
 - Docker 24.0.7 or newer
 - NVIDIA driver 470.256 or newer
 - CUDA version 11.4 or newer
 
-CoCoMEGA setup
+CoCoMagic Setup
 --------------
 
-#. Setup CoCoMEGA
+#. Setup CoCoMagic
 
    .. code-block:: shell
       :linenos:
 
-      git clone git@github.com:stkSGarcia/CoCoMEGA.git
-      cd CoCoMEGA
+      git clone https://github.com/stkSGarcia/CoCoMagic.git  # Skip this if you already have the source.
+      cd CoCoMagic
       python3.7 -m venv .venv
       source .venv/bin/activate
 
@@ -50,14 +50,24 @@ CoCoMEGA setup
       cd ..
       easy_install carla/PythonAPI/carla/dist/carla-0.9.10-py3.7-linux-x86_64.egg
 
-#. Install CoCoMEGA requirements
+#. Install CoCoMagic requirements
 
    .. code-block:: shell
       :linenos:
 
-      cd ../CoCoMEGA
+      cd ../CoCoMagic
       pip install -r requirements.txt
 
 #. Download pretrained model
 
    The model can be downloaded at `here <http://43.159.60.142/s/p2CN>`_ and needs to be moved to ``conf``.
+
+Build the Documentation
+-----------------------
+
+.. code-block:: shell
+   :linenos:
+
+   cd CoCoMagic/docs
+   make clean
+   make html

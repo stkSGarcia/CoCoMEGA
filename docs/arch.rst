@@ -8,32 +8,49 @@ Below is an overview of the code structure, showing its key modules:
    project
    ├── conf/
    │   └── config.yaml
+   ├── docs/
    └── impl/
        ├── __main__.py
        ├── config.py
        ├── problem.py
-       ├── algorithm/
-       │   ├── budget.py
-       │   ├── base.py
-       │   ├── ccea.py
-       │   ├── ga.py
-       │   └── rs.py
-       ├── mr/
-       │   ├── mr.py
-       │   └── predefined.py
-       ├── scenario/
-       │   ├── scenario_definition.py
-       │   ├── simulation_runner.py
-       │   ├── route_scenario.py
-       │   ├── Interfuser_scenario_evaluator.py
-       │   └── interfuser_agent.py
-       └── utils/
-           ├── carla_utils.py
-           ├── docker_utils.py
-           ├── trajectory.py
-           ├── visualization.py
-           ├── metrics.py
-           └── math_utils.py
+       ├── core/
+       │   ├── domain_factory.py
+       │   ├── algorithm/
+       │   │   ├── budget.py
+       │   │   ├── base.py
+       │   │   ├── ccea.py
+       │   │   ├── ga.py
+       │   │   └── rs.py
+       │   ├── evaluation/
+       │   │   └── base_evaluation.py
+       │   ├── mr/
+       │   │   └── base_mr.py
+       │   └── scenario/
+       │       └── base_scenario.py
+       ├── domain_template/
+       └── [domain] (using ads as an example)
+           ├── config.yaml
+           ├── register.py
+           ├── evaluation/
+           │   ├── simulation_runner.py
+           │   ├── route_scenario.py
+           │   └── interfuser_scenario_evaluator.py
+           ├── mr/
+           │   ├── mr.py
+           │   └── predefined.py
+           ├── scenario/
+           │   └── scenario_definition.py
+           ├── agent/
+           │   ├── interfuser_agent.py
+           │   └── interfuser_config_[version].py
+           └── utils/
+               ├── carla_utils.py
+               ├── docker_utils.py
+               ├── trajectory.py
+               ├── visualization.py
+               ├── metrics.py
+               ├── explain.py
+               └── math_utils.py
 
 Core Components in ``impl/``
 ----------------------------
@@ -46,36 +63,36 @@ Core Components in ``impl/``
   for parameters like search budget, population sizes, scenario settings, file paths, Docker image configs, etc.
 - ``problem.py``: Defines the optimization problem and integrates all components. This sets up the evolutionary framework:
   it registers genetic operators, and defines the fitness function. The ``problem.py`` ties together scenarios from
-  ``scenario/``, perturbations/MRs from ``mr/``, and algorithms from ``algorithm/``.
-- ``algorithm/``: Contains implementations of search algorithms used to generate diverse test cases.
-- ``mr/``: Defines metamorphic relations and mechanisms to evaluate them.
-- ``scenario/``: Manages scenario definition, execution, and evaluation in simulation environments.
+  ``core/scenario/``, perturbations/MRs from ``core/mr/``, and algorithms from ``core/algorithm/``.
+- ``core/algorithm/``: Contains implementations of search algorithms used to generate diverse test cases.
+- ``core/mr/``: Defines metamorphic relations and mechanisms to evaluate them.
+- ``core/scenario/``: Manages scenario definition, execution, and evaluation in simulation environments.
 - ``utils/``: Offers utility functions supporting simulation interaction, mathematical operations, and result visualization.
 
-Algorithm Module (``impl/algorithm/``)
---------------------------------------
+Algorithm Module (``impl/core/algorithm/``)
+-------------------------------------------
 
-The algorithm module contains implementations of the search strategies, including CoCoMEGA's custom algorithm and baseline methods:
+The algorithm module contains implementations of the search strategies, including CoCoMagic's custom algorithm and baseline methods:
 
 - ``base.py``: Defines ``BaseAlgorithm``, an abstract base class that provides common functionality for all search
   algorithms (initialization, logging setup, result recording, etc.). It sets up the general solve loop structure and
   statistics gathering using *DEAP* tools.
-- ``ccea.py``: Implements the Cooperative Co-Evolutionary Algorithm (CCEA) that powers CoCoMEGA. This algorithm co-evolves
+- ``ccea.py``: Implements the Cooperative Co-Evolutionary Algorithm (CCEA) that powers CoCoMagic. This algorithm co-evolves
   two populations, one of base scenarios and one of perturbations, collaborating to find scenario combinations that
   maximize MR violations.
 - ``ga.py``: A Standard Genetic Algorithm (SGA) implementation. It evolves a single population of complete solutions
   (each solution encoding a scenario and its perturbations together) using crossover and mutation. This serves as a
-  baseline to compare against CoCoMEGA's co-evolutionary approach.
+  baseline to compare against CoCoMagic's co-evolutionary approach.
 - ``rs.py``: A Random Search (RS) strategy. Instead of evolving populations, this method randomly samples scenarios and
   perturbations. It's used as a simple baseline to assess the benefit of guided search.
 
-Metamorphic Relations Module (``impl/mr/``)
--------------------------------------------
+Metamorphic Relations Module (``impl/core/mr/``)
+------------------------------------------------
 
-The ``impl/mr/`` module defines how metamorphic relations are represented and checked. This is central to encoding the
-testing oracle for CoCoMEGA (what constitutes a failure or interesting finding in the autonomous driving context):
+The metamorphic relations module defines how metamorphic relations are represented and checked. This is central to encoding
+the testing oracle for CoCoMagic (what constitutes a failure or interesting finding in the autonomous driving context):
 
-- ``mr.py``: Defines core classes for metamorphic relations:
+- ``base_mr.py``: Defines core classes for metamorphic relations:
 
     - ``Perturbation``: Represents a single modification to apply to a scenario (e.g., adding a pedestrian, changing
       weather conditions). It includes the category of the perturbation (what is being changed), the operation type
@@ -92,20 +109,20 @@ testing oracle for CoCoMEGA (what constitutes a failure or interesting finding i
       original and perturbed scenarios.
 
 - ``predefined.py``: Contains definitions of specific metamorphic relations used in the project, corresponding to the
-  descriptions from the paper/experiments. It uses the classes from ``impl/mr.py`` to build concrete instances.
+  descriptions from the paper/experiments. It uses the classes from ``impl/core/base_mr.py`` to build concrete instances.
   For example, it defines MR1–MR13 as described in the documentation (such as "adding a pedestrian on the roadside
   should cause the ego vehicle to slow down"). Each MR is created by specifying the needed ``PerturbationFactory`` (a
   helper to generate perturbations of a certain type) and the expected relation (``slow`` for speed decrease,
   ``steer_keep`` for steering invariance, etc.).
 
-Scenario Module (``impl/scenario/``)
-------------------------------------
+Scenario Module (``impl/core/scenario/``)
+-----------------------------------------
 
 The scenario module manages the generation, execution, and evaluation of driving scenarios in the CARLA simulator.
 It interfaces with InterFuser agent to obtain the outcomes needed to evaluate MRs.
 Major components of this module include:
 
-- ``scenario_definition.py``: Defines the ``ScenarioDefinition`` class and related data structures that represent a
+- ``base_scenario.py``: Defines the ``ScenarioDefinition`` class and related data structures that represent a
   driving scenario. A scenario includes the route (or road configuration), traffic actors (ego vehicle, other vehicles,
   pedestrians), environmental conditions (weather, brightness), and any specific parameters or positions. This file also
   provides methods to randomly generate scenarios within defined bounds (e.g., placing actors within certain regions)

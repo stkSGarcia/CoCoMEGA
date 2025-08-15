@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path('..').resolve()))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'CoCoMEGA'
+project = 'CoCoMagic'
 copyright = '2025, Nanda Lab'
 author = 'Nanda Lab'
 release = '0.2.0'
