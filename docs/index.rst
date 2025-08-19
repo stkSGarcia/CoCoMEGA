@@ -12,8 +12,8 @@ Welcome to CoCoMagic's documentation!
    intro
    install
    usage
-   conf
    arch
+   conf
    guide
    mrs
    api

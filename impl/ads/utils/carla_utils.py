@@ -237,7 +237,7 @@ def transform_to_dict(transform):
     Convert a CARLA transform to a dictionary.
 
     :param transform: CARLA transform.
-    :return: Dictionary with `x`, `y`, `z`, `yaw`.
+    :return: Dictionary with ``x``, ``y``, ``z``, ``yaw``.
     """
     return {
         'x': transform.location.x,
@@ -251,7 +251,7 @@ def dict_to_transform(_dict):
     """
     Convert a dictionary into a CARLA transform.
 
-    :param _dict: Dictionary with `x`, `y`, `z`, `yaw` keys.
+    :param _dict: Dictionary with ``x``, ``y``, ``z``, ``yaw`` keys.
     :return: CARLA transform.
     """
     return carla.Transform(
@@ -265,7 +265,7 @@ def location_to_dict(location):
     Convert a CARLA location to a dictionary.
 
     :param location: CARLA location.
-    :return: Dictionary with `x`, `y`, `z`.
+    :return: Dictionary with ``x``, ``y``, ``z``.
     """
     return {
         'x': location.x,
@@ -278,7 +278,7 @@ def dict_to_location(_dict):
     """
     Convert a dictionary into a CARLA location.
 
-    :param _dict: Dictionary with `x`, `y`, `z` keys.
+    :param _dict: Dictionary with ``x``, ``y``, ``z`` keys.
     :return: CARLA location.
     """
     return carla.Location(x=_dict["x"], y=_dict["y"], z=_dict["z"])
@@ -393,7 +393,7 @@ def group_junction_directions(junction, reference_yaw):
 
     :param junction: CARLA junction object.
     :param reference_yaw: Yaw to compare against.
-    :return: Dictionary with keys `forward`, `left`, `right` and lists of waypoints.
+    :return: Dictionary with keys ``forward``, ``left``, ``right`` and lists of waypoints.
     """
     _, exit_wps = get_junction_topology(junction)
 

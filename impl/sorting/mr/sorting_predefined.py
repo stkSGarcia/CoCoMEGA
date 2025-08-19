@@ -12,4 +12,5 @@ equality_relation = SortedOutputEqualityRelation()
 mr1 = MR([input_perm_factory], equality_relation)
 mr2 = MR([additive_shift_factory], equality_relation)
 
+#: Predefined MR set.
 mr_set = MRSet([mr1, mr2], source_gen_func=ScenarioDefinition.generate_random)

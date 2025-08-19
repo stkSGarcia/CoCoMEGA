@@ -202,7 +202,7 @@ class ScenarioDefinition(AbstractScenarioDefinition):
 
         :param other: Another :class:`ScenarioDefinition` instance to compare against.
         :return: Computed distance between two scenarios.
-        :raises ValueError: If `other` is not a :class:`ScenarioDefinition`.
+        :raises ValueError: If ``other`` is not a :class:`ScenarioDefinition`.
         """
         scaling = kwargs.get("scaling", cfg.CONFIG["scenario"]["dist_scaling"])
         if str(type(other)) != str(type(self)):
@@ -227,7 +227,7 @@ class ScenarioDefinition(AbstractScenarioDefinition):
 
         :param other: Another :class:`ScenarioDefinition` instance to mate with.
         :param cxpb: Crossover probability (default from config).
-        :raises ValueError: If `other` is not a :class:`ScenarioDefinition`.
+        :raises ValueError: If ``other`` is not a :class:`ScenarioDefinition`.
         """
         if not isinstance(other, self.__class__):
             raise ValueError(f"Unmatched types: [{type(self)}, {type(other)}].")
@@ -263,7 +263,8 @@ class ScenarioDefinition(AbstractScenarioDefinition):
 
     @classmethod
     def generate_random(cls, predefined_trajectory=False):
-        """Generate a random scenario.
+        """
+        Generate a random scenario.
 
         :param predefined_trajectory: Determines whether to select a predefined trajectory or generate a random one.
         :return: The generated scenario.
@@ -344,7 +345,7 @@ class ScenarioDefinition(AbstractScenarioDefinition):
     @classmethod
     def _random_predefined_trajectory(cls):
         """
-        Select a random trajectory definition from the list of predefined trajectories given in `config.yaml`.
+        Select a random trajectory definition from the list of predefined trajectories given in ``config.yaml``.
 
         :return: The selected trajectory definition.
         """
@@ -394,7 +395,7 @@ class ScenarioDefinition(AbstractScenarioDefinition):
         """
         Construct a complete trajectory for the ego vehicle, based on the starting point and direction.
 
-        :param trajectory_def: Dictionary containing `start`, `direction`, and optionally `junction_exit`.
+        :param trajectory_def: Dictionary containing :data:`start`, :data:`direction`, and optionally :data:`junction_exit`.
         :return: A tuple of trajectory waypoints, GPS route, CARLA route, and junction status.
         :raises InvalidScenarioDefinitionError: If the trajectory direction is not valid given the starting location.
         """
@@ -452,7 +453,7 @@ class ScenarioDefinition(AbstractScenarioDefinition):
         """
         Return the ego vehicle's starting position.
 
-        :return: Dictionary containing the `x`, `y`, `z`, `yaw`, and `speed` values.
+        :return: Dictionary containing the :data:`x`, :data:`y`, :data:`z`, :data:`yaw`, and :data:`speed` values.
         """
         return self.trajectory["start"]
 
@@ -591,7 +592,7 @@ class ScenarioDefinition(AbstractScenarioDefinition):
         :param y: Y-coordinate of the current location.
         :param z: Z-coordinate of the current location.
         :param interval: Distance to move along the road.
-        :return: New (x, y) coordinates, or (None, None) if no waypoint is found.
+        :return: New (x, y) coordinates, or (:data:`None`, :data:`None`) if no waypoint is found.
         """
         waypoint = CarlaDataProvider.get_map().get_waypoint(carla.Location(x=x, y=y, z=z))
         new_waypoints = waypoint.next(interval)
@@ -654,7 +655,7 @@ class ScenarioDefinition(AbstractScenarioDefinition):
 
         :param actor_def: Actor definition containing spawn information.
         :param scenario_duration: Total duration of the scenario to compute the trajectory (in seconds).
-        :return: List of trajectory points as dictionaries with `x` and `y` keys.
+        :return: List of trajectory points as dictionaries with ``x`` and ``y`` keys.
         """
         num_trajectory_points = 30
         spawn_point = actor_def.get_config()['spawn_point']
@@ -701,7 +702,7 @@ class ScenarioDefinition(AbstractScenarioDefinition):
         """Vectorize the scenario.
 
         :param max_actors: Maximum number of actors.
-            It should be greater than the value configured in `scenario:max_actors`.
+            It should be greater than the value configured in ``scenario:max_actors``.
         :param prefix: The string added before the feature names.
         :param mode: The way to encode actors. Options are :data:`stats` for encoding statistics
             or :data:`padding` for padding shorter lists of actors (default: :data:`stats`).

@@ -67,8 +67,8 @@ def selRNSGA2(individuals, k, ref_points, ideal_point, nadir_point, epsilon=0.01
     :param return_memory: If :data:`True`, return the reference, ideal, and nadir points
         in addition to the chosen individuals.
     :returns: A list of selected individuals.
-        If `return_memory` is :data:`True`, a namedtuple with the
-        `ref_points`, `ideal_point`, and `nadir_points`.
+        If ``return_memory`` is :data:`True`, a namedtuple with the
+        ``ref_points``, ``ideal_point``, and ``nadir_points``.
     """
     if nd == "standard":
         pareto_fronts = sortNondominated(individuals, k)

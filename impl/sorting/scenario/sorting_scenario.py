@@ -1,12 +1,13 @@
-from typing import Any
 import random
-import numpy as np
-from impl.core.scenario.base_scenario import AbstractScenarioDefinition
+from typing import Any
+
 import impl.config as cfg
+from impl.core.scenario.base_scenario import AbstractScenarioDefinition
 
 
 class ScenarioDefinition(AbstractScenarioDefinition):
     """Base class for scenario definitions in a domain-specific implementation."""
+
     def __init__(self, instance=None):
         """
         Initialize the scenario definition with an optional instance.

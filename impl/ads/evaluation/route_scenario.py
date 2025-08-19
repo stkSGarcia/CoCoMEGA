@@ -388,7 +388,7 @@ class RouteScenario(BasicScenario):
 
         def position_sampled(scenario_choice, sampled_scenarios):
             """
-            Check if a position was already sampled, i.e. used for another scenario
+            Check if a position was already sampled, i.e. used for another scenario.
             """
             for existent_scenario in sampled_scenarios:
                 # If the scenarios have equal positions then it is true.

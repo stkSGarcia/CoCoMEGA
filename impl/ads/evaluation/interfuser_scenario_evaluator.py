@@ -6,9 +6,9 @@
 # For a copy, see <https://opensource.org/licenses/MIT>.
 
 """
-CARLA Challenge Evaluator Routes
+CARLA Challenge Evaluator Routes.
 
-Provisional code to evaluate Autonomous Agents for the CARLA Autonomous Driving challenge
+Provisional code to evaluate Autonomous Agents for the CARLA Autonomous Driving challenge.
 """
 from __future__ import print_function
 
@@ -132,7 +132,7 @@ class ScenarioEvaluator(object):
 
     def __del__(self):
         """
-        Cleanup and delete actors, ScenarioManager and CARLA world
+        Cleanup and delete actors, ScenarioManager and CARLA world.
         """
         # self._cleanup()
         if hasattr(self, 'manager') and self.manager:

@@ -14,23 +14,23 @@ import torch
 
 from impl import config as cfg
 from impl.ads.evaluation.simulation_runner import ADSEvaluator
-from impl.core.algorithm.ccea import CCEA
-from impl.core.algorithm.ga import GeneticAlgorithm
-from impl.core.algorithm.moccea import MOCCEA
-from impl.core.algorithm.rs import RandomSearch
 from impl.ads.scenario.scenario_definition import ScenarioDefinition
 from impl.ads.utils.docker_utils import cleanup_containers
 from impl.ads.utils.leaderboad_utils import get_enviroment_confs, make_yamls, create_dataset_index, \
     vectorize_runtime_data
+from impl.core.algorithm.ccea import CCEA
+from impl.core.algorithm.ga import GeneticAlgorithm
+from impl.core.algorithm.moccea import MOCCEA
+from impl.core.algorithm.rs import RandomSearch
 
 logger = logging.getLogger("impl")
 
 
-def parse_list(_type: type, delimeter: str):
+def parse_list(_type: type, delimiter: str):
     """Create a parser for a delimited list of values of a specified type.
 
     :param _type: The type to which each list item should be converted.
-    :param delimeter: The delimiter used to split the input string.
+    :param delimiter: The delimiter used to split the input string.
     :return: A function that parses the input string into a list of values.
     """
 
@@ -44,9 +44,9 @@ def parse_list(_type: type, delimeter: str):
             arg_str = arg_str.strip()
             if arg_str.startswith('[') and arg_str.endswith(']'):
                 arg_str = arg_str[1:-1]
-            return [_type(str(w).strip()) for w in arg_str.split(delimeter)]
+            return [_type(str(w).strip()) for w in arg_str.split(delimiter)]
         except ValueError:
-            raise argparse.ArgumentTypeError(f"args must be a list of '{_type}' separated by '{delimeter}'")
+            raise argparse.ArgumentTypeError(f"args must be a list of '{_type}' separated by '{delimiter}'")
 
     return parse_func
 
@@ -266,7 +266,7 @@ def convert2scenarios(directory: str, n: int, towns: List[str]):
         """Helper function to vectorize a runtime data file if it matches town criteria.
 
         :param path: Path to the .pkl file.
-        :return: Vectorized scenario (None if failed).
+        :return: Vectorized scenario (:data:`None` if failed).
         """
         towns_lower = [name.lower() for name in towns] if isinstance(towns, list) else None
         try:
@@ -309,8 +309,8 @@ def convert2scenarios(directory: str, n: int, towns: List[str]):
 if __name__ == "__main__":
     # Parse the command line.
     parser = argparse.ArgumentParser(
-        prog="mtcg",
-        description="Test case generator for metamorphic testing.",
+        prog="cocomagic",
+        description="Cooperative Co-evolutionary differential and Metamorphic Automated Generator for Interpretable Cases.",
         formatter_class=argformat.StructuredFormatter
     )
     subparsers = parser.add_subparsers(

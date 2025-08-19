@@ -162,7 +162,7 @@ def vectorize_runtime_data(rt_data):
 
 def create_dataset_index(dataset_root, weathers=None, towns=None):
     """
-    Create a `dataset_index.txt` file listing paths and frame counts for training or evaluation data.
+    Create a ``dataset_index.txt`` file listing paths and frame counts for training or evaluation data.
 
     :param dataset_root: Path to the dataset root directory.
     :param weathers: Optional list of weather IDs to filter data.

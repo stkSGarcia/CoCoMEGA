@@ -1,4 +1,3 @@
-from copy import deepcopy
 from math import factorial
 
 import numpy as np
@@ -10,14 +9,14 @@ from impl.core.algorithm.rnsga2 import selRNSGA2WithMemory
 from impl.core.algorithm.rnsga3 import selRNSGA3WithMemory
 from impl.core.domain_factory import DomainFactory
 
-# Define domain
+#: Define domain.
 domain = DomainFactory("ads")
 # domain = DomainFactory("sorting")
 
-# Define the metamorphic relation set.
+#: Define the metamorphic relation set.
 mr_set = domain.get_mr_set()
 
-# Define the budget.
+#: Define the budget.
 budget = Budget(max_sim=cfg.CONFIG["search"]["budget"]["max_sim"],
                 max_time=cfg.CONFIG["search"]["budget"]["max_time"],
                 max_gen=cfg.CONFIG["search"]["budget"]["max_gen"])

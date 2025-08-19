@@ -9,6 +9,7 @@ from impl.core.mr.base_mr import Perturbations
 
 from impl import config as cfg
 
+#: Defined :const:`mr_set`.
 mr_set = mr_set1
 mr_set.labels = set(factory.get_label()
                     for mr in mr_set.mrs
@@ -44,7 +45,7 @@ def _pop_scenario():
                                   reverse=True)[:cfg.CONFIG["scenario"]["pop_size"]]
     return pop_scenario
 
-
+#: Defined :const:`DOMAIN_REGISTRY`.
 DOMAIN_REGISTRY = {
     "Scenario": ScenarioDefinition,
     "ScenarioInit": _pop_scenario,

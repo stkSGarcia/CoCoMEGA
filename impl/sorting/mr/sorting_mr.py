@@ -1,5 +1,6 @@
 import random
-from typing import Any
+from typing import Any, Tuple
+
 import numpy as np
 
 from impl.core.mr.base_mr import AbstractPerturbation, AbstractPerturbationFactory, Perturbations, AbstractRelation
@@ -66,7 +67,7 @@ class InputPermutationPerturbation(AbstractPerturbation):
 
     def mutate(self, mutpb, *args, **kwargs) -> None:
         """
-        Mutate the permutation by swapping two elements with a probability of `mutpb`.
+        Mutate the permutation by swapping two elements with a probability of ``mutpb``.
         """
         if random.random() < mutpb and self.permutation is not None:
             i, j = random.sample(range(len(self.permutation)), 2)
@@ -85,6 +86,7 @@ class InputPermutationFactory(AbstractPerturbationFactory):
     def __init__(self, input_size):
         """
         Initialize the factory with the size of the input data.
+
         :param input_size: Size of the input data to be permuted.
         """
         self.input_size = input_size
@@ -137,7 +139,7 @@ class AdditiveShiftPerturbation(AbstractPerturbation):
 
     def mutate(self, mutpb, *args, **kwargs) -> None:
         """
-        Mutate the shift by adding a random value with a probability of `mutpb`.
+        Mutate the shift by adding a random value with a probability of ``mutpb``.
         """
         if random.random() < mutpb:
             self.shift += random.randint(0, 10)
@@ -165,7 +167,7 @@ class AdditiveShiftFactory(AbstractPerturbationFactory):
 class SortedOutputEqualityRelation(AbstractRelation):
     """Relation that checks if the perturbed output has the same sorted result as the original output."""
 
-    def is_violated(self, original_output: Any, perturbed_output: Any, **kwargs) -> (bool, float):
+    def is_violated(self, original_output: Any, perturbed_output: Any, **kwargs) -> Tuple[bool, float]:
         """
         Check whether the perturbed output has the same sorted result as original.
         Use Jaccard similarity or exact match depending on use-case.

@@ -3,22 +3,23 @@ import random
 from collections.abc import Sequence
 from enum import Enum, auto
 from functools import partial
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
-
 from tslearn.metrics import dtw_path
 
 from impl import config as cfg
-from impl.ads.utils.trajectory import single_trajectory_score
-from impl.core.mr.base_mr import Perturbations, AbstractPerturbation, AbstractPerturbationFactory, AbstractRelation
 from impl.ads.scenario import scenario_definition
 from impl.ads.scenario.scenario_definition import ScenarioDefinition
+from impl.ads.utils.trajectory import single_trajectory_score
+from impl.core.mr.base_mr import Perturbations, AbstractPerturbation, AbstractPerturbationFactory, AbstractRelation
 
 logger = logging.getLogger(__name__)
 
 
 class Operation(Enum):
+    """Operation type."""
     ADD = auto()
     REMOVE = auto()
     REPLACE = auto()
@@ -140,12 +141,11 @@ class Perturbation(AbstractPerturbation):
             raise ValueError(f"Unsupported category: {self.category}.")
 
     def score(self, co_population, **kwargs):
-        """
-            Calculate average trajectory alignment score for perturbed actor trajectories.
+        """Calculate average trajectory alignment score for perturbed actor trajectories.
 
-            :param co_population: Population of scenarios.
-            :return: Average score over all scenarios.
-            """
+        :param co_population: Population of scenarios.
+        :return: Average score over all scenarios.
+        """
         total_score = 0
         if (self.category in ScenarioDefinition.ATTRIBUTES or
                 isinstance(self.category, Sequence)):
@@ -216,10 +216,10 @@ class PerturbationFactory(AbstractPerturbationFactory):
         return Perturbation(self.category, self.boundary, self.operation, self._spawn_func(), mark=self.mark)
 
     def has(self, perturbations: Perturbations):
-        """Check whether `perturbations` contain perturbations spawned by this factory.
+        """Check whether ``perturbations`` contain perturbations spawned by this factory.
 
-        :param perturbations: A sequence of perturbations.
-        :return: Whether the `perturbations` contain this perturbation.
+        :param perturbations: A :class:`Perturbations` instance.
+        :return: Whether the ``perturbations`` contain this perturbation.
         """
         for perturbation in perturbations:
             if (perturbation.enabled and
@@ -252,7 +252,7 @@ class Relation(AbstractRelation):
         self.percentage = percentage
         self._extent_func = None
 
-    def is_violated(self, source, follow_up, **kwargs) -> (bool, float):
+    def is_violated(self, source, follow_up, **kwargs) -> Tuple[bool, float]:
         """Determine if this relation is violated and quantify the extent of violation.
 
         :param source: The :class:`DataFrame` of the source result.

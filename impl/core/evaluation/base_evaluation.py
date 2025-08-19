@@ -1,16 +1,22 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
+from multiprocessing import Manager
 from typing import List, Any
+
 import numpy as np
 
-from multiprocessing import Manager, Process
+from impl.core.mr.base_mr import MRSet
 from impl.core.scenario.base_scenario import AbstractScenarioDefinition
 
 
 class BaseEvaluator(ABC):
     """Abstract base class for evaluation of scenarios."""
 
-    def __init__(self, mr_set):
+    def __init__(self, mr_set: MRSet):
+        """Constructor.
+
+        :param mr_set: A :class:`impl.core.mr.base_mr.MRSet` instance used in the evaluation.
+        """
         self.mr_set = mr_set
         self.evaluated_scenarios = Manager().dict()
 
@@ -27,6 +33,11 @@ class BaseEvaluator(ABC):
         return scenarios
 
     def evaluate_solutions(self, solutions):
+        """Evaluate all solutions.
+
+        :param solutions: Solution to be evaluated.
+        :return: Solutions with fitness evaluated, number of simulations.
+        """
         scenarios = self._get_scenarios(solutions)
         results, sim_num = self.run_scenarios(scenarios)
         for solution, source, follow_up in zip(solutions, results[::2], results[1::2]):
@@ -65,14 +76,12 @@ class BaseEvaluator(ABC):
         return individual
 
     def fitness(self, source: Any, follow_up: Any):
-        """
-        Calculate the fitness value and check if it violates the metamorphic relations.
+        """Calculate the fitness value and check if it violates the metamorphic relations.
         By default, it returns (violated, extent) the same as mr_set. Override to modify fitness logic.
 
         :param source: Simulation results of the source scenario.
         :param follow_up: Simulation results of the follow-up scenario.
         :return: A tuple containing a bool value indicating whether it violates the relation and the fitness value.
-
         """
         is_violated, extent = self.mr_set.is_violated(source, follow_up)
         return is_violated, (extent,)

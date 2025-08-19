@@ -77,8 +77,8 @@ def cleanup_containers(tag=None):
     """
     Stop all Docker containers launched by the current user that match the CARLA Docker image.
 
-    :param tag: Optional tag to filter containers. If None, matches all containers with the base image name.
-    :type tag: str or None
+    :param tag: Optional tag to filter containers. If :data:`None`, matches all containers with the base image name.
+    :type tag: str or :data:`None`
     """
     pattern = f'{cfg.CONFIG["docker"]["image"]}-{tag if tag is not None else ""}'
     logger.info("Cleaning up Carla containers ...")

@@ -6,25 +6,24 @@ import shutil
 import subprocess
 import sys
 import traceback
-import numpy as np
-from math import sqrt
 from concurrent.futures import ProcessPoolExecutor
 from copy import deepcopy
+from math import sqrt
 from multiprocessing import Manager, Process
 from types import SimpleNamespace
 
+import numpy as np
 import pandas as pd
 from deap import tools, creator
+from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
 from impl import config as cfg
-from impl.core.evaluation.base_evaluation import BaseEvaluator
-from impl.core.scenario.base_scenario import AbstractScenarioDefinition
-
-from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from impl.ads.evaluation.exceptions import InvalidScenarioDefinitionError
 from impl.ads.scenario.scenario_definition import ScenarioDefinition
 from impl.ads.utils.carla_utils import initialize_carla
 from impl.ads.utils.process_utils import run_silently
+from impl.core.evaluation.base_evaluation import BaseEvaluator
+from impl.core.scenario.base_scenario import AbstractScenarioDefinition
 
 arguments = [
     ("SCENARIOS", "scenarios",
@@ -296,7 +295,7 @@ class ADSEvaluator(BaseEvaluator):
         :param agent_name: Name of agent configuration to use.
         :param rerun: Whether to rerun already evaluated scenarios.
         :param additional_confs: Optional additional configurations per scenario.
-        :return: (List of results, number of successful runs).
+        :return: Tuple (List of results, number of successful runs).
         """
         tag = os.environ.get("tag", "default")
         if additional_confs is None:
@@ -333,7 +332,6 @@ class ADSEvaluator(BaseEvaluator):
 
         :param source: Simulation results of the source scenario.
         :param follow_up: Simulation results of the follow-up scenario.
-        :param mr_set: The set of metamorphic relations to be violated.
         :return: A tuple containing a bool value indicating whether it violates the relation and the fitness value.
         """
         if self.mr_set.relation.field == "velocity":
@@ -347,14 +345,13 @@ class ADSEvaluator(BaseEvaluator):
 
     @staticmethod
     def run_scenario(scenario: ScenarioDefinition, agent_name, rerun=False, additional_config=None):
-        """
-        Run a single :class:`ScenarioDefinition` through CARLA simulation.
+        """Run a single :class:`ScenarioDefinition` through CARLA simulation.
 
         :param scenario: :class:`ScenarioDefinition` object to simulate.
         :param agent_name: Name of the agent configuration to use.
         :param rerun: Whether to force rerunning even if results exist.
         :param additional_config: Additional parameters to pass.
-        :return: (Result `Dataframe`, whether simulation was newly executed).
+        :return: Tuple (Result :class:`Dataframe`, whether simulation was newly executed).
         """
         global carla_host, carla_port, tm_port, gpu_device
         assert carla_host is not None and carla_port is not None and tm_port is not None and gpu_device is not None

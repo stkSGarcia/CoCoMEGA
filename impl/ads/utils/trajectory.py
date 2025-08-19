@@ -149,8 +149,8 @@ def distance_vector(v1, v2):
     """
     Compute vector difference between v1 and v2.
 
-    :param v1: Dict with `x`, `y`.
-    :param v2: Dict with `x`, `y`.
+    :param v1: Dict with ``x``, ``y``.
+    :param v2: Dict with ``x``, ``y``.
     :return: Vector difference as a dictionary.
     """
     return {'x': v1['x'] - v2['x'], 'y': v1['y'] - v2['y']}

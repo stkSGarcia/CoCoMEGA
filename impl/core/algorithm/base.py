@@ -35,12 +35,12 @@ class BaseAlgorithm:
         self.budget = budget
         self.n_obj = len(creator.Fitness.weights)  # Number of objectives.
 
-        # Replace the original `dominates` function.
+        # Replace the original :func:`dominates` function.
         if getattr(creator.Fitness, "dominates", None) is not None:
             logger.debug("Replace `dominates` function of fitness.")
             setattr(creator.Fitness, "dominates", BaseAlgorithm._dominates)
 
-        # Initialize statistics collector for `deap` population.
+        # Initialize statistics collector for :mod:`deap` population.
         self.stats = tools.Statistics(lambda ind: ind.fitness.values if ind.fitness.valid else (np.nan,) * self.n_obj)
         self.stats.register("avg", np.nanmean, axis=0)
         self.stats.register("std", np.nanstd, axis=0)

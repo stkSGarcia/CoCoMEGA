@@ -11,7 +11,7 @@ def run_silently(func, *args):
         Executes a function while suppressing all output (stdout, stderr) and logging messages.
 
         :param func: The function to execute.
-        :param args: The arguments to pass to the function `func`.
+        :param args: The arguments to pass to the function ``func``.
         """
     with open(os.devnull, 'w') as devnull:
         old_stdout = sys.stdout

@@ -664,6 +664,7 @@ def visualize_archived_distinct_solutions(projects: Dict[str, List[str]], fitnes
     :param fitness_thresholds: A list of fitness thresholds.
     :param distance_thresholds: A list of distance thresholds.
     :param mr_set: The given MRs.
+    :param tick_rate: Tick interval for x-axis.
     :param box: Show box plots.
     :param save_path: The path to save the figure.
     :param show: A boolean to determine whether to show the plots or not.
@@ -826,7 +827,7 @@ def visualize_archived_solutions_by_gen(projects: Dict[str, List[str]], generati
     """Plot the number of distinct solutions from final archived solutions by applying fitness and distance thresholds.
 
     :param projects: Project names of different algorithms. ``Dict[name_of_algorithm, List[project_name]]``.
-    :param generation_num: Generation Number. If set to `K`, plot the solutions found after `K generations.
+    :param generation_num: Generation Number. If set to ``K``, plot the solutions found after ``K`` generations.
     :param metric_name: The metric used for comparison. Options are
         :data:`ds` (Distinct Solutions)
         :data:`avg_pw` (Average Pairwise Distance)
@@ -1007,7 +1008,7 @@ def visualize_computational_efficiency(log_file: str, projects: Dict[str, List[s
     """
     Generate a boxplot comparing computational efficiency (duration in hours) across algorithms from a log file.
 
-    :param log_file: Path to the CSV log file containing `alg`, `start_time`, `end_time` columns.
+    :param log_file: Path to the CSV log file containing ``alg``, ``start_time``, ``end_time`` columns.
     :param projects: Project names of different algorithms. ``Dict[name_of_algorithm, List[project_name]]``.
     :param save_path: The path to save the figure.
     :param show: A boolean to determine whether to show the plots or not.

@@ -1,32 +1,36 @@
 import importlib
 import logging
-import yaml
 from pathlib import Path
+
+import yaml
+
 from impl import config as cfg
 
-logger = logging.getLogger("impl")
+logger = logging.getLogger(__name__)
 
 
 class DomainFactory:
     """
     Factory class for loading domain-specific components.
     This class dynamically imports the domain registry module and retrieves
-    the components defined in the `DOMAIN_REGISTRY` dictionary.
+    the components defined in the :const:`DOMAIN_REGISTRY` dictionary.
     It also handles the loading of domain-specific configuration files.
+
     Attributes:
         domain_name (str): Name of the domain to load.
         domain_registry (module): The imported module for the domain registry.
-        domain_path (Path): Path to the domain registry module.
+        domain_path (:class:`pathlib.Path`): Path to the domain registry module.
         domain_dict (dict): Dictionary containing the domain components.
+
     Raises:
         ImportError: If the domain registry module cannot be found.
-        AttributeError: If the `DOMAIN_REGISTRY` attribute is not found in the module.
-        TypeError: If the `DOMAIN_REGISTRY` is not a dictionary.
+        AttributeError: If the :const:`DOMAIN_REGISTRY` attribute is not found in the module.
+        TypeError: If the :const:`DOMAIN_REGISTRY` is not a dictionary.
     """
 
     def __init__(self, domain_name: str):
         """
-        Initializes the DomainFactory with the specified domain name.
+        Initializes the :class:`DomainFactory` with the specified domain name.
         """
         self.domain_name = domain_name
         try:

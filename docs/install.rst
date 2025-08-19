@@ -12,7 +12,10 @@ The following requirements should be fulfilled before installing CoCoMagic:
 - CUDA version 11.4 or newer
 
 CoCoMagic Setup
---------------
+---------------
+
+Here, we take autonomous driving system testing as an example.
+The setup procedures are given below.
 
 #. Setup CoCoMagic
 
@@ -61,13 +64,3 @@ CoCoMagic Setup
 #. Download pretrained model
 
    The model can be downloaded at `here <http://43.159.60.142/s/p2CN>`_ and needs to be moved to ``conf``.
-
-Build the Documentation
------------------------
-
-.. code-block:: shell
-   :linenos:
-
-   cd CoCoMagic/docs
-   make clean
-   make html

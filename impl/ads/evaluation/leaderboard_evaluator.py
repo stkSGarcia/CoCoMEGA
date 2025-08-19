@@ -22,12 +22,12 @@ class CustomizedEvaluator(LeaderboardEvaluator):
     """
     Customized Evaluator class for CARLA Leaderboard.
 
-    Overrides the _load_and_run_scenario method to include more detailed
+    Overrides the :func:`_load_and_run_scenario` method to include more detailed
     crash handling and customized evaluation behavior.
     """
     def _load_and_run_scenario(self, args, config):
         """
-        Load and run the scenario given by config. Overrides the super method
+        Load and run the scenario given by config. Overrides the super method.
 
         :param args: Parsed arguments for evaluation.
         :param config: Scenario configuration to load and execute.

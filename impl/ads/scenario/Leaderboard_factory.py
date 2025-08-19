@@ -34,7 +34,7 @@ class LeaderBoardFactory:
         :param scenario_type: A string indicating the type of scenario to generate.
         :param kwargs: Additional keyword arguments for the generation function.
         :return: Modified scenario object.
-        :raises ValueError: If `scenario_type` is unknown.
+        :raises ValueError: If ``scenario_type`` is unknown.
         """
         scenario_types = [name[9:] for name, _ in
                           inspect.getmembers(LeaderBoardFactory, predicate=inspect.isfunction) if

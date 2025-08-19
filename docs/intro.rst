@@ -5,9 +5,9 @@ CoCoMagic is an automated test case generation framework for evaluating autonomo
 It combines Cooperative Co-Evolutionary Algorithms (CCEAs) with Metamorphic Testing (MT) to discover test cases that
 violate specified Metamorphic Relations (MRs).
 The framework also supports Differential Testing to compare the behavior of different versions of an autonomous system.
-In addition, it integrates an interpretability module that helps diagnose the root causes of violations observed in the
+In addition, it integrates an interpretability module to help diagnose the root causes of violations observed in the
 generated test cases.
-For autonomous driving system evaluation, CoCoMagic is compatible with the CARLA simulator and external driving agents
+For autonomous driving system testing, CoCoMagic is compatible with the CARLA simulator and external driving agents,
 such as InterFuser.
 
 For more details about the design, please refer to our papers:
