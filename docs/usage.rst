@@ -1,8 +1,10 @@
 Usage
 =====
 
-Basic Usage
------------
+Basic Usage for Test Case Generation
+------------------------------------
+
+Here, we take autonomous driving system testing as an example.
 
 #. Build docker image
 
@@ -33,35 +35,49 @@ Basic Usage
 
       python -m impl --help
 
-Collect Runtime Data
---------------------
+Incorporate Runtime Scenarios
+-----------------------------
 
-To collect runtime data, use the command below:
+If you apply constraints or runtime initialization to the search, you must also generate a set of representative runtime scenarios.
 
-.. code-block:: shell
-   :linenos:
+#. Collect runtime data
 
-   python -m impl collect_runtime_data
+   To collect runtime data, use the command below:
 
-Generate Training Data
-----------------------
+   .. code-block:: shell
+      :linenos:
 
-To generate training data using a rule-based agent, use the command below:
+      python -m impl collect_runtime_data
 
-.. code-block:: shell
-   :linenos:
+#. Convert runtime data to runtime scenarios
 
-   python -m impl generate_train_data
+   .. code-block:: shell
+      :linenos:
 
-Train Interfuser
-----------------
+      python -m impl convert -d [dir_of_runtime_data]
 
-To train an Interfuser model, use the command below:
+Train You Own InterFuser
+------------------------
 
-.. code-block:: shell
-   :linenos:
+If you are performing differential testing, you need to train an additional InterFuser model.
 
-   python -m impl train
+#. Generate training data
+
+   To generate training data using a rule-based agent, use the command below:
+
+   .. code-block:: shell
+      :linenos:
+
+      python -m impl generate_train_data
+
+#. Train InterFuser
+
+   To train an Interfuser model, use the command below:
+
+   .. code-block:: shell
+      :linenos:
+
+      python -m impl train
 
 Build Your Own Domain
 ---------------------
