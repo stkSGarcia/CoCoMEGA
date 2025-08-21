@@ -1,5 +1,6 @@
 import logging
 import os
+import pathlib
 import pickle
 import time
 from bisect import bisect_left
@@ -483,11 +484,10 @@ def visualize_comparison(projects: Dict[str, List[str]], max_percentile=0.75,
     if show: plt.show()
 
 
-def visualize_violation(project, source, follow_up, mr_set, offset=3, verbose=False, save_path=None, show=False):
+def visualize_violation(source, follow_up, mr_set, offset=3, verbose=False, save_path=None, show=False):
     """Plot the extent of violation between the source results
     and follow-up results based on the given metamorphic relations.
 
-    :param project: Project name.
     :param source: The file name of source results.
     :param follow_up: The file name of follow-up results.
     :param mr_set: The given metamorphic relations.
@@ -496,11 +496,6 @@ def visualize_violation(project, source, follow_up, mr_set, offset=3, verbose=Fa
     :param save_path: The path to save the figure.
     :param show: A boolean to determine whether to show the plots or not.
     """
-    init_project_directory(project, resume=True)
-    source = pd.read_csv((cfg.CONFIG["workspace"]["sim_result"] / source))
-    follow_up = pd.read_csv((cfg.CONFIG["workspace"]["sim_result"] / follow_up))
-    source.set_index(source.columns[0], inplace=True)
-    follow_up.set_index(follow_up.columns[0], inplace=True)
 
     labels = Relation.convert_labels(mr_set.labels)
     matches, origin_df = Relation.pairwise_dataframe(source, follow_up, mr_set.relation.field, labels)
@@ -531,7 +526,7 @@ def visualize_violation(project, source, follow_up, mr_set, offset=3, verbose=Fa
     critical_intervals = Relation.critical_intervals(pair_df, labels)
     for i, (x, y) in enumerate(matches):
         color = "gray" if i not in critical_intervals else "crimson"
-        ax1.plot((x, y), (source.loc[x, mr_set.relation.field], follow_up.loc[y, mr_set.field] + offset),
+        ax1.plot((x, y), (source.loc[x, mr_set.relation.field], follow_up.loc[y, mr_set.relation.field] + offset),
                  "--", color=color, zorder=1)
 
     if len(critical_intervals) > 0:
@@ -569,7 +564,8 @@ def visualize_violation(project, source, follow_up, mr_set, offset=3, verbose=Fa
                          "--", color=color, zorder=1)
 
     fig.tight_layout()
-    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visual"] / "violation.png"))
+    if save_path: os.makedirs(save_path.parent, exist_ok=True)
+    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "violation.png"))
     if show: plt.show()
 
 

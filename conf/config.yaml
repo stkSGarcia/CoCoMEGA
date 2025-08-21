@@ -67,7 +67,6 @@ simulation:
   frame_rate: 10
   high_graphics: true
   autopilot: true
-  keep_world_actors: true # Keep traffic lights and signs
   disable_spectator: true
   save_snapshot: false
   instances:

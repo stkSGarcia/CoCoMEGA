@@ -153,6 +153,13 @@ class ScenarioEvaluator(object):
             settings.fixed_delta_seconds = None
             self.world.apply_settings(settings)
             if cfg.CONFIG["simulation"]["autopilot"]:
+                for v in CarlaDataProvider.get_world().get_actors().filter('vehicle.*'):
+                    try:
+                        v.set_autopilot(False, self.traffic_manager.get_port())
+                    except Exception:
+                        pass
+
+                self.traffic_manager.set_hybrid_physics_mode(False)
                 self.traffic_manager.set_synchronous_mode(False)
 
         if self.manager:
@@ -164,6 +171,12 @@ class ScenarioEvaluator(object):
 
         for actor_id in CarlaDataProvider._carla_actor_pool.copy():
             actor = CarlaDataProvider._carla_actor_pool[actor_id]
+            if "sensor." in actor.type_id:
+                try:
+                    actor.stop()
+                    actor.listen(lambda _: None)  # detach callback
+                except Exception:
+                    pass
             if actor.is_alive:
                 batch.append(DestroyActor(actor))
 
@@ -176,6 +189,8 @@ class ScenarioEvaluator(object):
                 else:
                     raise e
 
+        self.world.tick()
+
         CarlaDataProvider._actor_velocity_map.clear()
         CarlaDataProvider._actor_location_map.clear()
         CarlaDataProvider._actor_transform_map.clear()
@@ -183,6 +198,9 @@ class ScenarioEvaluator(object):
         CarlaDataProvider._ego_vehicle_route = None
         CarlaDataProvider._carla_actor_pool = dict()
         CarlaDataProvider._spawn_index = 0
+        # CarlaDataProvider._rng = None
+        # CarlaDataProvider._world = None
+        # CarlaDataProvider._map = None
 
         for i, _ in enumerate(self.ego_vehicles):
             if self.ego_vehicles[i]:
@@ -196,6 +214,9 @@ class ScenarioEvaluator(object):
         if hasattr(self, 'agent_instance') and self.agent_instance:
             self.agent_instance.destroy()
             self.agent_instance = None
+
+        import gc
+        gc.collect()
 
     def _prepare_ego_vehicles(self, ego_vehicles, wait_for_ego_vehicles=False):
         """
@@ -243,32 +264,22 @@ class ScenarioEvaluator(object):
         :param args: Parsed command-line arguments with simulation settings.
         """
 
-        if CarlaDataProvider.get_world() is None or CarlaDataProvider.get_map().name.lower() != self.scenario_definition.town.lower():
-            self.world = self.client.load_world(self.scenario_definition.town)
-            CarlaDataProvider.set_world(self.world)
-        else:
-            self.world = CarlaDataProvider.get_world()
-
+        self.world = self.client.load_world(self.scenario_definition.town)
         settings = self.world.get_settings()
-        if settings.fixed_delta_seconds != 1.0 / self.frame_rate or not settings.synchronous_mode:
-            settings.fixed_delta_seconds = 1.0 / self.frame_rate
-            settings.synchronous_mode = True
-            self.world.apply_settings(settings)
-            CarlaDataProvider.set_world(self.world)
+        settings.fixed_delta_seconds = 1.0 / self.frame_rate
+        settings.synchronous_mode = True
+        self.world.apply_settings(settings)
+        CarlaDataProvider.set_world(self.world)
 
         self.world.reset_all_traffic_lights()
 
         if cfg.CONFIG["simulation"]["autopilot"]:
-            self.traffic_manager.set_hybrid_physics_mode(False)
+            self.traffic_manager = self.client.get_trafficmanager(int(args.trafficManagerPort))
             self.traffic_manager.set_synchronous_mode(True)
+            self.traffic_manager.set_hybrid_physics_mode(False)
             self.traffic_manager.set_random_device_seed(int(args.trafficManagerSeed))
 
-        if not cfg.CONFIG["simulation"]["keep_world_actors"]:
-            # Remove all Traffic lights and signs
-            for actor in self.world.get_actors():
-                if actor.is_alive and actor.type_id != "spectator":
-                    actor.destroy()
-
+        for _ in range(5):
             self.world.tick()
 
         if CarlaDataProvider.get_map().name.lower() != self.scenario_definition.town.lower():
@@ -289,28 +300,33 @@ class ScenarioEvaluator(object):
             f"\n\033[1m========= Preparing {self.scenario_definition.id_} (repetition {repetition_index}) =========")
         logger.info("> Setting up the agent\033[0m")
 
+        # --- begin: hard reset of sensor interface state per run ---
+        try:
+            # If leaderboard SensorInterface keeps globals/singletons, reset them
+            from leaderboard.envs.sensor_interface import SensorInterface
+            if hasattr(SensorInterface, "_SensorInterface__sensors"):
+                SensorInterface._SensorInterface__sensors.clear()
+            if hasattr(SensorInterface, "_SensorInterface__queues"):
+                SensorInterface._SensorInterface__queues.clear()
+        except Exception:
+            pass
+        # --- end: hard reset ---
+
         # Set up the user's agent, and the timer to avoid freezing the simulation
         try:
             self._agent_watchdog.start()
             agent_class_name = getattr(self.module_agent, 'get_entry_point')()
             self.agent_instance = getattr(self.module_agent, agent_class_name)(args.agent_config,
                                                                                args.additional_config)
-
-            # Check and store the sensors
-            if not self.sensors:
-                self.sensors = self.agent_instance.sensors()
-                track = self.agent_instance.track
-
-                AgentWrapper.validate_sensor_configuration(self.sensors, track, args.track)
-
-                self.sensor_icons = [sensors_to_icons[sensor['type']] for sensor in self.sensors]
+            self.sensors = self.agent_instance.sensors()
+            track = self.agent_instance.track
+            AgentWrapper.validate_sensor_configuration(self.sensors, track, args.track)
+            self.sensor_icons = [sensors_to_icons[sensor['type']] for sensor in self.sensors]
 
             self._agent_watchdog.stop()
 
         except SensorConfigurationInvalid as e:
-            # The sensors are invalid -> set the execution to rejected and stop
             logger.error(f"\n\033[91mThe sensor's configuration used is invalid: {e}")
-            # traceback.print_exc()
             self._cleanup()
             raise e
 
@@ -392,6 +408,9 @@ class ScenarioEvaluator(object):
             logger.error(f"\n\033[91mFailed to stop the scenario: {e}")
             # traceback.print_exc()
             raise StoppingScenarioFailedError(f"\n\033[91mFailed to stop the scenario: {e}")
+        finally:
+            if args.record:
+                self.client.stop_recorder()
 
     def run(self, args):
         """

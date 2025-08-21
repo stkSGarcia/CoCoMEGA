@@ -5,6 +5,7 @@ import pickle
 import shutil
 import subprocess
 import sys
+import json
 import traceback
 import numpy as np
 from math import sqrt
@@ -17,6 +18,7 @@ import pandas as pd
 from deap import tools, creator
 
 from impl import config as cfg
+from impl.ads.utils.visualization import visualize_violation
 from impl.core.evaluation.base_evaluation import BaseEvaluator
 from impl.core.scenario.base_scenario import AbstractScenarioDefinition
 
@@ -179,60 +181,115 @@ def run_environment(conf):
     return process.returncode
 
 
-def run_solutions(file: str, top: int = -1, verbose=True, agent_name="v1", record_video=False):
+def run_solutions(alg, project, mr_set, top: int = -1, verbose=True, agent_names=["v1"], record_video=False):
     """
     Load and run scenarios from a saved solution file.
 
     Each solution typically contains a source and a follow-up scenario.
 
-    :param file: Path to the pickle file containing solutions.
+    :param alg: Algorithm name.
+    :param project: Project name.
+    :param mr_set: Metamorphic relation set to evaluate violations.
     :param top: Number of top solutions to run (:data:`-1` runs all).
     :param verbose: If :data:`True`, run with output logs; otherwise silent.
-    :param agent_name: Agent name to use.
+    :param agent_names: Agents to use.
     :param record_video: Whether to record video outputs for the runs.
     """
-    solution_name = file.split("/")[-1].split(".")[0]
-    with open(file, "rb") as f:
-        solutions = pickle.load(f)
-    if top == -1:
-        top = len(solutions)
-    solutions = tools.selBest([ind for ind in solutions if ind.is_violated], top)
+    cfg.init_project_directory(alg, resume=False)
+    solution_file = next((cfg.CONFIG["workspace"]["result"] / project / "solutions").rglob("solutions*"), None)
+    if solution_file is None:
+        logger.warning(f"No solution file found for {project}.")
+        return
+    print("solution_file:", solution_file, "exists:", solution_file.exists())
+    print("parent:", solution_file.parent, "glob:", list(solution_file.parent.glob("*"))[:10])
+    solutions = pickle.loads(solution_file.read_bytes())
+    solutions = tools.selBest([ind for ind in solutions], top)
     additional_confs = None
-    for i, (source, perturbations) in enumerate(solutions):
-        if record_video:
-            solution_path = cfg.CONFIG["workspace"]["recordings"] / f"{solution_name}-{i + 1}"
-            if already_recorded(solution_path):
-                logger.info(f"Solution {solution_name}-{i + 1} is already recorded, skipping...")
-                continue
-            elif solution_path.exists():
+    for i, sol in enumerate(solutions):
+        fitness_data = {
+            "old": {"diff": sol.fitness.values[0]},
+            "new": {},
+        }
+        source, perturbations = sol[0], sol[1]
+        solution_identifier = f"{project}-{i + 1}"
+        solution_base = cfg.CONFIG["workspace"]["recordings"] / solution_identifier
+        if record_video and already_recorded(solution_base, agent_names=agent_names):
+            logger.info(f"Solution {solution_identifier} is already recorded, skipping...")
+            continue
+        for agent in agent_names:
+            source_id = f"top{i + 1}_source_{agent}"
+            follow_up_id = f"top{i + 1}_follow_up_{agent}"
+            agent_data = getattr(sol, agent, None)
+            fitness_data["old"][agent] = agent_data.fitness[0]
+            if record_video:
+                solution_path = cfg.CONFIG["workspace"]["recordings"] / solution_identifier / agent
+                os.makedirs(solution_path, exist_ok=True)
+                additional_confs = [
+                    {"recording_save_path": solution_path / "source"},
+                    {"recording_save_path": solution_path / "follow-up"},
+                ]
+                # Visualize Violation
+
+                if agent_data is None:
+                    logger.warning(f"Solution {solution_identifier} does not have data for agent {agent}.")
+                else:
+                    visualize_violation(agent_data.source, agent_data.follow_up, mr_set=mr_set,
+                                        save_path=solution_path / "violation.png")
+
+            if solution_path.exists():
                 shutil.rmtree(solution_path)
-            additional_confs = [
-                {"recording_save_path": solution_path / "source"},
-                {"recording_save_path": solution_path / "follow-up"},
-            ]
-        source.id_ = f"top{i + 1}_source"
-        follow_up = deepcopy(source)
-        follow_up.id_ = f"top{i + 1}_follow-up"
-        perturbations.perturb(follow_up)
-        logger.info(f"Running solution {solution_name}-{i + 1}...")
-        if verbose:
-            run_process = Process(target=ADSEvaluator(mr_set=None).run_scenarios,
-                                  args=([source, follow_up], agent_name, True, additional_confs))
-        else:
-            run_process = Process(target=run_silently,
-                                  args=(ADSEvaluator(mr_set=None).run_scenarios, [source, follow_up], agent_name, True,
-                                        additional_confs))
-        run_process.start()
-        run_process.join()
+            logger.info(f"Running solution {solution_identifier} for agent {agent}...")
+            source.id_ = source_id
+            follow_up = deepcopy(source)
+            follow_up.id_ = follow_up_id
+            perturbations.perturb(follow_up)
+            logger.info(f"Running solution {solution_identifier}...")
+            if verbose:
+                run_process = Process(target=ADSEvaluator(mr_set=None).run_scenarios,
+                                      args=([source, follow_up], agent, True, additional_confs))
+            else:
+                run_process = Process(target=run_silently,
+                                      args=(ADSEvaluator(mr_set=None).run_scenarios, [source, follow_up], agent,
+                                            True,
+                                            additional_confs))
+            run_process.start()
+            run_process.join()
+
+            result_dfs = []
+            for scen_id in (source_id, follow_up_id):
+                result_path = cfg.CONFIG["workspace"]["sim_result"] / f"{scen_id}.csv"
+                result = pd.read_csv(result_path)
+                result.set_index(result.columns[0], inplace=True)
+                result_dfs.append(result)
+
+            fitness_val = ADSEvaluator(mr_set=mr_set).fitness(result_dfs[0], result_dfs[1])[1]
+            fitness_data["new"][agent] = fitness_val[0] if fitness_val is not None else np.nan
+            visualize_violation(result_dfs[0], result_dfs[1], mr_set=mr_set,
+                                save_path=solution_path / "new_violation.png")
+        fitness_data["new"]["diff"] = np.abs(fitness_data["new"][agent_names[0]] - fitness_data["new"][agent_names[1]])
+
+        fitness_path = cfg.CONFIG["workspace"]["recordings"] / solution_identifier / "fitness.json"
+        with open(fitness_path, "w") as f:
+            json.dump(fitness_data, f, indent=4)
 
 
-def already_recorded(solution_path):
+def already_recorded(solution_path, agent_names):
     """
     Check if a recording already exists for a given solution path.
 
     :param solution_path: Path where the source and follow-up recordings are expected.
     :return: :data:`True` if already recorded, :data:`False` otherwise.
     """
+    recorded = True
+    for agent in agent_names:
+        try:
+            if not (len(os.listdir(solution_path / agent / "source")) > 0 and len(
+                    os.listdir(solution_path / agent / "follow-up")) > 0):
+                recorded = False
+        except FileNotFoundError:
+            recorded = False
+    return recorded
+
     try:
         if len(os.listdir(solution_path / "source")) > 0 and len(os.listdir(solution_path / "follow-up")) > 0:
             return True
@@ -244,15 +301,16 @@ def already_recorded(solution_path):
 class ADSEvaluator(BaseEvaluator):
 
     def __init__(self, mr_set):
-        from impl.ads.register import runtime_scenarios
-        self.runtime_scenarios = [creator.Scenario(scenario) for scenario in runtime_scenarios]
+
         super().__init__(mr_set)
 
     def evaluate_solutions(self, solutions):
         scenarios = self._get_scenarios(solutions)
 
         if cfg.CONFIG["search"]["constraint"]["enable"] or cfg.CONFIG["search"]["multi_objective"]["enable"]:
-            similarities = [ADSEvaluator._calculate_similarity(scenario, self.runtime_scenarios) for scenario in
+            from impl.ads.register import runtime_scenarios
+            similarities = [ADSEvaluator._calculate_similarity(scenario, [creator.Scenario(scenario) for scenario in
+                                                                          runtime_scenarios]) for scenario in
                             scenarios]
             for i, solution in enumerate(solutions):
                 solution.similarity = (similarities[i * 2], similarities[i * 2 + 1])
