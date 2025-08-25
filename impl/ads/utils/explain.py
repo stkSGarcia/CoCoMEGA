@@ -10,6 +10,7 @@ import xgboost as xgb
 from imodels import RuleFitRegressor
 from matplotlib import pyplot as plt
 from scipy import stats
+from scipy.stats import randint, uniform
 from sklearn.compose import ColumnTransformer
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 from sklearn.model_selection import cross_val_score, RandomizedSearchCV
@@ -110,22 +111,21 @@ def model_fit(X, y):
 
     logger.info(f"\n{'=' * 50}\nRANDOMIZED SEARCH\n{'=' * 50}")
     param_dist = {
-        "n_estimators": [50, 100, 200, 300, 500],
-        "max_depth": [3, 4, 5, 6, 7, 8],
-        "learning_rate": [0.01, 0.05, 0.1, 0.15, 0.2],
-        "subsample": [0.6, 0.7, 0.8, 0.9, 1.0],
-        "colsample_bytree": [0.6, 0.7, 0.8, 0.9, 1.0],
-        "min_child_weight": [1, 3, 5, 7],
-        "reg_alpha": [0, 0.1, 0.5, 1.0],
-        "reg_lambda": [0.5, 1.0, 1.5, 2.0],
+        "n_estimators": randint(50, 501),
+        "max_depth": randint(3, 9),
+        "learning_rate": uniform(0.01, 0.19),
+        "subsample": uniform(0.6, 0.4),
+        "colsample_bytree": uniform(0.6, 0.4),
+        "min_child_weight": randint(1, 8),
+        "reg_alpha": uniform(0, 1.0),
+        "reg_lambda": uniform(0.5, 1.5),
     }
 
-    logger.info(f"Search space size (full grid): {np.prod([len(v) for v in param_dist.values()])}, "
-                f"using RandomizedSearchCV with 30 iterations...")
+    logger.info("Using RandomizedSearchCV with 100 iterations...")
     random_search = RandomizedSearchCV(
         estimator=xgb.XGBRegressor(objective="reg:squarederror", n_jobs=-1, random_state=42),
         param_distributions=param_dist,
-        n_iter=30,
+        n_iter=100,
         scoring="neg_mean_squared_error",
         cv=5,
         n_jobs=-1,
@@ -197,7 +197,7 @@ def model_fit(X, y):
     logger.info(f"✓ Best model saved as '{model_filename}'.")
 
     # Save grid search results for analysis.
-    result_filename = result_path / "grid_search_results.pkl"
+    result_filename = result_path / "search_results.pkl"
     joblib.dump(random_search, result_filename)
     logger.info(f"✓ Randomized search results saved as '{result_filename}'.")
 
