@@ -19,7 +19,7 @@ class GlobalConfig:
 
     max_speed = 5
     collision_buffer = [2.5, 1.2]
-    model_path = "conf/interfuser.pth.tar"
+    model_path = "conf/interfuser_robes_22epoch.pth.tar"
     momentum = 0
     skip_frames = 1
     detect_threshold = 0.04

@@ -224,6 +224,7 @@ def run_solutions(alg, project, mr_set, top: int = -1, verbose=True, agent_names
             if record_video:
                 solution_path = cfg.CONFIG["workspace"]["recordings"] / solution_identifier / agent
                 os.makedirs(solution_path, exist_ok=True)
+
                 additional_confs = [
                     {"recording_save_path": solution_path / "source"},
                     {"recording_save_path": solution_path / "follow-up"},
@@ -234,7 +235,7 @@ def run_solutions(alg, project, mr_set, top: int = -1, verbose=True, agent_names
                     logger.warning(f"Solution {solution_identifier} does not have data for agent {agent}.")
                 else:
                     visualize_violation(agent_data.source, agent_data.follow_up, mr_set=mr_set,
-                                        save_path=solution_path / "violation.png")
+                                        save_path=solution_path / "old_violation.png")
 
             if solution_path.exists():
                 shutil.rmtree(solution_path)

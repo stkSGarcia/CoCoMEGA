@@ -5,6 +5,7 @@ import pickle
 import time
 from bisect import bisect_left
 from collections import defaultdict
+from datetime import datetime
 from itertools import product
 from typing import Dict, List
 
@@ -1027,6 +1028,70 @@ def visualize_computational_efficiency(log_file: str, projects: Dict[str, List[s
 
     for i, (duration, color) in enumerate(zip(durations, colors), start=1):
         plt.scatter([i] * len(duration), duration, alpha=0.7, color=color)
+
+    # plt.title('Comparison of Computational Efficiency (Duration in Hours)', fontsize=title_size)
+    plt.xlabel('Algorithm', fontsize=text_size)
+    plt.ylabel('Duration (Hours)', fontsize=text_size)
+    plt.tick_params(labelsize=tick_size)
+    plt.grid(axis='y', linestyle='--')
+    plt.legend(handles=[Line2D([0], [0], marker='D', markerfacecolor='black', markeredgecolor='black',
+                               color='w', alpha=0.7, linestyle='None', label='Mean value')], fontsize=text_size)
+    plt.tight_layout()
+
+    fig.tight_layout()
+    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "computational_efficiency.png"))
+    if show: plt.show()
+
+
+def visualize_computational_efficiency_v2(projects: Dict[str, List[str]], save_path=None, show=False):
+    """
+    Generate a boxplot comparing computational efficiency (duration in hours) across algorithms without a logfile (version 2.0).
+
+    :param projects: Project names of different algorithms. ``Dict[name_of_algorithm, List[project_name]]``.
+    :param save_path: The path to save the figure.
+    :param show: A boolean to determine whether to show the plots or not.
+    """
+    exec_data = {}
+    for alg, runs in projects.items():
+        exec_data[alg] = []
+        for i, project in enumerate(runs):
+            config_file = cfg.CONFIG["workspace"]["result"] / project / "config.json"
+            solution_file = next((cfg.CONFIG["workspace"]["result"] / project / "solutions") \
+                                 .rglob("solutions*"), None)
+
+            start_time = datetime.fromtimestamp(config_file.stat().st_ctime)
+            end_time = datetime.fromtimestamp(solution_file.stat().st_ctime)
+            duration = end_time - start_time
+            duration_hour = duration.total_seconds() / 3600
+            exec_data[alg].append(duration_hour)
+
+    height = 4
+    title_size, text_size, tick_size = height * 5, height * 4, height * 3
+    fig = plt.figure(figsize=(height * 2, height * 2))
+    box = plt.boxplot(exec_data.values(), labels=[verbose_map.get(alg, alg) for alg in exec_data.keys()],
+                      patch_artist=True,
+                      medianprops=dict(color='black'),
+                      showfliers=False)
+
+    for patch, color in zip(box['boxes'], [style_map.get(alg, default_style)["color"] for alg in exec_data.keys()]):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.8)
+
+    for i, alg in enumerate(exec_data.keys(), start=1):
+        data = np.array(exec_data[alg])
+        q1, q3 = np.percentile(data, [25, 75])
+        iqr = q3 - q1
+        lower_bound = q1 - 1.5 * iqr
+        upper_bound = q3 + 1.5 * iqr
+
+        # keep only non-outliers
+        filtered_data = data[(data >= lower_bound) & (data <= upper_bound)]
+        plt.scatter([i] * len(filtered_data), filtered_data, alpha=0.7,
+                    color=style_map.get(alg, default_style)["color"])
+
+        trimmed_mean = np.mean(filtered_data)
+        plt.scatter(i, trimmed_mean, marker='D', s=40,
+                    color='black', zorder=3, label='_nolegend_')
 
     # plt.title('Comparison of Computational Efficiency (Duration in Hours)', fontsize=title_size)
     plt.xlabel('Algorithm', fontsize=text_size)
