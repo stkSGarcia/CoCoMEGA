@@ -10,6 +10,7 @@ from datetime import datetime
 from itertools import product
 from typing import Dict, List
 
+import carla
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import networkx as nx
@@ -25,11 +26,11 @@ from sklearn.manifold import MDS
 from deap import creator
 
 from impl import config as cfg
-from impl.config import init_project_directory
 from impl.ads.mr.mr import Relation
-from impl.ads.utils.math_utils import calculate_auc_improvements, area_under_curve, calculate_ds_improvements, \
-    calculate_fitness_improvements, calculate_aed_improvements, calculate_improvements
+from impl.ads.utils.math_utils import calculate_auc_improvements, area_under_curve, calculate_ds_improvements
+from impl.ads.utils.math_utils import calculate_improvements, polar_to_cartesian
 from impl.ads.utils.metrics import metrics, pairwise_distance, avg_pw_from_matrix
+from impl.config import init_project_directory
 
 logger = logging.getLogger(__name__)
 
@@ -665,6 +666,7 @@ def visualize_archived_distinct_solutions(projects: Dict[str, List[str]], fitnes
     :param fitness_thresholds: A list of fitness thresholds.
     :param distance_thresholds: A list of distance thresholds.
     :param mr_set: The given MRs.
+    :param tick_rate: Tick interval for x-axis.
     :param box: Show box plots.
     :param save_path: The path to save the figure.
     :param show: A boolean to determine whether to show the plots or not.
@@ -704,7 +706,7 @@ def visualize_archived_distinct_solutions(projects: Dict[str, List[str]], fitnes
             gp_means["alg"] = name
             mean_df = pd.concat([mean_df, gp_means], ignore_index=True)
             ax.errorbar(distance_thresholds, mean_val,
-                        yerr=values.apply(lambda row: 0.95 * np.std(row) / np.sqrt(len(row))),
+                        yerr=values.apply(lambda row: 1.96 * np.std(row) / np.sqrt(len(row))),
                         **style_map.get(name, default_style), capsize=2, label=verbose_map.get(name, name), alpha=0.7)
             if box: ax.boxplot(group["distinct_solution_num"], positions=group.index.values, widths=0.05,
                                patch_artist=True, manage_ticks=False, whis=(0, 100),
@@ -823,7 +825,7 @@ def visualize_archived_solutions_by_gen(projects: Dict[str, List[str]], generati
     """Plot the number of distinct solutions from final archived solutions by applying fitness and distance thresholds.
 
     :param projects: Project names of different algorithms. ``Dict[name_of_algorithm, List[project_name]]``.
-    :param generation_num: Generation Number. If set to `K`, plot the solutions found after `K generations.
+    :param generation_num: Generation Number. If set to ``K``, plot the solutions found after ``K`` generations.
     :param metric_name: The metric used for comparison. Options are
         :data:`ds` (Distinct Solutions)
         :data:`avg_pw` (Average Pairwise Distance)
@@ -873,9 +875,9 @@ def visualize_archived_solutions_by_gen(projects: Dict[str, List[str]], generati
             values = group[metric_name]
 
             chart_y_max = max(
-                [np.nanmean(row) + 0.95 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row))) for row in values])
+                [np.nanmean(row) + 1.96 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row))) for row in values])
             chart_y_min = min(
-                [np.nanmean(row) - 0.95 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row))) for row in values])
+                [np.nanmean(row) - 1.96 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row))) for row in values])
 
             if not y_max or y_max < chart_y_max: y_max = chart_y_max
             if not y_min or y_min > chart_y_min: y_min = chart_y_min
@@ -883,7 +885,7 @@ def visualize_archived_solutions_by_gen(projects: Dict[str, List[str]], generati
             ax = ax_map[gp_name]
             ax.errorbar(fitness_thresholds, values.apply(np.nanmean),
                         yerr=values.apply(
-                            lambda row: 0.95 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row)))),
+                            lambda row: 1.96 * np.nanstd(row) / np.sqrt(np.count_nonzero(~np.isnan(row)))),
                         **style_map.get(alg, default_style), capsize=2, label=verbose_map.get(alg, alg))
 
             if box: ax.boxplot(group["distinct_solution_num"], positions=group.index.values, widths=0.05,
@@ -1004,7 +1006,7 @@ def visualize_computational_efficiency(log_file: str, projects: Dict[str, List[s
     """
     Generate a boxplot comparing computational efficiency (duration in hours) across algorithms from a log file.
 
-    :param log_file: Path to the CSV log file containing `alg`, `start_time`, `end_time` columns.
+    :param log_file: Path to the CSV log file containing ``alg``, ``start_time``, ``end_time`` columns.
     :param projects: Project names of different algorithms. ``Dict[name_of_algorithm, List[project_name]]``.
     :param save_path: The path to save the figure.
     :param show: A boolean to determine whether to show the plots or not.
@@ -1041,6 +1043,8 @@ def visualize_computational_efficiency(log_file: str, projects: Dict[str, List[s
     fig.tight_layout()
     fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "computational_efficiency.png"))
     if show: plt.show()
+
+<< << << < HEAD
 
 
 def visualize_computational_efficiency_v2(projects: Dict[str, List[str]], save_path=None, show=False):
@@ -1223,6 +1227,97 @@ def visualize_aed(projects, save_path=None, show=False):
     if show: plt.show()
 
     return similarities
+
+== == == =
+
+def visualize_scenario(scenario):
+    carla_instance = cfg.CONFIG["simulation"]["instances"][0]
+    client = carla.Client(carla_instance["host"], carla_instance["port"])
+    world = client.load_world(scenario.town)
+    blueprints = world.get_blueprint_library()
+    world.set_weather(carla.WeatherParameters(
+        **cfg.CONFIG["blueprint"]["scenario"]["weather"][scenario.weather],
+        sun_altitude_angle=cfg.CONFIG["blueprint"]["scenario"]["brightness"][scenario.brightness]
+    ))
+
+    # Ego
+    ego_bp = blueprints.find(cfg.CONFIG["blueprint"]["vehicle"]["model"][scenario.ego_vehicle.model])
+    ego_start = carla.Transform(
+        carla.Location(
+            x=scenario.trajectory["start"]["x"],
+            y=scenario.trajectory["start"]["y"],
+            z=scenario.trajectory["start"]["z"]),
+        carla.Rotation(yaw=scenario.trajectory["start"]["yaw"])
+    )
+    world.spawn_actor(ego_bp, ego_start)
+    world.get_spectator().set_transform(carla.Transform(
+        ego_start.location + carla.Location(z=50),
+        carla.Rotation(pitch=-90)
+    ))
+
+    # Actors
+    for typ in ("vehicle", "walker", "static"):
+        actors = getattr(scenario, f"{typ}s")
+        for actor in actors:
+            actor_bp = blueprints.find(cfg.CONFIG["blueprint"][typ]["model"][actor.model])
+            actor_start = carla.Transform(
+                ego_start.transform(carla.Location(*polar_to_cartesian(actor.radius, actor.angle), z=0.2)),
+                carla.Rotation(yaw=actor.yaw)
+            )
+            world.spawn_actor(actor_bp, actor_start)
+
+    # Trajectory
+    waypoints = [carla.Location(x=wp["x"], y=wp["y"], z=wp["z"]) for wp, _ in scenario.trajectory["route"]]
+    lifetime = 100
+    offset = 30
+    arrow_interval = (len(waypoints) - offset) // 5
+
+    for i in range(len(waypoints) - 1):
+        start_point = waypoints[i]
+        end_point = waypoints[i + 1]
+
+        # Add some height to make it visible
+        start_point.z += 0.15
+        end_point.z += 0.15
+
+        if (i + offset) % arrow_interval == 0:
+            world.debug.draw_arrow(
+                start_point,
+                end_point,
+                thickness=0.2,
+                arrow_size=1.0,
+                color=carla.Color(255, 0, 0),
+                life_time=lifetime
+            )
+        else:
+            # Draw line segment
+            world.debug.draw_line(
+                start_point,
+                end_point,
+                thickness=0.2,
+                color=carla.Color(0, 255, 0),
+                life_time=lifetime
+            )
+    for point, label in (
+            (waypoints[0], "Start"),
+            (waypoints[int((len(waypoints) - 1) * 0.5)], "Middle"),
+            (waypoints[int((len(waypoints) - 1) * 0.75)], "3rd Quantile"),
+            (waypoints[-1], "End"),
+    ):
+        world.debug.draw_point(
+            carla.Location(point.x, point.y, point.z + 0.2),
+            size=0.1,
+            color=carla.Color(255, 0, 0),
+            life_time=lifetime
+        )
+        world.debug.draw_string(
+            carla.Location(point.x, point.y, point.z + 2.0),
+            label,
+            color=carla.Color(255, 0, 0),
+            life_time=lifetime
+        )
+
+>> >> >> > d8ec33996ec713c690a911b99ef9d056423967f2
 
 
 def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_thresholds: List[float],

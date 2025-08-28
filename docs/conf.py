@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path('..').resolve()))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'CoCoMEGA'
+project = 'CoCoMagic'
 copyright = '2025, Nanda Lab'
 author = 'Nanda Lab'
 release = '0.2.0'
@@ -29,20 +29,19 @@ extensions = [
     'sphinx.ext.intersphinx',  # Link to other project's documentation
     'sphinx_rtd_theme',  # Add the theme as an extension
 ]
-
-# General settings
 language = 'en'
 autosummary_generate = True
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
-
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
+
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
-# Intersphinx configuration
+# -- Intersphinx configuration -----------------------------------------------
+
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
 }

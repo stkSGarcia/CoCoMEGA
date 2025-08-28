@@ -10,7 +10,7 @@ from pathlib import Path
 import yaml
 
 logger = logging.getLogger(__name__)
-CONFIG = {}  # Always use this variable by using `from impl import config as cfg; cfg.CONFIG`
+CONFIG = {}  # Always use this variable by using ``from impl import config as cfg; cfg.CONFIG``.
 
 
 def merge_dict(default: dict, user: dict):
@@ -54,7 +54,7 @@ class _DirectoryAccessor:
     def __setitem__(self, key, value):
         """Set a directory path for a given key.
 
-        :param key: Directory key (excluding `root`).
+        :param key: Directory key (excluding :data:`root`).
         :param value: Directory path.
         """
         if key == "root":
@@ -88,7 +88,7 @@ class _DirectoryAccessor:
         """Get the value for a given key, with optional default.
 
         :param key: Key to look up.
-        :param default: Default value if `key` is not present.
+        :param default: Default value if ``key`` is not present.
         :return: Value associated with the key.
         """
         return self._config.get(key, default)
@@ -141,7 +141,7 @@ def init_config():
 def init_project_directory(name: str, resume=False):
     """Create the necessary directories for executions or resume from an existing project directory.
 
-    :param name: Execution name. If `resume` is :data:`True`, this is the directory name to resume from.
+    :param name: Execution name. If ``resume`` is :data:`True`, this is the directory name to resume from.
     :param resume: Whether to resume.
     """
     global CONFIG

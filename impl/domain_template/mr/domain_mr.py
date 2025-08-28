@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Tuple
 
 from impl.core.mr.base_mr import AbstractPerturbation, AbstractPerturbationFactory, Perturbations, AbstractRelation
 from impl.core.scenario.base_scenario import AbstractScenarioDefinition
@@ -64,7 +64,7 @@ class PerturbationFactory(AbstractPerturbationFactory):
 class Relation(AbstractRelation):
     """Base class for relations in the domain-specific implementation."""
 
-    def is_violated(self, original_output: Any, perturbed_output: Any, **kwargs) -> (bool, float):
+    def is_violated(self, original_output: Any, perturbed_output: Any, **kwargs) -> Tuple[bool, float]:
         """
         Check if the relation is violated between the original and perturbed outputs.
         """

@@ -156,7 +156,7 @@ def calculate_auc_improvements(auc_df, comparison_algs):
     """
     Calculate and print the average improvement in AUC (Area Under the Curve) for different algorithms.
 
-    :param auc_df: A `DataFrame` containing the AUC values for different algorithms and thresholds.
+    :param auc_df: A :class:`DataFrame` containing the AUC values for different algorithms and thresholds.
     :param comparison_algs: A dictionary with keys 'algs' and 'baselines containing lists of algorithm names to compare.
     """
 

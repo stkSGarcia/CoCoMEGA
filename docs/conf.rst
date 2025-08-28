@@ -2,12 +2,12 @@ Configuration Parameters Overview
 =================================
 
 The project uses a structured configuration file (``conf/config.yaml``) to manage various aspects of the testing framework.
-Below is a high-level overview of the key parameters and sections in the configuration file:
+Below is a high-level overview of the key parameters and sections in the configuration file.
 
 General Settings
 ----------------
 
-``debug``: Toggles debug mode (true or false).
+``debug``: Toggles debug mode (Options: ``true`` or ``false``).
 
 Workspace Directories (``workspace``)
 -------------------------------------
@@ -46,7 +46,7 @@ optimization method, town and weather configurations for training and validation
 Docker Configurations (``docker``)
 ----------------------------------
 
-Docker configuration for carla:
+Docker configuration for CARLA:
 
 - ``enabled``: Enable Docker usage.
 - ``image``: Built docker image name.
@@ -65,7 +65,6 @@ Settings to control the simulation execution:
 - ``measurement_interval``: Seconds between scenario data measurements.
 - ``frame_rate``: Number of frames (ticks) per second.
 - ``high_graphics``: Use Fidelity Mode with better visuals.
-- ``autopilot``: Enable autopilot for other vehicles.
 - ``disable_spectator``: Disable the simulation spectator for efficiency.
 - ``instances``: Configuration of docker instances for CARLA (controls the extent of parallelization for scenario execution).
 
@@ -79,12 +78,12 @@ Control the runtime environments for runtime data collection:
 - ``routes``: Route types to use for data collection.
 - ``towns``: Towns to use for data collection.
 - ``weathers``: Weather indices to use for data collection.
-- ``collection_delay``: Contains **\[lower, upper\]** in seconds.
+- ``collection_delay``: Contains ``[lower, upper]`` in seconds.
   For each route, data collection starts after a random time between lower and upper.
 - ``collection_duration``: The duration of data collection (in seconds).
 - ``collection_interval``: The interval between each data collection (in seconds).
 - ``collection_route_limit``: Maximum number of collected runtime data for each route (use 0 for no-limit).
-- ``instances``: carla docker instances for simulating runtime environments (controls the extent of parallelization for data collection).
+- ``instances``: CARLA docker instances for simulating runtime environments (controls the extent of parallelization for data collection).
 
 Search Algorithm Parameters (``search``)
 ----------------------------------------
@@ -93,25 +92,27 @@ Defines the budget and strategy of the search process:
 
 - ``budget``: Specifies the search budget.
 
-  - ``max_sim``: Maximum number of simulations.
-  - ``max_time``: Maximum execution time.
-  - ``max_gen``: Maximum number of generations.
+  - ``max_sim``: Maximum number of simulations. Set to ``null`` to disable this budget.
+  - ``max_time``: Maximum execution time. Set to ``null`` to disable this budget.
+  - ``max_gen``: Maximum number of generations. Set to ``null`` to disable this budget.
 
 - ``diff_testing``: Enable differential testing.
 - ``runtime_data_as_seeds``: Use collected runtime data for scenario initialization.
 - ``constraint``: Apply constraints to penalize solutions based on distance from runtime scenarios.
-- ``multi_objective``: Enable multi-objective search.
+
+  - ``enabled``: Enable applying constraints.
+  - ``threshold``: Minimum distance from runtime scenarios.
+
 - ``opt``: Configure diversity optimization and niching strategies.
 
+  - ``diversity``: Enable diversity optimization.
   - ``niching``:
 
-      - ``strategy``: niching strategy. Options are fitness sharing ``sharing``, fitness clearing ``clearing``,
+      - ``strategy``: Niching strategy. Options are fitness sharing ``sharing``, fitness clearing ``clearing``,
         or not using niching ``None``.
       - ``punishment``: Punishment factor for fitness sharing.
       - ``scaling``: Scaling factor for fitness sharing.
       - ``capacity``: Number of winners in a niche when using fitness clearing.
-
-  - ``diversity``: Enable diversity optimization.
 
 Scenario Population (``scenario``)
 ----------------------------------

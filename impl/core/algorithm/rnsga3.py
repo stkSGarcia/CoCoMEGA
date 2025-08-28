@@ -65,8 +65,8 @@ def selRNSGA3(individuals, k, ref_points, ref_dirs, best_point=None, worst_point
     :param return_memory: If :data:`True`, return the best, worst, and extreme points
         in addition to the chosen individuals.
     :returns: A list of selected individuals.
-        If `return_memory` is :data:`True`, a namedtuple with the
-        `best_point`, `worst_point`, and `extreme_points`.
+        If ``return_memory`` is :data:`True`, a namedtuple with the
+        ``best_point``, ``worst_point``, and ``extreme_points``.
     """
     if nd == "standard":
         pareto_fronts = sortNondominated(individuals, k)

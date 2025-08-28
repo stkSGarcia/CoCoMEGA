@@ -6,17 +6,18 @@ import joblib
 import numpy as np
 import pandas as pd
 import shap
+import xgboost as xgb
 from imodels import RuleFitRegressor
 from matplotlib import pyplot as plt
 from scipy import stats
+from scipy.stats import randint, uniform
 from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
-from sklearn.model_selection import cross_val_score
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import cross_val_score, RandomizedSearchCV
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 
-from impl import config as cfg, problem
+from impl import config as cfg
 from impl.ads.scenario.scenario_definition import ScenarioDefinition
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,8 @@ def vectorize(solutions, mode="stats"):
     follow_up_scens = []
     max_actors = 0
     for solution in solutions:
-        fitnesses.append(solution.fitness.values[0] if solution.fitness_type == problem.test_version
+        fitnesses.append(solution.fitness.values[0]
+                         if solution.fitness_type == cfg.CONFIG["search"]["diff_testing"]["test"]
                          else -solution.fitness.values[0])
         fitnesses_v1.append(solution.v1.fitness[0])
         fitnesses_v2.append(solution.v2.fitness[0])
@@ -107,61 +109,43 @@ def model_fit(X, y):
     """
     X_train, X_test, y_train, y_test = train_test_split(X, np.array(y), test_size=0.2, random_state=42)
 
-    logger.info(f"\n{'=' * 50}\nCOMPREHENSIVE GRID SEARCH\n{'=' * 50}")
-    param_grid = {
-        "n_estimators": [50, 100, 200, 300, 500],
-        "max_depth": [3, 4, 5, 6, 7, 8],
-        "learning_rate": [0.01, 0.05, 0.1, 0.15, 0.2],
-        "subsample": [0.7, 0.8, 0.9, 1.0],
-        "min_samples_split": [2, 5, 10, 20],
-        "min_samples_leaf": [1, 2, 4, 8],
-        "max_features": [0.7, 0.8, 0.9, 1.0, "sqrt", "log2"],
-        "alpha": [0.1, 0.5, 0.9],
-        # "min_child_weight": [1, 3, 5, 7],
-        # "colsample_bytree": [0.7, 0.8, 0.9, 1.0],
-        # "reg_alpha": [0, 0.1, 0.5, 1.0],
-        # "reg_lambda": [0.5, 1.0, 1.5, 2.0],
+    logger.info(f"\n{'=' * 50}\nRANDOMIZED SEARCH\n{'=' * 50}")
+    param_dist = {
+        "n_estimators": randint(50, 501),
+        "max_depth": randint(3, 9),
+        "learning_rate": uniform(0.01, 0.19),
+        "subsample": uniform(0.6, 0.4),
+        "colsample_bytree": uniform(0.6, 0.4),
+        "min_child_weight": randint(1, 8),
+        "reg_alpha": uniform(0, 1.0),
+        "reg_lambda": uniform(0.5, 1.5),
     }
-    param_grid_fast = {
-        "n_estimators": [50, 100, 200],
-        "max_depth": [4, 6, 8],
-        "learning_rate": [0.01, 0.1, 0.2],
-        "subsample": [0.8, 0.9, 1.0],
-        "min_samples_split": [2, 10],
-        "min_samples_leaf": [1, 4],
-        "max_features": [0.8, 1.0, "sqrt", "log2"],
-        "alpha": [0.1, 0.5, 0.9],
-        # "min_child_weight": [1, 3, 5, 7],
-        # "colsample_bytree": [0.8, 0.9, 1.0],
-        # "reg_alpha": [0, 0.1, 1.0],
-        # "reg_lambda": [1.0, 1.5, 2.0],
-    }
-    param_grid = param_grid_fast
 
-    logger.info(f"Testing {np.prod([len(v) for v in param_grid.values()])} parameter combinations...")
-    grid_search = GridSearchCV(
-        # estimator=xgb.XGBRegressor(random_state=42, n_jobs=-1),
-        estimator=GradientBoostingRegressor(random_state=42),
-        param_grid=param_grid,
+    logger.info("Using RandomizedSearchCV with 100 iterations...")
+    random_search = RandomizedSearchCV(
+        estimator=xgb.XGBRegressor(objective="reg:squarederror", n_jobs=-1, random_state=42),
+        param_distributions=param_dist,
+        n_iter=100,
         scoring="neg_mean_squared_error",
         cv=5,
         n_jobs=-1,
         verbose=1,
-        return_train_score=True
+        return_train_score=True,
+        random_state=42,
     )
 
-    logger.info("Starting grid search...")
-    grid_search.fit(X_train, y_train)
+    logger.info("Starting randomized search...")
+    random_search.fit(X_train, y_train)
 
-    logger.info("Grid search completed!")
-    logger.info(f"Best CV RMSE: {np.sqrt(-grid_search.best_score_):.6f}")
+    logger.info("Randomized search completed!")
+    logger.info(f"Best CV RMSE: {np.sqrt(-random_search.best_score_):.6f}")
     log_str = "\nBest parameters:"
-    for param, value in grid_search.best_params_.items():
+    for param, value in random_search.best_params_.items():
         log_str += f"\n\t{param:<20}: {value}"
     logger.info(log_str)
 
-    logger.info(f"\n{'=' * 50}\nGRID SEARCH ANALYSIS\n{'=' * 50}")
-    results_df = pd.DataFrame(grid_search.cv_results_)
+    logger.info(f"\n{'=' * 50}\nRANDOMIZED SEARCH ANALYSIS\n{'=' * 50}")
+    results_df = pd.DataFrame(random_search.cv_results_)
 
     # Best scores.
     log_str = "\nTop 5 parameter combinations:"
@@ -173,7 +157,7 @@ def model_fit(X, y):
 
     # Parameter impact analysis.
     log_str = "\nParameter impact on performance:"
-    for param in param_grid.keys():
+    for param in param_dist.keys():
         param_col = f"param_{param}"
         if param_col in results_df.columns:
             param_performance = results_df.groupby(param_col)["mean_test_score"].mean()
@@ -183,7 +167,7 @@ def model_fit(X, y):
     logger.info(log_str)
 
     logger.info(f"\n{'=' * 50}\nBEST MODEL EVALUATION\n{'=' * 50}")
-    best_model = grid_search.best_estimator_
+    best_model = random_search.best_estimator_
     y_pred_best = best_model.predict(X_test)
 
     # Calculate metrics.
@@ -213,9 +197,9 @@ def model_fit(X, y):
     logger.info(f"✓ Best model saved as '{model_filename}'.")
 
     # Save grid search results for analysis.
-    grid_filename = result_path / "grid_search_results.pkl"
-    joblib.dump(grid_search, grid_filename)
-    logger.info(f"✓ Grid search results saved as '{grid_filename}'.")
+    result_filename = result_path / "search_results.pkl"
+    joblib.dump(random_search, result_filename)
+    logger.info(f"✓ Randomized search results saved as '{result_filename}'.")
 
     logger.info(f"\n{'=' * 50}\nMODEL VISUALIZATION\n{'=' * 50}")
     fig, axes = plt.subplots(2, 2, figsize=(15, 10))
@@ -331,7 +315,7 @@ def scoring(model_v1, model_v2, X, clip=2.0, alpha=0.5, epsilon=1e-6):
     :param alpha: Controls the strength of the standard deviation adjustment by raising the raw ratio to this power.
         Values closer to zero weaken the effect.
     :param epsilon: A tiny positive constant added to standard deviations to prevent division by zero when forming ratios.
-    :return: Score of the difference between the original and updated model.
+    :return: Score of the difference between the original and updated model, difference matrix, weight matrix.
     """
     explanation_v1 = explain(model_v1, X)
     explanation_v2 = explain(model_v2, X)
@@ -347,4 +331,4 @@ def scoring(model_v1, model_v2, X, clip=2.0, alpha=0.5, epsilon=1e-6):
     sign_D = np.sign(D)
     G = np.power(f_clipped, sign_D)
 
-    return np.sum(W * D * G)
+    return np.sum(W * D), D, W

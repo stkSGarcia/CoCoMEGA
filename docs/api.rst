@@ -6,4 +6,5 @@ API Reference
    :template: custom_module.rst
    :recursive:
 
+   impl.__main__
    impl

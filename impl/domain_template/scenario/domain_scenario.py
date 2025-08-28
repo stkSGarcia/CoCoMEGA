@@ -1,13 +1,13 @@
 from typing import Any
 
-from impl.core.scenario.base_scenario import AbstractScenarioDefinition
 import impl.config as cfg
+from impl.core.scenario.base_scenario import AbstractScenarioDefinition
 
 
 class ScenarioDefinition(AbstractScenarioDefinition):
     """Base class for scenario definitions in a domain-specific implementation."""
 
-    def dist(self, other: 'AbstractScenarioDefinition', **kwargs) -> float:
+    def dist(self, other: 'ScenarioDefinition', **kwargs) -> float:
         """
         Compute a distance measure between two scenarios.
         The distance accounts for both scenario attributes and actor configurations.
@@ -18,11 +18,11 @@ class ScenarioDefinition(AbstractScenarioDefinition):
         # TODO Implement distance function
         pass
 
-    def mate(self, other: 'AbstractScenarioDefinition', cxpb=cfg.CONFIG["scenario"]["cxpb"], **kwargs) -> None:
+    def mate(self, other: 'ScenarioDefinition', cxpb=cfg.CONFIG["scenario"]["cxpb"], **kwargs) -> None:
         """
         Apply crossover on two scenarios.
 
-        :param other: Another instance to mate with.
+        :param other: Another :class:`ScenarioDefinition` instance to mate with.
         :param cxpb: Crossover probability.
         """
         # TODO Implement crossover operator

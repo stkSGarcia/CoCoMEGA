@@ -120,7 +120,7 @@ class VehicleMeasurementTest(Criterion):
         super().terminate(new_status)
 
     def _write_to_file(self):
-        """Write recorded measurements to a CSV file in the `results` directory."""
+        """Write recorded measurements to a CSV file in the ``results`` directory."""
         keys = self.values[0].keys()
         with (cfg.CONFIG["workspace"]["sim_result"] / f"{self.scenario_def_id}.csv").open("w", newline="") as f:
             dict_writer = csv.DictWriter(f, keys)
