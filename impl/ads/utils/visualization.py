@@ -4,12 +4,14 @@ import pathlib
 import pickle
 import time
 from bisect import bisect_left
+from copy import deepcopy
 from collections import defaultdict
 from datetime import datetime
 from itertools import product
 from typing import Dict, List
 
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -20,11 +22,13 @@ from matplotlib.ticker import MaxNLocator, MultipleLocator
 from scipy.spatial.distance import squareform
 from scipy.stats import rankdata
 from sklearn.manifold import MDS
+from deap import creator
 
 from impl import config as cfg
 from impl.config import init_project_directory
 from impl.ads.mr.mr import Relation
-from impl.ads.utils.math_utils import calculate_auc_improvements, area_under_curve, calculate_ds_improvements
+from impl.ads.utils.math_utils import calculate_auc_improvements, area_under_curve, calculate_ds_improvements, \
+    calculate_fitness_improvements, calculate_aed_improvements, calculate_improvements
 from impl.ads.utils.metrics import metrics, pairwise_distance, avg_pw_from_matrix
 
 logger = logging.getLogger(__name__)
@@ -653,7 +657,7 @@ def visualize_diversity_distribution(project, save_path=None, show=False):
 
 
 def visualize_archived_distinct_solutions(projects: Dict[str, List[str]], fitness_thresholds: List[float],
-                                          distance_thresholds: List[float], mr_set, tick_rate=0.2,
+                                          distance_thresholds: List[float], mr_set, comparisons={},
                                           box=False, save_path=None, show=False):
     """Plot the number of distinct solutions from final archived solutions by applying fitness and distance thresholds.
 
@@ -672,10 +676,11 @@ def visualize_archived_distinct_solutions(projects: Dict[str, List[str]], fitnes
     fig, axes = plt.subplots(row_num, col_num, figsize=(col_num * height * 1.2, row_num * height))
     ax_map = {gp_name: ax for ax, gp_name in zip(axes.reshape(-1), fitness_thresholds)}
 
-    # vda = defaultdict(lambda: dict())
     data = {}
     mean_df = pd.DataFrame()
     for name, project_file in projects.items():
+        if name not in style_map:
+            style_map[name] = {'color': np.random.rand(3, ), 'marker': 'o'}
         df = pd.DataFrame()
         for project in project_file:
             solution_file = next((cfg.CONFIG["workspace"]["result"] / project / "solutions").rglob("solutions*"), None)
@@ -693,7 +698,6 @@ def visualize_archived_distinct_solutions(projects: Dict[str, List[str]], fitnes
             group = group.groupby("distance_threshold").agg(list)
             values = group["distinct_solution_num"]
             ax = ax_map[gp_name]
-            # vda[gp_name][name] = list(group["distinct_solution_num"])
             mean_val = values.apply(np.mean)
             gp_means = pd.DataFrame({"distance_threshold": distance_thresholds, "mean_ds": mean_val})
             gp_means["fitness_threshold"] = gp_name
@@ -709,17 +713,12 @@ def visualize_archived_distinct_solutions(projects: Dict[str, List[str]], fitnes
             ax.tick_params(labelsize=tick_size)
             ax.set_xlabel("Distance threshold ($\\theta_d$)", fontsize=text_size)
             ax.set_ylabel("Average $DS$", fontsize=text_size)
-            ax.xaxis.set_major_locator(MultipleLocator(tick_rate))
+            ax.xaxis.set_major_locator(MultipleLocator(0.4))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=1))
             ax.legend()
             ax.grid(True, which="both")
-    calculate_ds_improvements(mean_df)
-    # for fitness, d in vda.items():
-    #     for alg1, alg2 in (("ccea", "ga"), ("ccea", "rs"), ("ga", "rs")):
-    #         treatment, control = d[alg1], d[alg2]
-    #         for i, (num1, num2) in enumerate(zip(treatment, control)):
-    #             estimate, magnitude = Visualizer._vda(num1, num2)
-    #             print(f"{fitness}-{distance_thresholds[i]}: {alg1}-{alg2}: {magnitude}-{estimate}.")
+
+    calculate_ds_improvements(data, mean_df, comparisons)
 
     fig.tight_layout()
     fig.savefig(save_path if save_path else
@@ -746,12 +745,12 @@ def visualize_distinct_solution_over_simulations(projects: Dict[str, List[str]],
     """
     percent_ranges = np.arange(interval, 101, interval)
     ranges = (percent_ranges / 100 * max_sim_num).round(0).astype(int)
-    col_num, height = 3, 4
+    col_num, height = 3, 5
     title_size, text_size, tick_size = height * 4, height * 4, height * 3
     total_size = len(fitness_thresholds) * len(distance_thresholds)
     if total_size < col_num: col_num = total_size
     row_num = int(np.ceil(total_size / col_num))
-    fig, axes = plt.subplots(row_num, col_num, figsize=(col_num * height * 1.2, row_num * height))
+    fig, axes = plt.subplots(row_num, col_num, figsize=(col_num * height * 1.2, row_num * height * 1.0))
     ax_map = {gp_name: ax for ax, gp_name in zip(axes.reshape(-1), product(fitness_thresholds, distance_thresholds))}
     auc_df = pd.DataFrame()
 
@@ -796,6 +795,8 @@ def visualize_distinct_solution_over_simulations(projects: Dict[str, List[str]],
                 "distance_threshold": gp_name[1],
                 "auc": area_under_curve(np.array([0, *percent_ranges]), np.array([0, *y]))
             }])], ignore_index=True)
+            if name not in style_map:
+                style_map[name] = {'color': np.random.rand(3, ), 'marker': 'o'}
             ax.plot(percent_ranges, y, **style_map.get(name, default_style), label=verbose_map.get(name, name))
             ax.set_title(
                 f"Fitness threshold ($\\theta_f={gp_name[0]}$),\nDistance threshold ($\\theta_d={gp_name[1]}$)",
@@ -807,8 +808,7 @@ def visualize_distinct_solution_over_simulations(projects: Dict[str, List[str]],
             ax.set_ylabel("Average $MRC$ (%)" if mrc else "Average $DS$", fontsize=text_size)
             ax.legend()
             ax.grid()
-
-    calculate_auc_improvements(auc_df)
+    calculate_auc_improvements(auc_df, {"algs": ["ccea"], "baselines": ["ga", "rs"]})
 
     fig.tight_layout()
     fig.savefig(save_path if save_path else
@@ -1077,6 +1077,7 @@ def visualize_computational_efficiency_v2(projects: Dict[str, List[str]], save_p
         patch.set_facecolor(color)
         patch.set_alpha(0.8)
 
+    exec_data_fil = {}
     for i, alg in enumerate(exec_data.keys(), start=1):
         data = np.array(exec_data[alg])
         q1, q3 = np.percentile(data, [25, 75])
@@ -1086,12 +1087,20 @@ def visualize_computational_efficiency_v2(projects: Dict[str, List[str]], save_p
 
         # keep only non-outliers
         filtered_data = data[(data >= lower_bound) & (data <= upper_bound)]
+        exec_data_fil[alg] = filtered_data.tolist()
         plt.scatter([i] * len(filtered_data), filtered_data, alpha=0.7,
                     color=style_map.get(alg, default_style)["color"])
 
         trimmed_mean = np.mean(filtered_data)
         plt.scatter(i, trimmed_mean, marker='D', s=40,
                     color='black', zorder=3, label='_nolegend_')
+
+    calculate_improvements(
+        data=exec_data_fil,
+        comparison_algs={'algs': ['ccea'], 'baselines': ['ga', 'rs']},
+        metric_name="Computational Efficiency",
+        higher_is_better=False,
+    )
 
     # plt.title('Comparison of Computational Efficiency (Duration in Hours)', fontsize=title_size)
     plt.xlabel('Algorithm', fontsize=text_size)
@@ -1105,6 +1114,115 @@ def visualize_computational_efficiency_v2(projects: Dict[str, List[str]], save_p
     fig.tight_layout()
     fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "computational_efficiency.png"))
     if show: plt.show()
+
+
+def visualize_fitness_distribution(projects, vis_name="fitness_boxplot.png", min_fitness=0.1, save_path=None,
+                                   show=False):
+    """
+    Plot the fitness distribution of different algorithms.
+    :param projects: Project names of different algorithms. ``Dict[name_of_algorithm, List[project_name]]``.
+    :param vis_name: The name of the visualization file.
+    :param min_fitness: Minimum fitness value to consider.
+    :param save_path: The path to save the figure.
+    :param show: A boolean to determine whether to show the plots or not.
+    """
+    fitnesses = {}
+    for alg, project_list in projects.items():
+        fitnesses[alg] = []
+        for project in project_list:
+            sol_file = next((cfg.CONFIG["workspace"]["result"] / project / "solutions").rglob("solutions*"), None)
+            if sol_file is None: continue
+            run_sols = pickle.loads(sol_file.read_bytes())
+            run_fitnesses = [sol.fitness.values[0] for sol in run_sols]
+            if len(run_fitnesses) > 0:
+                fitnesses[alg] += [fitness for fitness in run_fitnesses if fitness >= min_fitness]
+
+    calculate_improvements(
+        data=fitnesses,
+        comparison_algs={'algs': ['ccea'], 'baselines': ['ga', 'rs']},
+        metric_name="Fitness",
+        higher_is_better=True,
+    )
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    bplot = ax.boxplot(fitnesses.values(), patch_artist=True, showmeans=True, whis=1.,
+                       labels=[verbose_map.get(alg, alg) for alg in fitnesses.keys()], showfliers=False)
+    cmap = cm.ScalarMappable(cmap="rainbow")
+    for patch, color in zip(bplot["boxes"], [style_map.get(alg, default_style)['color'] for alg in fitnesses.keys()]):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.6)
+    ax.set_ylabel("Fitness")
+    ax.set_ylim(bottom=0.0)
+    ax.grid()
+    fig.tight_layout()
+    if save_path:
+        fig.savefig(save_path if save_path else cfg.CONFIG["workspace"]["visualization"] / vis_name)
+    if show:
+        plt.show()
+
+
+def visualize_aed(projects, save_path=None, show=False):
+    """
+    Plot the average execution distance (AED) of different algorithms.
+    :param projects: Project names of different algorithms. ``Dict[name_of_algorithm, List[str]]``.
+    :param save_path: The path to save the figure.
+    :param show: A boolean to determine whether to show the plots or not.
+    :return: A dictionary of similarities for each algorithm.
+    """
+
+    def _get_sims(_solutions, scaling):
+        _sims = []
+        for _source, _perturbation in _solutions:
+            source_sim = min([_source.dist(scen, scaling=scaling) for scen in runtime_scenarios])
+            _follow_up = deepcopy(_source)
+            _follow_up.assign_new_id()
+            _perturbation.perturb(_follow_up)
+            follow_up_sim = min(
+                [_follow_up.dist(scen, scaling=scaling) for scen in runtime_scenarios])
+            _sims.append(min(follow_up_sim, source_sim))
+        return _sims
+
+    runtime_scenarios = []
+    for data_path in cfg.CONFIG["workspace"]["runtime_scenario"].rglob("*.*"):
+        runtime_scenarios += pickle.loads(data_path.read_bytes())
+    runtime_scenarios = [creator.Scenario(scenario) for scenario in runtime_scenarios]
+    similarities = {}
+    for alg, project_list in projects.items():
+        similarities[alg] = []
+        for project in project_list:
+            sol_file = next((cfg.CONFIG["workspace"]["result"] / project / "solutions").rglob("solutions*"), None)
+            if sol_file is None: continue
+            run_sols = pickle.loads(sol_file.read_bytes())
+            if len(run_sols) == 0:
+                print("empty set")
+            else:
+                similarities[alg].append(_get_sims(run_sols, scaling=cfg.CONFIG["scenario"]["dist_scaling"]))
+
+    avg_sims_fil = {alg: [np.nanmean(l) for l in similarities[alg]] for alg in projects}
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    bplot = ax.boxplot(avg_sims_fil.values(), patch_artist=True, showmeans=True, whis=1.5,
+                       labels=[verbose_map.get(alg, alg) for alg in avg_sims_fil.keys()])
+    cmap = cm.ScalarMappable(cmap="rainbow")
+    for patch, color in zip(bplot["boxes"],
+                            [style_map.get(alg, default_style)['color'] for alg in avg_sims_fil.keys()]):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.8)
+
+    calculate_improvements(
+        data=avg_sims_fil,
+        comparison_algs={'algs': ['ccea', 'ccea-c+ri', 'ccea+ri'], 'baselines': ['ccea-c']},
+        metric_name="AED",
+        higher_is_better=False,
+    )
+
+    ax.set_ylabel("Average Execution Distance ($AED$)")
+    ax.grid()
+    fig.tight_layout()
+    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "avg_distance_to_runtime.png"))
+    if show: plt.show()
+
+    return similarities
 
 
 def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_thresholds: List[float],
