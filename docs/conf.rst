@@ -22,6 +22,8 @@ Subdirectories include:
 - ``result``: Execution results.
 - ``visualization``: Generated visualizations.
 - ``test_result``: Results of executed tests.
+- ``runtime_scenario``: Collected runtime scenarios.
+- ``previous_solution``: Generated solutions from previous searches.
 
 InterFuser Agent Settings (``interfuser``)
 ------------------------------------------
@@ -97,7 +99,16 @@ Defines the budget and strategy of the search process:
   - ``max_gen``: Maximum number of generations. Set to ``null`` to disable this budget.
 
 - ``diff_testing``: Enable differential testing.
-- ``runtime_data_as_seeds``: Use collected runtime data for scenario initialization.
+- ``seeds``: Specifies the source of seed scenarios for population initialization. Options are ``runtime`` to use
+  collected runtime scenarios during runtime, ``previous`` to use previously generated solutions, and ``null`` to not
+  use any seeds.
+- ``critical``: Thresholds for post analysis.
+
+  - ``fitness``: Fitness percentile between 0 and 100. Solutions with fitness values below the threshold defined by this
+    percentile will be filtered.
+  - ``distance``: Distance percentile between 0 and 100. Solutions whose pairwise distance to other solutions falls
+    below the threshold defined by this percentile will be filtered.
+
 - ``constraint``: Apply constraints to penalize solutions based on distance from runtime scenarios.
 
   - ``enabled``: Enable applying constraints.
