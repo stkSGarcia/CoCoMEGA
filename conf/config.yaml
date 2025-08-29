@@ -10,6 +10,7 @@ workspace:
   data_gen_checkpoint: data_gen_checkpoints
   runtime_data: runtime_data
   runtime_scenario: runtime_scenario
+  previous_solution: previous_solutions
   train_data: train_data
   trained_models: trained_models
   recordings: recordings
@@ -114,7 +115,10 @@ search:
     enabled: true
     reference: "v1"
     test: "v2"
-  runtime_data_as_seeds: false
+  seeds: null  # Options: runtime, previous, null
+  critical:
+    fitness: 20
+    distance: 20
   constraint:
     enable: false
     threshold: 0.5
@@ -129,7 +133,7 @@ search:
   opt:
     diversity: true
     niching:
-      strategy: clearing  # Options: none, sharing, clearing
+      strategy: clearing  # Options: clearing, sharing, null
       punishment: 1.0
       scaling: 1.0
       capacity: 1

@@ -33,8 +33,7 @@ toolbox = base.Toolbox()
 toolbox.register("scenario", tools.initIterate, creator.Scenario, mr_set.generate_scenario)
 toolbox.register("perturbation", tools.initIterate, creator.Perturbation, mr_set.generate_perturbation)
 toolbox.register("pop_scenario", domain.get_scenario_init())
-toolbox.register("pop_perturbation", tools.initRepeat, list, toolbox.perturbation,
-                 n=cfg.CONFIG["perturbation"]["pop_size"])
+toolbox.register("pop_perturbation", domain.get_perturbation_init())
 toolbox.register("evaluator", domain.get_evaluation())
 
 # Create a complete solution from two individuals.
