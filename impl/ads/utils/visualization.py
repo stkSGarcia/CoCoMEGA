@@ -45,12 +45,12 @@ verbose_map = {
     "ccea": "CoCoMEGA",
     "ccea-c": "CoCoMEGA\c",
     "ccea-d": "CoCoMEGA\d",
-    "ccea+ri": "CoCoMEGA with RI",
-    "ccea-c+ri": "CoCoMEGA\c with RI",
+    "ccea+ri": "CoCoMEGA + RI",
+    "ccea-c+ri": "CoCoMEGA\c + RI",
     "rs": "RS",
-    "rs+ri": "RS with RI",
+    "rs+ri": "RS + RI",
     "ga": "SGA",
-    "ga+ri": "SGA with RI",
+    "ga+ri": "SGA + RI",
     "gawa": "SGA with Archives",
     "distinct_solution_num": "Average $DS$",
     "ds": "$DS$",
@@ -724,7 +724,7 @@ def visualize_archived_distinct_solutions(projects: Dict[str, List[str]], fitnes
 
     fig.tight_layout()
     fig.savefig(save_path if save_path else
-                (cfg.CONFIG["workspace"]["visualization"] / "archived_distinct_solutions.png"))
+                (cfg.CONFIG["workspace"]["visualization"] / "archived_distinct_solutions.pdf"))
     if show: plt.show()
     return data
 
@@ -814,7 +814,7 @@ def visualize_distinct_solution_over_simulations(projects: Dict[str, List[str]],
 
     fig.tight_layout()
     fig.savefig(save_path if save_path else
-                (cfg.CONFIG["workspace"]["visualization"] / "distinct_solutions_over_simulations.png"))
+                (cfg.CONFIG["workspace"]["visualization"] / "distinct_solutions_over_simulations.pdf"))
     if show: plt.show()
 
 
@@ -998,7 +998,7 @@ def visualize_archive_solution_over_generations(projects: Dict[str, List[str]], 
 
     fig.tight_layout()
     fig.savefig(save_path if save_path else
-                (cfg.CONFIG["workspace"]["visualization"] / f"archived_{metric_name}_over_generetations.png"))
+                (cfg.CONFIG["workspace"]["visualization"] / f"archived_{metric_name}_over_generetations.pdf"))
     if show: plt.show()
 
 
@@ -1043,6 +1043,7 @@ def visualize_computational_efficiency(log_file: str, projects: Dict[str, List[s
     fig.tight_layout()
     fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "computational_efficiency.png"))
     if show: plt.show()
+
 
 def visualize_computational_efficiency_v2(projects: Dict[str, List[str]], save_path=None, show=False):
     """
@@ -1098,26 +1099,25 @@ def visualize_computational_efficiency_v2(projects: Dict[str, List[str]], save_p
 
     calculate_improvements(
         data=exec_data_fil,
-        comparison_algs={'algs': ['ccea'], 'baselines': ['ga', 'rs']},
+        comparison_algs={"algs": ["ccea"], "baselines": ["ga", "rs"]},
         metric_name="Computational Efficiency",
         higher_is_better=False,
     )
 
     # plt.title('Comparison of Computational Efficiency (Duration in Hours)', fontsize=title_size)
-    plt.xlabel('Algorithm', fontsize=text_size)
-    plt.ylabel('Duration (Hours)', fontsize=text_size)
+    plt.xlabel("Algorithm", fontsize=text_size)
+    plt.ylabel("Duration (Hours)", fontsize=text_size)
     plt.tick_params(labelsize=tick_size)
-    plt.grid(axis='y', linestyle='--')
-    plt.legend(handles=[Line2D([0], [0], marker='D', markerfacecolor='black', markeredgecolor='black',
-                               color='w', alpha=0.7, linestyle='None', label='Mean value')], fontsize=text_size)
+    plt.grid(axis="y", linestyle='--')
+    plt.legend(handles=[Line2D([0], [0], marker="D", markerfacecolor="black", markeredgecolor="black",
+                               color="w", alpha=0.7, linestyle="None", label="Mean value")], fontsize=text_size)
     plt.tight_layout()
-
     fig.tight_layout()
-    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "computational_efficiency.png"))
+    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "computational_efficiency.pdf"))
     if show: plt.show()
 
 
-def visualize_fitness_distribution(projects, vis_name="fitness_boxplot.png", min_fitness=0.1, save_path=None,
+def visualize_fitness_distribution(projects, comparisons, vis_name="fitness_boxplot.pdf", min_fitness=0.1, save_path=None,
                                    show=False):
     """
     Plot the fitness distribution of different algorithms.
@@ -1127,6 +1127,9 @@ def visualize_fitness_distribution(projects, vis_name="fitness_boxplot.png", min
     :param save_path: The path to save the figure.
     :param show: A boolean to determine whether to show the plots or not.
     """
+    height = 4
+    title_size, text_size, tick_size = height * 5, height * 4, height * 3
+
     fitnesses = {}
     for alg, project_list in projects.items():
         fitnesses[alg] = []
@@ -1140,27 +1143,34 @@ def visualize_fitness_distribution(projects, vis_name="fitness_boxplot.png", min
 
     calculate_improvements(
         data=fitnesses,
-        comparison_algs={'algs': ['ccea'], 'baselines': ['ga', 'rs']},
+        comparison_algs=comparisons,
         metric_name="Fitness",
         higher_is_better=True,
     )
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    bplot = ax.boxplot(fitnesses.values(), patch_artist=True, showmeans=True, whis=1.,
+    fig, ax = plt.subplots(figsize=(height * 2.5, height * 1.5))
+    bplot = ax.boxplot(fitnesses.values(), patch_artist=True, showmeans=True,
+                       medianprops=dict(color='black'),
+                       meanprops=dict(marker='D', markerfacecolor='black', markeredgecolor='black', alpha=0.7),
+                       whis=1.,
                        labels=[verbose_map.get(alg, alg) for alg in fitnesses.keys()], showfliers=False)
     cmap = cm.ScalarMappable(cmap="rainbow")
     for patch, color in zip(bplot["boxes"], [style_map.get(alg, default_style)['color'] for alg in fitnesses.keys()]):
         patch.set_facecolor(color)
         patch.set_alpha(0.6)
-    ax.set_ylabel("Fitness")
+
+    ax.tick_params(axis='x', labelsize=tick_size)
+    ax.set_ylabel("Fitness", fontsize=text_size)
     ax.set_ylim(bottom=0.0)
     ax.grid()
+    plt.legend(handles=[Line2D([0], [0], marker='D', markerfacecolor='black', markeredgecolor='black',
+                               color='w', alpha=0.7, linestyle='None', label='Mean value')], fontsize=text_size)
     fig.tight_layout()
-    if save_path:
-        fig.savefig(save_path if save_path else cfg.CONFIG["workspace"]["visualization"] / vis_name)
+    fig.savefig(save_path if save_path else cfg.CONFIG["workspace"]["visualization"] / vis_name)
     if show:
         plt.show()
 
+    return fitnesses
 
 def visualize_aed(projects, save_path=None, show=False):
     """
@@ -1171,7 +1181,7 @@ def visualize_aed(projects, save_path=None, show=False):
     :return: A dictionary of similarities for each algorithm.
     """
 
-    def _get_sims(_solutions, scaling):
+    def _get_sims(_solutions, runtime_scenarios, scaling):
         _sims = []
         for _source, _perturbation in _solutions:
             source_sim = min([_source.dist(scen, scaling=scaling) for scen in runtime_scenarios])
@@ -1182,6 +1192,9 @@ def visualize_aed(projects, save_path=None, show=False):
                 [_follow_up.dist(scen, scaling=scaling) for scen in runtime_scenarios])
             _sims.append(min(follow_up_sim, source_sim))
         return _sims
+
+    height = 4
+    title_size, text_size, tick_size = height * 5, height * 4, height * 3
 
     runtime_scenarios = []
     for data_path in cfg.CONFIG["workspace"]["runtime_scenario"].rglob("*.*"):
@@ -1197,33 +1210,40 @@ def visualize_aed(projects, save_path=None, show=False):
             if len(run_sols) == 0:
                 print("empty set")
             else:
-                similarities[alg].append(_get_sims(run_sols, scaling=cfg.CONFIG["scenario"]["dist_scaling"]))
+                similarities[alg].append(
+                    _get_sims(run_sols, runtime_scenarios, scaling=cfg.CONFIG["scenario"]["dist_scaling"]))
 
     avg_sims_fil = {alg: [np.nanmean(l) for l in similarities[alg]] for alg in projects}
 
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(height * 2.5, height * 1.5))
     bplot = ax.boxplot(avg_sims_fil.values(), patch_artist=True, showmeans=True, whis=1.5,
+                       medianprops=dict(color='black'),
+                       meanprops=dict(marker='D', markerfacecolor='black', markeredgecolor='black', alpha=0.7),
                        labels=[verbose_map.get(alg, alg) for alg in avg_sims_fil.keys()])
     cmap = cm.ScalarMappable(cmap="rainbow")
     for patch, color in zip(bplot["boxes"],
-                            [style_map.get(alg, default_style)['color'] for alg in avg_sims_fil.keys()]):
+                            [style_map.get(alg, default_style)["color"] for alg in avg_sims_fil.keys()]):
         patch.set_facecolor(color)
-        patch.set_alpha(0.8)
+        patch.set_alpha(0.6)
 
     calculate_improvements(
         data=avg_sims_fil,
-        comparison_algs={'algs': ['ccea', 'ccea-c+ri', 'ccea+ri'], 'baselines': ['ccea-c']},
+        comparison_algs={"algs": ["ccea", "ccea-c+ri", "ccea+ri"], "baselines": ["ccea-c"]},
         metric_name="AED",
         higher_is_better=False,
     )
 
-    ax.set_ylabel("Average Execution Distance ($AED$)")
+    ax.tick_params(axis='x', labelsize=tick_size)
+    ax.set_ylabel("Average Execution Distance ($AED$)", fontsize=text_size)
     ax.grid()
+    plt.legend(handles=[Line2D([0], [0], marker='D', markerfacecolor='black', markeredgecolor='black',
+                               color='w', alpha=0.7, linestyle='None', label='Mean value')], fontsize=text_size)
     fig.tight_layout()
-    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "avg_distance_to_runtime.png"))
+    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "avg_distance_to_runtime.pdf"))
     if show: plt.show()
 
     return similarities
+
 
 def visualize_scenario(scenario):
     carla_instance = cfg.CONFIG["simulation"]["instances"][0]
@@ -1311,6 +1331,7 @@ def visualize_scenario(scenario):
             color=carla.Color(255, 0, 0),
             life_time=lifetime
         )
+
 
 def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_thresholds: List[float],
                           mr_set, additional_metrics: List[str] = None):
