@@ -1044,9 +1044,6 @@ def visualize_computational_efficiency(log_file: str, projects: Dict[str, List[s
     fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "computational_efficiency.png"))
     if show: plt.show()
 
-<< << << < HEAD
-
-
 def visualize_computational_efficiency_v2(projects: Dict[str, List[str]], save_path=None, show=False):
     """
     Generate a boxplot comparing computational efficiency (duration in hours) across algorithms without a logfile (version 2.0).
@@ -1228,8 +1225,6 @@ def visualize_aed(projects, save_path=None, show=False):
 
     return similarities
 
-== == == =
-
 def visualize_scenario(scenario):
     carla_instance = cfg.CONFIG["simulation"]["instances"][0]
     client = carla.Client(carla_instance["host"], carla_instance["port"])
@@ -1316,9 +1311,6 @@ def visualize_scenario(scenario):
             color=carla.Color(255, 0, 0),
             life_time=lifetime
         )
-
->> >> >> > d8ec33996ec713c690a911b99ef9d056423967f2
-
 
 def _filter_by_thresholds(solutions, fitness_thresholds: List[float], distance_thresholds: List[float],
                           mr_set, additional_metrics: List[str] = None):
