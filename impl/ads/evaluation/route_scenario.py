@@ -23,7 +23,7 @@ from carla.libcarla import Location
 from agents.navigation.local_planner import RoadOption
 
 from impl.ads.utils.carla_utils import dict_to_transform, copy_transform, transform_to_dict
-from impl.ads.evaluation.criterions import VehicleMeasurementTest
+from impl.ads.evaluation.criteria import VehicleMeasurementTest
 from impl.ads.evaluation.exceptions import InvalidScenarioDefinitionError
 
 from srunner.scenarioconfigs.scenario_configuration import ScenarioConfiguration, ActorConfigurationData
@@ -486,7 +486,7 @@ class RouteScenario(BasicScenario):
             scenario_def_id=self.scenario_definition.id_,
         )
 
-        collision_criterion = CollisionTest(self.ego_vehicles[0], terminate_on_failure=True)
+        #collision_criterion = CollisionTest(self.ego_vehicles[0], terminate_on_failure=True)
         criteria.append(vehicle_measurement)
 
         return criteria

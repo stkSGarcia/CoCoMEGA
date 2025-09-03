@@ -417,7 +417,7 @@ class ScenarioDefinition(AbstractScenarioDefinition):
             else:
                 if "junction_exit" not in trajectory_def:
                     wp_dict = group_junction_directions(junction, reference_yaw=trajectory[-1].rotation.yaw)
-                    if trajectory_def["direction"] not in wp_dict:
+                    if trajectory_def["direction"] not in wp_dict or not wp_dict[trajectory_def["direction"]]:
                         raise InvalidScenarioDefinitionError(
                             f"No '{trajectory_def['direction']}' direction found in the junction!")
                     closest_wp = get_closest_wp(wp_dict[trajectory_def["direction"]],
