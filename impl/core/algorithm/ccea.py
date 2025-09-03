@@ -164,8 +164,8 @@ class CCEA(BaseAlgorithm):
         elif cfg.CONFIG["search"]["opt"]["niching"]["strategy"] == "clearing":
             self.fitness_clearing(pop_scenario, cfg.CONFIG["search"]["opt"]["niching"]["capacity"])
             self.fitness_clearing(pop_perturbation, cfg.CONFIG["search"]["opt"]["niching"]["capacity"])
-        elif cfg.CONFIG["search"]["opt"]["niching"]["strategy"] != "none":
-            logger.warning("Unrecognized niching strategy, falling back to `none`.")
+        elif cfg.CONFIG["search"]["opt"]["niching"]["strategy"] is not None:
+            logger.warning("Unrecognized niching strategy, falling back to `None`.")
 
         return archive_solution, sim_num
 

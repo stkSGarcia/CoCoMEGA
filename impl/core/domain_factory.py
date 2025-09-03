@@ -90,6 +90,12 @@ class DomainFactory:
         """
         return self._get_component("Perturbation")
 
+    def get_perturbation_init(self):
+        """
+        Retrieves the perturbation initialization component from the domain registry.
+        """
+        return self._get_component("PerturbationInit")
+
     def get_evaluation(self):
         """
         Retrieves the evaluation component from the domain registry.

@@ -2,9 +2,11 @@ import logging
 import pickle
 import random
 import time
+from copy import deepcopy
 from operator import attrgetter
 from typing import List
 
+import networkx as nx
 import numpy as np
 from deap import base, creator, tools
 from scipy.spatial.distance import pdist, squareform
@@ -81,11 +83,13 @@ class BaseAlgorithm:
         :param results: The solutions identified by the algorithm.
         :param evaluated_solutions: All the evaluated solutions during the search.
         """
+        result_dir = cfg.CONFIG["workspace"]["solution"]
         suffix = f"{self._name.lower()}-{str(int(round(time.time() * 1000)))}"
-        (cfg.CONFIG["workspace"]["solution"] / f"solutions-{suffix}.pickle").write_bytes(pickle.dumps(results))
-        (cfg.CONFIG["workspace"]["solution"] / f"evaluated-{suffix}.pickle").write_bytes(
-            pickle.dumps(evaluated_solutions))
-        (cfg.CONFIG["workspace"]["solution"] / f"statistics-{suffix}.pickle").write_bytes(pickle.dumps(self.logbook))
+        (result_dir / f"solutions-{suffix}.pickle").write_bytes(pickle.dumps(results))
+        (result_dir / f"evaluated-{suffix}.pickle").write_bytes(pickle.dumps(evaluated_solutions))
+        (result_dir / f"statistics-{suffix}.pickle").write_bytes(pickle.dumps(self.logbook))
+        critical = self.post_analysis(results)
+        (result_dir / f"critical-{suffix}.pickle").write_bytes(pickle.dumps(critical))
         logger.info(f"Results dumped at {suffix}.")
 
     @staticmethod
@@ -189,6 +193,67 @@ class BaseAlgorithm:
             dist_matrix[i, :] = -np.inf
             pd += d[i]
         return pd
+
+    @staticmethod
+    def post_analysis(solutions,
+                      fitness_percentile=cfg.CONFIG["search"]["critical"]["fitness"],
+                      distance_percentile=cfg.CONFIG["search"]["critical"]["distance"]):
+        """Filter solutions based on fitness and pairwise distance percentiles.
+
+        :param solutions: Solutions to be filtered.
+        :param fitness_percentile: Fitness percentile between 0 and 100.
+            Solutions with fitness values below the threshold defined by this percentile will be filtered.
+        :param distance_percentile: Distance percentile between 0 and 100.
+            Solutions whose pairwise distance to other solutions falls below the threshold defined by this percentile
+            will be filtered.
+        :return: Filtered solutions.
+        """
+        if len(solutions) < 3: return solutions
+
+        fitnesses = [sol.fitness.values[0] for sol in solutions]
+        fit_thres = np.percentile(fitnesses, fitness_percentile)
+        indices_to_remove = [i for i, fitness in enumerate(fitnesses) if fitness < fit_thres]
+
+        pairwise_distances = BaseAlgorithm.pairwise_distance(solutions)
+        dist_thres = np.percentile(pairwise_distances, distance_percentile)
+
+        dist_matrix = squareform(pairwise_distances)
+        dist = np.delete(dist_matrix, indices_to_remove, axis=0)
+        dist = np.delete(dist, indices_to_remove, axis=1)
+        selected_solutions = [sol for i, sol in enumerate(solutions) if i not in indices_to_remove]
+        assert len(selected_solutions) == len(dist)
+        n = len(dist)
+        if n < 2: return selected_solutions
+
+        graph = nx.Graph()
+        graph.add_nodes_from(range(n))
+        for i in range(n):  # Add edges between points that are closer than the threshold distance.
+            for j in range(i + 1, n):
+                if dist[i, j] < dist_thres:
+                    graph.add_edge(i, j)
+
+        # Find a maximal independent set as an approximation to maximum independent set.
+        independent_set = nx.algorithms.approximation.maximum_independent_set(graph)
+        # The points to keep are in the independent set.
+        points_to_keep = set(independent_set)
+        # The points to remove are the complement of the independent set.
+        # points_to_remove = set(range(n)) - points_to_keep
+        return [sol for i, sol in enumerate(selected_solutions) if i in points_to_keep]
+
+    @staticmethod
+    def pairwise_distance(solutions):
+        """Calculate the pairwise distance between solutions by perturbing each scenario.
+
+        :param solutions: A list of solution tuples where each tuple consists of a scenario and a perturbation object.
+        :return: A pairwise distance matrix of the follow-up scenarios.
+        """
+        if len(solutions) < 2: return np.nan
+        follow_ups = []
+        for scenario, perturbation in solutions:
+            scenario_copy = deepcopy(scenario)
+            perturbation.perturb(scenario_copy)
+            follow_ups.append(scenario_copy)
+        return pdist(np.array(follow_ups, dtype=object).reshape((len(follow_ups), -1)), lambda x, y: x[0].dist(y[0]))
 
     @staticmethod
     def _dominates(this, other, obj: List = None):

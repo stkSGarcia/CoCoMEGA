@@ -1,13 +1,22 @@
-import random
 import pickle
+import random
 import sys
+
 from deap import creator
+
+from impl import config as cfg
 from impl.ads.evaluation.simulation_runner import ADSEvaluator
 from impl.ads.mr.predefined import mr_set1, mr_set3
 from impl.ads.scenario.scenario_definition import ScenarioDefinition
+from impl.core.algorithm.base import BaseAlgorithm
 from impl.core.mr.base_mr import Perturbations
 
-from impl import config as cfg
+# FIXME: Workaround for scenario definition restructure.
+import impl.ads.mr.mr as base_mr_module
+import impl.ads.scenario.scenario_definition as scen_def_module
+
+sys.modules["impl.scenario.scenario_definition"] = scen_def_module
+sys.modules["impl.mr.mr"] = base_mr_module
 
 #: Defined :const:`mr_set`.
 mr_set = mr_set1
@@ -18,13 +27,12 @@ mr_set.labels = set(factory.get_label()
                     if factory.category in ScenarioDefinition.DYNAMIC)
 
 # Load runtime scenarios.
-if (cfg.CONFIG["search"]["runtime_data_as_seeds"] or
+if (cfg.CONFIG["search"]["seeds"] == "runtime" or
         cfg.CONFIG["search"]["constraint"]["enable"] or
         cfg.CONFIG["search"]["multi_objective"]["enable"]):
     runtime_scenarios = []
 
     import impl.ads.scenario.scenario_definition as scen_def_module
-
     sys.modules["impl.scenario.scenario_definition"] = scen_def_module
 
     for data_path in cfg.CONFIG["workspace"]["runtime_scenario"].rglob("*.*"):
@@ -32,27 +40,61 @@ if (cfg.CONFIG["search"]["runtime_data_as_seeds"] or
     if len(runtime_scenarios) == 0:
         raise ValueError("No runtime scenarios found.")
 
+# Load seed solutions.
+if cfg.CONFIG["search"]["seeds"] == "previous":
+    seed_solutions = []
+    for data_path in cfg.CONFIG["workspace"]["previous_solution"].rglob("*.*"):
+        seed_solutions = pickle.loads(data_path.read_bytes())
+    if len(seed_solutions) == 0:
+        raise ValueError("No previous solutions found.")
+    seed_scenarios, seed_perturbations = zip(*seed_solutions)
+
 
 def _pop_scenario():
-    """Initialize the scenario population"""
+    """Initialize the scenario population."""
+    pop_size = cfg.CONFIG["scenario"]["pop_size"]
+    pop_scenario = []
 
-    if cfg.CONFIG["search"]["runtime_data_as_seeds"]:
-        pop_scenario = [creator.Scenario(scenario) for scenario in
-                        random.choices(runtime_scenarios, k=cfg.CONFIG["scenario"]["pop_size"])]
-    else:
-        n = cfg.CONFIG["scenario"]["pop_size"] * cfg.CONFIG["scenario"]["init_selection_factor"]
-        pop_scenario = [creator.Scenario(instance=mr_set.generate_scenario()) for _ in range(n)]
+    if cfg.CONFIG["search"]["seeds"] is not None:
+        base_scenarios = runtime_scenarios if cfg.CONFIG["search"]["seeds"] == "runtime" else seed_scenarios
+        unique = BaseAlgorithm.remove_duplicates(base_scenarios)
+        pop_scenario += [creator.Scenario(scenario) for scenario in (
+            random.sample(unique, pop_size) if len(unique) > pop_size else unique
+        )]
+
+    if len(pop_scenario) < pop_size:
+        remaining_size = pop_size - len(pop_scenario)
+        random_scenarios = [creator.Scenario(instance=mr_set.generate_scenario())
+                            for _ in range(remaining_size * cfg.CONFIG["scenario"]["init_selection_factor"])]
         if cfg.CONFIG["scenario"]["init_selection_factor"] > 1:
-            pop_scenario = sorted(pop_scenario, key=lambda x: x.score(),
-                                  reverse=True)[:cfg.CONFIG["scenario"]["pop_size"]]
+            random_scenarios = sorted(random_scenarios, key=lambda x: x.score(), reverse=True)[:remaining_size]
+        pop_scenario += random_scenarios
+
     return pop_scenario
 
+def _pop_perturbation():
+    """Initialize the perturbation population."""
+    pop_size = cfg.CONFIG["perturbation"]["pop_size"]
+    pop_perturbation = []
+
+    if cfg.CONFIG["search"]["seeds"] == "previous":
+        unique = BaseAlgorithm.remove_duplicates(seed_perturbations)
+        pop_perturbation += [creator.Perturbation(perturbation) for perturbation in (
+            random.sample(unique, pop_size) if len(unique) > pop_size else unique
+        )]
+
+    if len(pop_perturbation) < pop_size:
+        pop_perturbation += [creator.Perturbation(mr_set.generate_perturbation())
+                             for _ in range(pop_size - len(pop_perturbation))]
+
+    return pop_perturbation
 
 #: Defined :const:`DOMAIN_REGISTRY`.
 DOMAIN_REGISTRY = {
     "Scenario": ScenarioDefinition,
     "ScenarioInit": _pop_scenario,
     "Perturbation": Perturbations,
+    "PerturbationInit": _pop_perturbation,
     "Evaluation": ADSEvaluator,
     "MRSet": mr_set,
     "Config": "config.yaml",
