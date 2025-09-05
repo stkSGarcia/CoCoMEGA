@@ -9,6 +9,7 @@ from typing import List
 import networkx as nx
 import numpy as np
 from deap import base, creator, tools
+from dppy.finite_dpps import FiniteDPP
 from scipy.spatial.distance import pdist, squareform
 
 from impl import config as cfg
@@ -88,7 +89,12 @@ class BaseAlgorithm:
         (result_dir / f"solutions-{suffix}.pickle").write_bytes(pickle.dumps(results))
         (result_dir / f"evaluated-{suffix}.pickle").write_bytes(pickle.dumps(evaluated_solutions))
         (result_dir / f"statistics-{suffix}.pickle").write_bytes(pickle.dumps(self.logbook))
-        critical = self.post_analysis(results)
+        if cfg.CONFIG["search"]["critical"]["mode"] == "threshold":
+            critical = self.filter_by_thresholds(results,
+                                                 fitness_percentile=cfg.CONFIG["search"]["critical"]["fitness"],
+                                                 distance_percentile=cfg.CONFIG["search"]["critical"]["distance"])
+        else:
+            critical = self.dpp_sample(results, k=cfg.CONFIG["search"]["critical"]["k"])
         (result_dir / f"critical-{suffix}.pickle").write_bytes(pickle.dumps(critical))
         logger.info(f"Results dumped at {suffix}.")
 
@@ -195,9 +201,7 @@ class BaseAlgorithm:
         return pd
 
     @staticmethod
-    def post_analysis(solutions,
-                      fitness_percentile=cfg.CONFIG["search"]["critical"]["fitness"],
-                      distance_percentile=cfg.CONFIG["search"]["critical"]["distance"]):
+    def filter_by_thresholds(solutions, fitness_percentile=20, distance_percentile=20):
         """Filter solutions based on fitness and pairwise distance percentiles.
 
         :param solutions: Solutions to be filtered.
@@ -239,6 +243,38 @@ class BaseAlgorithm:
         # The points to remove are the complement of the independent set.
         # points_to_remove = set(range(n)) - points_to_keep
         return [sol for i, sol in enumerate(selected_solutions) if i in points_to_keep]
+
+    @staticmethod
+    def dpp_sample(solutions, k=None):
+        """Using Determinantal Point Process (DPP) to sample a subset of solutions.
+
+        :param solutions: Solutions to be sampled.
+        :param k: Size of the subset. If :data:`None`, the size will be estimated.
+        :return: Indices of the sampled solutions.
+        """
+        n = len(solutions)
+        if n < 3: return solutions
+        fitnesses = [sol.fitness.values[0] for sol in solutions]
+        assert np.any(fitnesses) > 0
+        dist_matrix = squareform(BaseAlgorithm.pairwise_distance(solutions))
+
+        sigma = np.std(dist_matrix)
+        similarity_matrix = np.exp(-dist_matrix ** 2 / (2 * sigma ** 2))
+        quality = np.diag(fitnesses)
+        L = quality @ similarity_matrix @ quality
+
+        eigvals, eigvecs = np.linalg.eigh(L)
+        eigvals[eigvals < 0] = 0
+        L = eigvecs @ np.diag(eigvals) @ eigvecs.T
+
+        if k is None:
+            eigvals = np.linalg.eigvalsh(L)
+            prob = eigvals / (eigvals + 1)
+            k = np.sum(np.random.rand(len(prob)) < prob)
+            k = max(2, min(k, n))
+
+        selected_indices = FiniteDPP("likelihood", L=L).sample_exact_k_dpp(size=k)
+        return [solutions[i] for i in selected_indices]
 
     @staticmethod
     def pairwise_distance(solutions):

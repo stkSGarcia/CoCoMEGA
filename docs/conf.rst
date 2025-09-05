@@ -102,12 +102,15 @@ Defines the budget and strategy of the search process:
 - ``seeds``: Specifies the source of seed scenarios for population initialization. Options are ``runtime`` to use
   collected runtime scenarios during runtime, ``previous`` to use previously generated solutions, and ``null`` to not
   use any seeds.
-- ``critical``: Thresholds for post analysis.
+- ``critical``: Configurations for critical analysis.
 
+  - ``mode``: The alogrithm employed for critical analysis. Options are ``dpp`` to use Determinantal Point Process, and
+    ``threshold`` to use fitness and distance thresholds to filter the solutions.
+  - ``k``: Size of the smapled subset. The size will be estimated if k is set to ``null``. Only used if ``mode`` is ``dpp``.
   - ``fitness``: Fitness percentile between 0 and 100. Solutions with fitness values below the threshold defined by this
-    percentile will be filtered.
+    percentile will be filtered. Only used if ``mode`` is ``threshold``.
   - ``distance``: Distance percentile between 0 and 100. Solutions whose pairwise distance to other solutions falls
-    below the threshold defined by this percentile will be filtered.
+    below the threshold defined by this percentile will be filtered. Only used if ``mode`` is ``threshold``.
 
 - ``constraint``: Apply constraints to penalize solutions based on distance from runtime scenarios.
 
