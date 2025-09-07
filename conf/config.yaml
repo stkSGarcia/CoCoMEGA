@@ -122,6 +122,8 @@ search:
     test: "v2"
   seeds: null  # Options: runtime, previous, null
   critical:
+    mode: dpp  # Options: dpp, threshold
+    k: null
     fitness: 20
     distance: 20
   constraint:
