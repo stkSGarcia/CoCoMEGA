@@ -218,7 +218,7 @@ class ScenarioDefinition(AbstractScenarioDefinition):
                 dist_matrix = cdist(np.array(actors, dtype=object).reshape((-1, 1)),
                                     np.array(other_actors, dtype=object).reshape((-1, 1)),
                                     lambda x, y: x[0].dist(y[0]))
-                dist += np.power(dist_matrix.min(axis=1 if len(actors) > len(other_actors) else 0), 2).sum()
+                dist += dist_matrix.min(axis=1 if len(actors) > len(other_actors) else 0).sum()
         return math.sqrt(dist)
 
     def mate(self, other, cxpb=cfg.CONFIG["scenario"]["cxpb"], **kwargs):

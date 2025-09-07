@@ -70,6 +70,11 @@ simulation:
   autopilot: true
   disable_spectator: true
   save_snapshot: false
+  standalone:
+    host: localhost
+    port: 1998
+    tm_port: 2498
+    gpu_device: 0
   instances:
     - host: localhost
       port: 2000

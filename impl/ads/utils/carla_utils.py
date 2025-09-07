@@ -28,7 +28,10 @@ def initialize_carla(host=None, port=None, tm_port=None, gpu_device=None, seed=2
     """
     try:
         # Initialize the Carla client and the world
-        conf = cfg.CONFIG["simulation"]["instances"][0]
+        if "standalone" in cfg.CONFIG["simulation"] and cfg.CONFIG["simulation"]["standalone"]:
+            conf = cfg.CONFIG["simulation"]["standalone"]
+        else:
+            conf = cfg.CONFIG["simulation"]["instances"][0]
         host = host or conf["host"]
         port = port or conf["port"]
         tm_port = tm_port or conf["tm_port"]
