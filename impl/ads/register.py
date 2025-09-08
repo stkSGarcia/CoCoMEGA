@@ -44,9 +44,16 @@ if (cfg.CONFIG["search"]["seeds"] == "runtime" or
 if cfg.CONFIG["search"]["seeds"] == "previous":
     seed_solutions = []
     for data_path in cfg.CONFIG["workspace"]["previous_solution"].rglob("*.*"):
-        seed_solutions = pickle.loads(data_path.read_bytes())
+        seed_solutions += pickle.loads(data_path.read_bytes())
     if len(seed_solutions) == 0:
         raise ValueError("No previous solutions found.")
+    seed_solutions = BaseAlgorithm.dpp_sample(seed_solutions, k=min(
+        len(seed_solutions),
+        max(
+            cfg.CONFIG["scenario"]["pop_size"],
+            cfg.CONFIG["perturbation"]["pop_size"]
+        ) * cfg.CONFIG["scenario"]["init_selection_factor"]
+    ))
     seed_scenarios, seed_perturbations = zip(*seed_solutions)
 
 
