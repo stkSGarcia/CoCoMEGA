@@ -494,7 +494,7 @@ class ADSEvaluator(BaseEvaluator):
         :return: Tuple (evaluated_solutions, number_of_simulations).
         """
 
-        reeval = []  # Solutions need to be reevaluated.
+        reeval = []
         results, sim_num = self.run_scenarios(scenarios)
         for solution, source, follow_up in zip(solutions, results[::2], results[1::2]):
             if source is not None and follow_up is not None:
@@ -590,9 +590,9 @@ class ADSEvaluator(BaseEvaluator):
                 eval_data.fitness = None
             setattr(solution, agent_name, eval_data)
 
-        # reeval_sim_num = _reevaluate(reeval)
+        reeval_sim_num = self._reevaluate_dt(reeval, agent_name)
 
-        return solutions, sim_num  # + reeval_sim_num
+        return solutions, sim_num + reeval_sim_num
 
     def _reevaluate(self, solutions):
         """Reevaluate selected solutions multiple times and aggregate the results.
@@ -662,6 +662,79 @@ class ADSEvaluator(BaseEvaluator):
                 solution.follow_up = selected_candidate["follow_up"]
                 solution.is_violated = selected_candidate["is_violated"]
 
+        return sim_num
+
+    def _reevaluate_dt(self, solutions, agent_name):
+        """Reevaluate selected solutions multiple times and aggregate the results.
+
+        :param solutions: List of solutions flagged for reevaluation.
+        :param agent_name: Name of the agent to run simulations with.
+        :return: Total number of simulations performed during reevaluation.
+        """
+        if len(solutions) == 0:
+            return 0
+        repeat = cfg.CONFIG["violation"]["reevaluation"]["repeat"]
+        aggregation = cfg.CONFIG["violation"]["reevaluation"]["aggregation"]
+        scenarios = []
+        for solution in solutions:
+            eval_data = getattr(solution, agent_name)
+            eval_data.eval_history = [{
+                "source": eval_data.source.copy(),
+                "follow_up": eval_data.follow_up.copy(),
+                "is_violated": eval_data.is_violated,
+                "fitness": deepcopy(eval_data.fitness),
+            }]
+            eval_data.aggregation = aggregation
+            for repetition in range(1, repeat):
+                source = deepcopy(solution[0])
+                source.assign_new_id()
+                scenarios.append(source)
+                follow_up = deepcopy(solution[0])
+                follow_up.assign_new_id()
+                solution[1].perturb(follow_up)
+                scenarios.append(follow_up)
+        assert len(scenarios) == len(solutions) * 2 * (repeat - 1)
+        results, sim_num = self.run_scenarios(scenarios, agent_name=agent_name, rerun=True)
+
+        for i, source, follow_up in zip(range(len(solutions) * (repeat - 1)), results[::2], results[1::2]):
+            solution = solutions[int(i / (repeat - 1))]
+            eval_data = getattr(solution, agent_name)
+            fitness = deepcopy(eval_data.fitness)
+            if source is not None and follow_up is not None:
+                is_violated, extent = self.fitness(source, follow_up)
+                if extent:
+                    fitness.values = extent
+                else:
+                    del fitness.values
+            else:
+                is_violated = False
+                del fitness.values
+
+            eval_data.eval_history.append({
+                "source": source,
+                "follow_up": follow_up,
+                "is_violated": is_violated,
+                "fitness": fitness,
+            })
+
+        for solution in solutions:
+            eval_data = getattr(solution, agent_name)
+            fitnesses = [(ev["fitness"].values[0] if ev["fitness"].valid else np.nan) for ev in eval_data.eval_history]
+            num_nan_fitnesses = len([f for f in fitnesses if np.isnan(f)])
+            if num_nan_fitnesses > float(repeat) / 2:
+                eval_data.fitness = None
+                eval_data.source = None
+                eval_data.follow_up = None
+                eval_data.is_violated = False
+            else:
+                aggregate_value = getattr(np, f"nan{aggregation}")(fitnesses)
+                aggregation_arg = np.nanargmin(np.abs([f - aggregate_value for f in fitnesses]))
+                selected_candidate = eval_data.eval_history[aggregation_arg]
+
+                eval_data.fitness = (aggregate_value,)
+                eval_data.source = selected_candidate["source"]
+                eval_data.follow_up = selected_candidate["follow_up"]
+                eval_data.is_violated = selected_candidate["is_violated"]
         return sim_num
 
     def _penalize(self, fitness, similarity):
