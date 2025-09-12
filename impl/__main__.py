@@ -97,22 +97,21 @@ def simulate(num: int, file: str):
             [ScenarioDefinition.generate_random_or_leaderboard() for _ in range(num)])
 
 
-def collect_runtime_data(agent: str, output: str):
-    """Run free simulations to collect runtime data for a specific agent.
-
+def fetch_realtime_data(agent: str, output: str):
+    """Run free simulations to fetch realtime data for a specific agent.
     :param agent: Name or version of the agent.
-    :param output: Path to save the collected runtime data.
+    :param output: Path to save the collected realtime data.
     """
     from impl.ads.evaluation.simulation_runner import run_free_environments
-    os.environ["tag"] = "collect_runtime_data"
+    os.environ["tag"] = "fetch_realtime_data"
     if output is None:
         output = cfg.CONFIG["workspace"]["runtime_data"]
         cp_root = cfg.CONFIG["workspace"]["data_collection_checkpoint"]
     else:
-        cp_root = os.path.join(output, 'checkpoints')
-    logger.info(f"Running free simulation environment for agent {agent} to collect runtime data...")
+        cp_root = os.path.join(output, "checkpoints")
+    logger.info(f"Running free simulation environment for agent {agent} to fetch realtime data...")
 
-    os.makedirs(cfg.CONFIG["workspace"]["train_data"], exist_ok=True)
+    os.makedirs(cfg.CONFIG["workspace"]["realtime_data"], exist_ok=True)
     os.makedirs(output, exist_ok=True)
 
     agent_conf = cfg.CONFIG["interfuser"].copy()
@@ -337,11 +336,11 @@ if __name__ == "__main__":
     parser_sim.add_argument("-f", "--file", default=None, help="solution file")
     parser_sim.set_defaults(func=lambda args: simulate(args.number, args.file))
 
-    parser_crd = subparsers.add_parser("collect_runtime_data",
-                                       help="Execute free environments to collect runtime data.")
+    parser_crd = subparsers.add_parser("fetch_realtime_data",
+                                       help="Execute free environments to fetch realtime data.")
     parser_crd.add_argument("-a", "--agent", type=str, default="v1", help="Agent version or name")
     parser_crd.add_argument("--output", type=str, default=None, help="Path of output directory")
-    parser_crd.set_defaults(func=lambda args: collect_runtime_data(args.agent, args.output))
+    parser_crd.set_defaults(func=lambda args: fetch_realtime_data(args.agent, args.output))
 
     parser_gtd = subparsers.add_parser("generate_train_data", help="Generate training data using a rule-based agent")
     parser_gtd.set_defaults(func=lambda args: generate_train_data())

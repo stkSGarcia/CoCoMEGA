@@ -8,7 +8,7 @@ workspace:
   test_result: tests
   data_collection_checkpoint: data_collection_checkpoints
   data_gen_checkpoint: data_gen_checkpoints
-  runtime_data: runtime_data
+  realtime_data: realtime_data
   runtime_scenario: runtime_scenario
   previous_solution: previous_solutions
   train_data: train_data

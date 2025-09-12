@@ -771,7 +771,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             Image.fromarray(tick_data["surface"]).save(
                 self.save_path / "meta" / ("%04d.jpg" % frame)
             )
-        # print("####################Saving runtime Data...####################")
+        # print("####################Saving realtime Data...####################")
         with open(os.path.join(self.save_path, f"tick_data_{frame:04d}.pkl"), 'wb') as _f:
             pickle.dump(tick_data, _f)
             self.num_collected += 1
