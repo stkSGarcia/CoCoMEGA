@@ -212,10 +212,6 @@ The core components of the framework are located in the `impl/core/` directory. 
 - `mr/`: Defines abstract metamorphic relations and mechanisms to implement them.
 - `scenario/`: Manages scenario definition, execution, and evaluation in simulation environments.
 
-### Algorithm Module (`impl/core/algorithm/`)
-The algorithm module contains implementations of the search strategies, including CoCoMagic’s algorithm and baseline methods:
-
-
 ### Domain-specific Modules (`impl/ads`)
 The `impl/ads/` directory contains domain-specific implementations for autonomous driving systems (ADS). This includes scenario definitions, MR definitions, and evaluation logic specific to the CARLA simulator and InterFuser agent. The key submodules are:
 - `agent/`: Contains the implementation of the InterFuser agent, including loading the model and initializing sensors.
