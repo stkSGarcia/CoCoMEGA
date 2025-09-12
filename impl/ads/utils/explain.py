@@ -74,7 +74,11 @@ def vectorize(solutions, mode="stats"):
             follow_up.vectorize(max_actors, prefix="follow_up", mode="stats"),
         ], axis=1) for source, follow_up in zip(source_scens, follow_up_scens)]
     raw_vectors = pd.concat(vector_dfs, ignore_index=True)
+    vectors, features = _preprocess_vectors(raw_vectors)
+    return vectors, fitnesses, fitnesses_v1, fitnesses_v2, features
 
+
+def _preprocess_vectors(raw_vectors):
     categorical_cols, categories_list = [], []
     for col in raw_vectors.columns:
         if all(key not in col for key in CATEGORIES.keys()): continue
@@ -97,7 +101,7 @@ def vectorize(solutions, mode="stats"):
     transformed_array = preprocessor.fit_transform(raw_vectors)
     features = preprocessor.get_feature_names_out()
     vectors = pd.DataFrame(transformed_array, columns=features).fillna(-999)
-    return vectors, fitnesses, fitnesses_v1, fitnesses_v2, features
+    return vectors, features
 
 
 def model_fit(X, y):
@@ -332,3 +336,26 @@ def scoring(model_v1, model_v2, X, clip=2.0, alpha=0.5, epsilon=1e-6):
     G = np.power(f_clipped, sign_D)
 
     return np.sum(W * D), D, W
+
+
+def vectorize_scenario(scenarios, rules):
+    raw_vectors = pd.concat([scenario.vectorize(-1, prefix="source", mode="stats") for scenario in scenarios],
+                            ignore_index=True)
+    vectors, features = _preprocess_vectors(raw_vectors)
+
+    for i, row in rules[(rules.coef != 0) & (rules.type != "linear")].iterrows():
+        rule = row["rule"]
+        vectors[rule] = 0
+
+        conditions = [cond.strip() for cond in rule.split("and")]
+        filtered_conditions = []
+        for cond in conditions:
+            feature = cond.split()[0]
+            if feature in features:
+                filtered_conditions.append(cond)
+        if not filtered_conditions: continue
+        filtered_rule = " and ".join(filtered_conditions)
+
+        match_idx = vectors.query(filtered_rule).index
+        vectors.loc[match_idx, rule] = 1
+    return vectors
