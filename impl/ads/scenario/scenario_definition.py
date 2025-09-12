@@ -577,9 +577,11 @@ class ScenarioDefinition(AbstractScenarioDefinition):
                     self.trajectory["start"]["x"], self.trajectory["start"]["y"], self.trajectory["start"][
                         "z"] = x, y, z
                 except InvalidScenarioDefinitionError:
-                    logger.warning(f"Unable to change the starting position.")
+                    pass
+                    # logger.warning(f"Unable to change the starting position.")
             else:
-                logger.warning(f"Unable to change the starting position.")
+                pass
+                # logger.warning(f"Unable to change the starting position.")
         else:
             self.ego_vehicle.update_attribute(category, value)
 
