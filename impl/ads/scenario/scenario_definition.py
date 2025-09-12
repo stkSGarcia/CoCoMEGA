@@ -617,7 +617,8 @@ class ScenarioDefinition(AbstractScenarioDefinition):
                 is_changed = True
                 actor.update_attribute(attribute, value)
         if not is_changed:
-            logger.warning(f"No marked actor in {category}.")
+            pass
+            # logger.warning(f"No marked actor in {category}.")
 
     @staticmethod
     def _random_pick_actor(actors, region: Boundary.Region = None):
@@ -970,7 +971,8 @@ class Actor(ABC):
         """
         old_value = getattr(self, category)
         if value == old_value:
-            logger.warning(f"The new {category} value is identical to the original.")
+            pass
+            # logger.warning(f"The new {category} value is identical to the original.")
         setattr(self, category, value)
 
     def get_config(self):

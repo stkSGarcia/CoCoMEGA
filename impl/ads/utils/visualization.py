@@ -1061,8 +1061,8 @@ def visualize_computational_efficiency_v2(projects: Dict[str, List[str]], save_p
             solution_file = next((cfg.CONFIG["workspace"]["result"] / project / "solutions") \
                                  .rglob("solutions*"), None)
 
-            start_time = datetime.fromtimestamp(config_file.stat().st_ctime)
-            end_time = datetime.fromtimestamp(solution_file.stat().st_ctime)
+            start_time = datetime.fromtimestamp(config_file.stat().st_mtime)
+            end_time = datetime.fromtimestamp(solution_file.stat().st_mtime)
             duration = end_time - start_time
             duration_hour = duration.total_seconds() / 3600
             exec_data[alg].append(duration_hour)
