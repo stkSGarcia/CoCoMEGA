@@ -120,7 +120,7 @@ def make_yamls():
             raise e
 
 
-def vectorize_runtime_data(rt_data):
+def vectorize_realtime_data(rt_data):
     """
     Convert runtime simulation data into a :class:`ScenarioDefinition` object.
 
@@ -158,6 +158,16 @@ def vectorize_runtime_data(rt_data):
         if other_actor["tpe"] == 2:
             scenario_def.statics.append(Static(radius=radius, angle=relative_angle, yaw=yaw, model=0))
     return scenario_def
+
+
+def rulefit_vectorize(rt_data):
+    """
+    Convert runtime simulation data into a feature vector based on the generated rules from Rulefit model.
+
+    :param rt_data: Dictionary containing runtime simulation data.
+    :return: Feature vector representing the scenario.
+    """
+    return np.ones(100)
 
 
 def create_dataset_index(dataset_root, weathers=None, towns=None):

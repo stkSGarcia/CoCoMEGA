@@ -17,7 +17,7 @@ from impl.ads.evaluation.simulation_runner import ADSEvaluator
 from impl.ads.scenario.scenario_definition import ScenarioDefinition
 from impl.ads.utils.docker_utils import cleanup_containers
 from impl.ads.utils.leaderboad_utils import get_enviroment_confs, make_yamls, create_dataset_index, \
-    vectorize_runtime_data
+    vectorize_realtime_data
 from impl.core.algorithm.ccea import CCEA
 from impl.core.algorithm.ga import GeneticAlgorithm
 from impl.core.algorithm.moccea import MOCCEA
@@ -105,7 +105,7 @@ def fetch_realtime_data(agent: str, output: str):
     from impl.ads.evaluation.simulation_runner import run_free_environments
     os.environ["tag"] = "fetch_realtime_data"
     if output is None:
-        output = cfg.CONFIG["workspace"]["runtime_data"]
+        output = cfg.CONFIG["workspace"]["realtime_data"]
         cp_root = cfg.CONFIG["workspace"]["data_collection_checkpoint"]
     else:
         cp_root = os.path.join(output, "checkpoints")
@@ -121,6 +121,7 @@ def fetch_realtime_data(agent: str, output: str):
     workspace_conf = {
         "cp_root": cp_root,
         "output_root": output,
+        "scenario_dataset": cfg.CONFIG["workspace"]["runtime_scenario"],
     }
 
     exec_conf = {
@@ -269,11 +270,11 @@ def convert2scenarios(directory: str, n: int, towns: List[str]):
         """
         towns_lower = [name.lower() for name in towns] if isinstance(towns, list) else None
         try:
-            runtime_data = pickle.loads(path.read_bytes())
-            if towns is not None and runtime_data["sim_data"]["town"].lower() not in towns_lower:
+            realtime_data = pickle.loads(path.read_bytes())
+            if towns is not None and realtime_data["sim_data"]["town"].lower() not in towns_lower:
                 logger.info("Scenario town is not in one of the selected towns. skipping...")
                 return None
-            return vectorize_runtime_data(runtime_data)
+            return vectorize_realtime_data(realtime_data)
         except Exception as e:
             logger.error(f"Failed to vectorize runtime data from {path}, error message {e}.")
             return None

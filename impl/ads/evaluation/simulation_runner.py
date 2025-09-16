@@ -126,7 +126,7 @@ def run_environment(conf):
 
     # Set environment variables as in the bash script
     child_env.update({
-        "DATA_ROOT": str(cfg.CONFIG["workspace"]["runtime_data"]),
+        "DATA_ROOT": str(cfg.CONFIG["workspace"]["realtime_data"]),
         "CARLA_ROOT": os.path.join(cfg.CONFIG["interfuser"]["repo"], "carla"),
         "CARLA_SERVER": os.path.join(cfg.CONFIG["interfuser"]["repo"], "carla", "CarlaUE4.sh"),
         "CARLA_WEATHER": str(conf["weather"]),
@@ -150,32 +150,35 @@ def run_environment(conf):
         "COLLECTION_DURATION": conf.get("collection_duration", "None"),
         "COLLECTION_INTERVAL": conf.get("collection_interval", "None"),
         "COLLECTION_ROUTE_LIMIT": conf.get("collection_route_limit", "None"),
+        "SCENARIO_DATASET": conf.get("scenario_dataset", "None"),
         # Add RECORD_PATH if needed
         # "RECORD_PATH": "path/to/record",
     })
 
-    child_env["PYTHONPATH"] = os.pathsep.join(sys.path)
+    pp_parent = os.environ.get("PYTHONPATH", "")
+    pp_added = os.pathsep.join(sys.path)
+    child_env["PYTHONPATH"] = os.pathsep.join([p for p in [pp_parent, pp_added] if p])
 
-    command = (
+    command = [
         # f"{sys.executable} {os.path.join(CONFIG['interfuser']['repo'], 'leaderboard/leaderboard/leaderboard_evaluator.py')}"
-        f"{sys.executable} {os.path.join('impl', 'ads', 'evaluation', 'leaderboard_evaluator.py')}"
-        f" --scenarios {scenarios}"
-        f" --routes {routes}"
-        f" --repetitions 1"
-        f" --track SENSORS"
-        f" --checkpoint {cp_path}"
-        f" --agent {conf['agent_path']}"
-        f" --agent-config {conf['agent_config']}"
-        f" --debug 0"
-        f" --resume True"
-        f" --port {carla_port}"
-        f" --host {carla_host}"
-        f" --trafficManagerPort {tm_port}"
-        f" --carlaProviderSeed 2000"
-        f" --trafficManagerSeed 2000"
-    )
+        f"{sys.executable}", f"{os.path.join('impl', 'ads', 'evaluation', 'leaderboard_evaluator.py')}",
+        f"--scenarios", f"{scenarios}",
+        f"--routes", f"{routes}",
+        f"--repetitions", f"1",
+        f"--track", f"SENSORS",
+        f"--checkpoint", f"{cp_path}",
+        f"--agent", f"{conf['agent_path']}",
+        f"--agent-config", f"{conf['agent_config']}",
+        f"--debug", "0",
+        f"--resume", "True",
+        f"--port", f"{carla_port}",
+        f"--host", f"{carla_host}",
+        f"--trafficManagerPort", f"{tm_port}",
+        f"--carlaProviderSeed", "2000",
+        f"--trafficManagerSeed", "2000",
+    ]
 
-    process = subprocess.run(command, env=child_env, check=True, shell=True, text=True, stdout=None, stderr=None)
+    process = subprocess.run(command, env=child_env, check=True, shell=False, text=True, stdout=None, stderr=None)
 
     return process.returncode
 

@@ -21,6 +21,7 @@ from leaderboard.autoagents import autonomous_agent
 from impl.ads.evaluation.exceptions import AgentTerminationSignal
 from impl.ads.utils.carla_utils import location_to_dict, get_direction
 from impl.ads.utils.leaderboad_utils import estimate_other_actor_data
+from impl.ads.scenario.runtime import RuntimeScenarioManager
 from timm.models import create_model
 from team_code.utils import lidar_to_histogram_features, transform_2d_points
 from team_code.planner import RoutePlanner
@@ -244,6 +245,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         :param additional_config: Additional runtime configurations.
         """
         self.video_recorder = None
+        self.scenario_manager = None
         self.additional_config = additional_config
         super().__init__(path_to_conf_file)
         self._vehicle = None
@@ -269,6 +271,10 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
 
         if self.additional_config is not None and "recording_save_path" in self.additional_config:
             self.video_recorder = VideoRecorder(self.additional_config["recording_save_path"])
+
+        if os.environ.get("SCENARIO_DATASET", None) is not None:
+            self.scenario_manager = RuntimeScenarioManager(os.environ.get("SCENARIO_DATASET"))
+            self.scenario_manager.start()
 
         self.lidar_processed = list()
         self.track = autonomous_agent.Track.SENSORS
@@ -772,9 +778,14 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
                 self.save_path / "meta" / ("%04d.jpg" % frame)
             )
         # print("####################Saving realtime Data...####################")
-        with open(os.path.join(self.save_path, f"tick_data_{frame:04d}.pkl"), 'wb') as _f:
-            pickle.dump(tick_data, _f)
-            self.num_collected += 1
+
+        if self.scenario_manager:
+            meta = {"step": self.step, "frame": frame}
+            self.scenario_manager.submit(tick_data, meta)
+        else:
+            with open(os.path.join(self.save_path, f"tick_data_{frame:04d}.pkl"), 'wb') as _f:
+                pickle.dump(tick_data, _f)
+                self.num_collected += 1
         return
 
     def destroy(self):
