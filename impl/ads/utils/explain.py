@@ -368,3 +368,6 @@ def vectorize_scenarios(scenarios, keep_original=False):
         match_idx = vectors.query(filtered_rule).index
         vectors.loc[match_idx, rule] = 1
     return vectors if keep_original else vectors[RULE_FEATURES].copy()
+
+def save_rules(rules, filename):
+    (cfg.CONFIG["workspace"]["rulefit"] / filename).write_bytes(pickle.dumps(rules[rules.coef != 0]))
