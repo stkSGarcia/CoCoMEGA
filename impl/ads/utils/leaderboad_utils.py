@@ -6,6 +6,7 @@ import numpy as np
 from impl import config as cfg
 from impl.ads.scenario.scenario_definition import ScenarioDefinition, Vehicle, Walker, Static
 from impl.ads.utils.carla_utils import trajectory_interpolation, location_to_dict, compass_to_yaw
+from impl.ads.utils.explain import vectorize_scenarios
 from impl.ads.utils.math_utils import cartesian_to_polar, vector_norm, polar_to_cartesian
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
@@ -160,14 +161,14 @@ def vectorize_realtime_data(rt_data):
     return scenario_def
 
 
-def rulefit_vectorize(rt_data):
+def rulefit_vectorize(scenario):
     """
-    Convert runtime simulation data into a feature vector based on the generated rules from Rulefit model.
+    Convert a generated :class:`ScenarioDefinition` instance into a feature vector based on the generated rules from Rulefit model.
 
-    :param rt_data: Dictionary containing runtime simulation data.
+    :param scenario: Generated :class:`ScenarioDefinition` instance.
     :return: Feature vector representing the scenario.
     """
-    return np.ones(100)
+    return vectorize_scenarios([scenario])
 
 
 def create_dataset_index(dataset_root, weathers=None, towns=None):

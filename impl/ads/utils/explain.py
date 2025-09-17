@@ -1,4 +1,5 @@
 import logging
+import pickle
 import time
 from copy import deepcopy
 
@@ -28,6 +29,15 @@ CATEGORIES = {
     "traj_direction": ["forward", "left", "right"],
     "model": list(range(0, 23)),
 }
+
+RULES = []
+for data_path in cfg.CONFIG["workspace"]["rulefit"].rglob("*.pkl"):
+    RULES.append(pickle.loads(data_path.read_bytes()))
+if len(RULES) > 0:
+    RULES = pd.concat(RULES, ignore_index=True)
+    RULES = RULES.drop_duplicates(subset=["rule"]).reset_index(drop=True)
+    RULES = RULES[(RULES.coef != 0) & (RULES.type != "linear")]
+    RULE_FEATURES = list(RULES["rule"])
 
 
 def vectorize(solutions, mode="stats"):
@@ -338,24 +348,23 @@ def scoring(model_v1, model_v2, X, clip=2.0, alpha=0.5, epsilon=1e-6):
     return np.sum(W * D), D, W
 
 
-def vectorize_scenario(scenarios, rules):
+def vectorize_scenarios(scenarios, keep_original=False):
+    if len(RULES) == 0 and not keep_original: return pd.DataFrame()
+
     raw_vectors = pd.concat([scenario.vectorize(-1, prefix="source", mode="stats") for scenario in scenarios],
                             ignore_index=True)
     vectors, features = _preprocess_vectors(raw_vectors)
+    if len(RULES) == 0: return vectors
 
-    for i, row in rules[(rules.coef != 0) & (rules.type != "linear")].iterrows():
+    for i, row in RULES.iterrows():
         rule = row["rule"]
         vectors[rule] = 0
 
         conditions = [cond.strip() for cond in rule.split("and")]
-        filtered_conditions = []
-        for cond in conditions:
-            feature = cond.split()[0]
-            if feature in features:
-                filtered_conditions.append(cond)
+        filtered_conditions = [cond for cond in conditions if cond.split()[0] in features]
         if not filtered_conditions: continue
         filtered_rule = " and ".join(filtered_conditions)
 
         match_idx = vectors.query(filtered_rule).index
         vectors.loc[match_idx, rule] = 1
-    return vectors
+    return vectors if keep_original else vectors[RULE_FEATURES].copy()

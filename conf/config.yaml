@@ -15,6 +15,7 @@ workspace:
   trained_models: trained_models
   recordings: recordings
   exp_result: exp_results
+  rulefit: rulefit
 
 interfuser:
   repo: "../InterFuser"
