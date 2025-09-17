@@ -370,4 +370,4 @@ def vectorize_scenarios(scenarios, keep_original=False):
     return vectors if keep_original else vectors[RULE_FEATURES].copy()
 
 def save_rules(rules, filename):
-    (cfg.CONFIG["workspace"]["rulefit"] / filename).write_bytes(pickle.dumps(rules[rules.coef != 0]))
+    (cfg.CONFIG["workspace"]["rulefit"] / f"{filename}.pkl").write_bytes(pickle.dumps(rules[rules.coef != 0]))
