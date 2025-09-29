@@ -10,6 +10,8 @@ from impl.ads.utils.docker_utils import setup_carla
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from leaderboard.utils.route_manipulation import interpolate_trajectory
 
+from impl.ads.utils.visualization import default_style
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,14 +30,14 @@ def initialize_carla(host=None, port=None, tm_port=None, gpu_device=None, seed=2
     """
     try:
         # Initialize the Carla client and the world
-        if "standalone" in cfg.CONFIG["simulation"] and cfg.CONFIG["simulation"]["standalone"]:
-            conf = cfg.CONFIG["simulation"]["standalone"]
+        if "standalone" in cfg.CONFIG["docker"] and cfg.CONFIG["docker"]["standalone"]:
+            default_conf = cfg.CONFIG["docker"]["standalone"]
         else:
-            conf = cfg.CONFIG["simulation"]["instances"][0]
-        host = host or conf["host"]
-        port = port or conf["port"]
-        tm_port = tm_port or conf["tm_port"]
-        gpu_device = gpu_device or conf["gpu_device"]
+            default_conf = cfg.CONFIG["simulation"]["instances"][0]
+        host = host or default_conf["host"]
+        port = port or default_conf["port"]
+        tm_port = tm_port or default_conf["tm_port"]
+        gpu_device = gpu_device or default_conf["gpu_device"]
         if cfg.CONFIG["docker"]["enabled"]:
             setup_carla(container_name=f"{cfg.CONFIG['docker']['image']}-{tag}-{port}",
                         port=port,

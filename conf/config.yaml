@@ -57,6 +57,11 @@ docker:
   memory: 2g
   shared_memory: 1g
   cpu: 1.5
+  standalone:
+    host: localhost
+    port: 1998
+    tm_port: 2498
+    gpu_device: 0
 
 simulation:
   parallel: true
@@ -71,11 +76,6 @@ simulation:
   autopilot: true
   disable_spectator: true
   save_snapshot: false
-  standalone:
-    host: localhost
-    port: 1998
-    tm_port: 2498
-    gpu_device: 0
   instances:
     - host: localhost
       port: 2000
@@ -102,6 +102,11 @@ runtime:
   collection_duration: 10 # The duration of data collection (in seconds)
   collection_interval: 5 # The interval between each data collection (in seconds)
   collection_route_limit: 0 # Maximum number of collected runtime data for each route (use 0 for no-limit)
+  novelty_detection:
+    enabled: true
+    strategy: "dpp_stream" # Options: "dpp_stream", "cosine_max"
+    angle_threshold_deg: 20.0
+    dpp_max_selected: null # Set`null` to make it unlimited
   instances:
     - host: localhost
       port: 2100
