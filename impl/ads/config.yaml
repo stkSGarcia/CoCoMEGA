@@ -6,4 +6,3 @@ interfuser:
       agent_config: "impl/ads/agent/interfuser_config_v1.py"
     - name: "v2"
       agent_config: "impl/ads/agent/interfuser_config_v2.py"
-

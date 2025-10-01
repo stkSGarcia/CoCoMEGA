@@ -3,15 +3,8 @@ import pickle
 import time
 from copy import deepcopy
 
-import joblib
 import numpy as np
 import pandas as pd
-import shap
-import xgboost as xgb
-from imodels import RuleFitRegressor
-from matplotlib import pyplot as plt
-from scipy import stats
-from scipy.stats import randint, uniform
 from sklearn.compose import ColumnTransformer
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 from sklearn.model_selection import cross_val_score, RandomizedSearchCV
@@ -121,6 +114,13 @@ def model_fit(X, y):
     :param y: Target values.
     :return: The best model.
     """
+    # Lazy imports to avoid heavy dependencies at import time
+    import xgboost as xgb
+    from scipy.stats import randint, uniform
+    import joblib
+    from matplotlib import pyplot as plt
+    from scipy import stats
+
     X_train, X_test, y_train, y_test = train_test_split(X, np.array(y), test_size=0.2, random_state=42)
 
     logger.info(f"\n{'=' * 50}\nRANDOMIZED SEARCH\n{'=' * 50}")
@@ -282,6 +282,8 @@ def generate_rules(X, y, features, base_model=None, max_rules=10):
     :param max_rules: Maximum number of rules to generate.
     :return: Rule model.
     """
+    # Lazy import to avoid requiring imodels unless used
+    from imodels import RuleFitRegressor
     model = RuleFitRegressor(max_rules=max_rules, tree_generator=base_model, exp_rand_tree_size=False) \
         if base_model else RuleFitRegressor(max_rules=max_rules)
     model.fit(X, y, feature_names=features)
@@ -295,6 +297,7 @@ def explain(model, X):
     :param X: The data.
     :return: :class:`Explanation` object.
     """
+    import shap
     explainer = shap.TreeExplainer(model)
     return explainer(X)
 
@@ -305,6 +308,8 @@ def visualize_explanation(explanation, dependence_plot=False):
     :param explanation: :class:`Explanation` object to visualize.
     :param dependence_plot: Whether to show the dependence plots.
     """
+    import shap
+    from matplotlib import pyplot as plt
     shap.plots.initjs()
     plt.figure()
     shap.plots.beeswarm(explanation, max_display=20, show=False)

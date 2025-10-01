@@ -129,7 +129,7 @@ def fetch_realtime_data(agent: str, output: str):
         "collection_delay_upper": str(cfg.CONFIG["runtime"]["collection_delay"][1]),
         "collection_duration": str(cfg.CONFIG["runtime"]["collection_duration"]),
         "collection_interval": str(cfg.CONFIG["runtime"]["collection_interval"]),
-        "collection_route_limit": str(cfg.CONFIG["runtime"]["collection_route_limit"]),
+        "submition_route_limit": str(cfg.CONFIG["runtime"]["submition_route_limit"]),
     }
 
     environment_confs = get_enviroment_confs()

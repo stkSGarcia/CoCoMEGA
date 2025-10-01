@@ -295,7 +295,7 @@ Control the runtime environments for runtime data collection:
 - `collection_delay`: Contains **\[lower, upper\]** in seconds. For each route, data collection starts after a random time between lower and upper.
 - `collection_duration`: The duration of data collection (in seconds).
 - `collection_interval`: The interval between each data collection (in seconds).
-- `collection_route_limit`: Maximum number of collected runtime data for each route (use 0 for no-limit).
+- `submition_route_limit`: Maximum number of submited runtime data for each route (use 0 for no-limit).
 - `instances` Carla docker instances for simulating runtime environments (controls the extent of parallelization for data collection).
 
 ### Search Algorithm Parameters

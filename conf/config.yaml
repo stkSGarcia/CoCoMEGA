@@ -57,11 +57,6 @@ docker:
   memory: 2g
   shared_memory: 1g
   cpu: 1.5
-  standalone:
-    host: localhost
-    port: 1998
-    tm_port: 2498
-    gpu_device: 0
 
 simulation:
   parallel: true
@@ -85,6 +80,11 @@ simulation:
       port: 2002
       tm_port: 2502
       gpu_device: 1
+  standalone:
+    host: localhost
+    port: 1998
+    tm_port: 2498
+    gpu_device: 0
 
 runtime:
   parallel: true
@@ -98,15 +98,15 @@ runtime:
   # 11: "HardRainSunset", 12: "SoftRainNoon", 13: "SoftRainSunset", 14: "ClearNight", 15: "CloudyNight",
   # 16: "WetNight", 17: "WetCloudyNight", 18: "SoftRainNight", 19: "MidRainyNight", 20: "HardRainNight"
   #]
-  collection_delay: [ 1, 20 ] # [lower, upper] (in seconds), the collection starts after a random seconds between lower and upper
-  collection_duration: 10 # The duration of data collection (in seconds)
-  collection_interval: 5 # The interval between each data collection (in seconds)
-  collection_route_limit: 0 # Maximum number of collected runtime data for each route (use 0 for no-limit)
+  collection_delay: [ 0, 0 ] # [lower, upper] (in seconds), the collection starts after a random seconds between lower and upper
+  collection_duration: 0 # The duration of data collection per route in seconds (use 0 for until the end of the route)
+  collection_interval: 3 # The interval between each data collection (in seconds)
+  submition_route_limit: 0 # Maximum number of submited runtime data per route (use 0 for no-limit)
   novelty_detection:
-    enabled: true
-    strategy: "dpp_stream" # Options: "dpp_stream", "cosine_max"
-    angle_threshold_deg: 20.0
+    strategy: "dpp_stream" # Options: "none","dpp_stream", "cosine_max"
+    angle_threshold_deg: 10.0
     dpp_max_selected: null # Set`null` to make it unlimited
+    keep_zero_vectors: false # Set`true` to keep zero vectors
   instances:
     - host: localhost
       port: 2100

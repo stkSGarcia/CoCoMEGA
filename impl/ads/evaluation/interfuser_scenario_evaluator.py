@@ -144,14 +144,10 @@ class ScenarioEvaluator(object):
         """
         Cleanup the CARLA world and destroy all actors. Also resets internal states and watchdogs.
         """
-        # Simulation still running and in synchronous mode?
+        # Keep world synchronous; just disable autopilot/TM if needed
         if self.manager and self.manager.get_running_status() \
                 and hasattr(self, 'world') and self.world:
             self.world.set_weather(CarlaDataProvider.find_weather_presets()[0][0])
-            settings = self.world.get_settings()
-            settings.synchronous_mode = False
-            settings.fixed_delta_seconds = None
-            self.world.apply_settings(settings)
             if cfg.CONFIG["simulation"]["autopilot"]:
                 for v in CarlaDataProvider.get_world().get_actors().filter('vehicle.*'):
                     try:

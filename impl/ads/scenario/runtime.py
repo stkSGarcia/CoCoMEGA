@@ -4,6 +4,7 @@ import logging
 import numpy as np
 from typing import Dict, Any, Optional, Tuple, List
 from multiprocessing import Process, Queue
+import time
 
 from impl.ads.utils.dpp_streaming import DPPStreamingSelector
 from impl.ads.utils.leaderboad_utils import rulefit_vectorize, vectorize_realtime_data
@@ -22,14 +23,15 @@ class RuntimeScenarioManager:
     - supports both Cosine Max and Streaming DPP.
     """
 
-    def __init__(self, dataset_dir: str, strategy: str):
+    def __init__(self, dataset_dir: str, strategy: str, keep_zero_vectors: bool = False):
         """
         :param dataset_dir: Directory containing per-scenario files.
         """
         self.dataset_dir = dataset_dir
-        os.makedirs(self.dataset_dir, exist_ok=True)
+        if self.dataset_dir:
+            os.makedirs(self.dataset_dir, exist_ok=True)
 
-        if strategy in ("cosine_max", "dpp_stream",):
+        if strategy in ("none", "cosine_max", "dpp_stream",):
             self.strategy = strategy
         else:
             raise ValueError(f"Unknown strategy: {self.strategy}")
@@ -48,6 +50,8 @@ class RuntimeScenarioManager:
         self._entries: List[Dict[str, Any]] = []
         self._matrix: Optional[np.ndarray] = None
         self.counter: int = 0
+        # Run-wise unique id to avoid filename collisions across runs
+        self.run_id: str = f"{int(time.time() * 1000)}_{os.getpid()}"
 
     # ---------------- Public API ----------------
 
@@ -98,25 +102,44 @@ class RuntimeScenarioManager:
             try:
                 scenario = vectorize_realtime_data(tick_data)
                 vec = rulefit_vectorize(scenario)
-                feat = self._l2_normalize(vec)
-
-                # Novelty check
-                logger.info("[RuntimeScenarioManager] Processing new scenario, feature norm: %.4f",
-                            np.linalg.norm(feat))
-                if self.strategy == "dpp_stream":
-                    is_new = self._dpp_selector.consider(feat)
-                    logger.info("[RuntimeScenarioManager] DPP selected: %s", is_new)
-                elif self.strategy == "cosine_max":
-                    max_sim, best_idx = self._max_cosine_similarity(feat)
-                    logger.info("[RuntimeScenarioManager] Max similarity: %.4f (idx=%s)", max_sim, best_idx)
-                    is_new = (max_sim <= self.cosine_similarity_threshold)
+                
+                # check if vec is not all zeros
+                if np.all(vec == 0):
+                    logger.warning(f"[RuntimeScenarioManager] All zeros vector found for scenario {fname}")
+                    if self.keep_zero_vectors:
+                        is_new = True
+                    else:
+                        is_new = False
                 else:
-                    raise ValueError(f"Unknown strategy: {self.strategy}")
+                    feat = self._l2_normalize(vec)
+                    # Novelty check
+                    if self.strategy == "dpp_stream":
+                        is_new, d2, angle_deg = self._dpp_selector.consider(feat)
+                        if is_new and d2 is None:
+                            logger.info(f"[RuntimeScenarioManager] DPP selected: {is_new}, as there are no selected scenarios")
+                        elif not is_new and d2 is None:
+                            logger.info(f"[RuntimeScenarioManager] DPP selected: {is_new}, max selected reached")
+                        else:
+                            logger.info("[RuntimeScenarioManager] DPP selected: %s, d2: %.4f, angle_deg: %.4f", is_new, d2, angle_deg)
+                    elif self.strategy == "cosine_max":
+                        max_sim, best_idx = self._max_cosine_similarity(feat)
+                        if max_sim is None and best_idx is None:
+                            is_new = True
+                            logger.info(f"[RuntimeScenarioManager] Max cosine selected: {is_new}, as there are no selected scenarios")
+                        else:
+                            angle_deg = np.degrees(np.arccos(max_sim))
+                            is_new = (max_sim <= self.cosine_similarity_threshold)
+                            logger.info(f"[RuntimeScenarioManager] Max cosine selected: {is_new}, closest_idx={best_idx}, angle_deg: {angle_deg}")
+                        
+                    elif self.strategy == "none":
+                        logger.info("[RuntimeScenarioManager] No strategy selected, scenario accepted")
+                        is_new = True
+                    else:
+                        raise ValueError(f"Unknown strategy: {self.strategy}")
 
                 if is_new:
                     self.counter += 1
-                    fname = os.path.join(self.dataset_dir, f"scenario_{self.counter:05d}.pkl")
-                    print(fname)
+                    fname = os.path.join(self.dataset_dir, f"scenario_{self.run_id}_{self.counter:05d}.pkl")
                     with open(fname, "wb") as f:
                         pickle.dump(
                             {
@@ -159,7 +182,7 @@ class RuntimeScenarioManager:
 
     def _max_cosine_similarity(self, feat: np.ndarray) -> Tuple[float, Optional[int]]:
         if self._matrix is None or self._matrix.shape[0] == 0:
-            return -1.0, None
+            return None, None
         sims = (self._matrix @ feat.reshape(-1, 1)).reshape(-1)
         best_idx = int(np.argmax(sims))
         return float(sims[best_idx]), best_idx

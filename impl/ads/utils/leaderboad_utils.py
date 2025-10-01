@@ -129,7 +129,13 @@ def vectorize_realtime_data(rt_data):
     :return: Generated :class:`ScenarioDefinition` instance.
     """
     scenario_def = ScenarioDefinition._generate_empty_scenario()
-    trajectory = rt_data["sim_data"]["trajectory"]
+    trajectory = rt_data["sim_data"]["trajectory"].copy()
+    
+    # Ensure trajectory direction is supported (convert 'opposite' to 'forward')
+    if trajectory.get("direction") == "opposite":
+        logger.warning("Converting unsupported 'opposite' direction to 'forward' direction")
+        trajectory["direction"] = "forward"
+    
     scenario_def.set_trajectory({
         "town": rt_data["sim_data"]["town"],
         **trajectory,

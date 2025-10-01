@@ -252,12 +252,12 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         self._world = None
         self.collection_duration = int(os.getenv("COLLECTION_DURATION", 0))
         self.collection_interval = int(os.getenv("COLLECTION_INTERVAL", 0))
-        self.collection_route_limit = int(os.getenv("COLLECTION_ROUTE_LIMIT", 0))
+        self.submition_route_limit = int(os.getenv("SUBMITION_ROUTE_LIMIT", 0))
         collection_delay_lower = os.environ.get("COLLECTION_DELAY_LOWER", None)
         collection_delay_upper = os.environ.get("COLLECTION_DELAY_UPPER", None)
         self.collection_delay = random.randint(int(collection_delay_lower), int(collection_delay_upper)) \
             if collection_delay_lower is not None and collection_delay_upper is not None else None
-        self.num_collected = 0
+        self.num_submited = 0
 
     def setup(self, path_to_conf_file):
         """Set up agent's sensors and models.
@@ -272,9 +272,11 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         if self.additional_config is not None and "recording_save_path" in self.additional_config:
             self.video_recorder = VideoRecorder(self.additional_config["recording_save_path"])
 
-        if os.environ.get("SCENARIO_DATASET", None) is not None:
-            self.scenario_manager = RuntimeScenarioManager(os.environ.get("SCENARIO_DATASET"))
-            self.scenario_manager.start()
+        scenario_dataset = os.environ.get("SCENARIO_DATASET", None)
+        strategy = cfg.CONFIG["runtime"]["novelty_detection"].get("strategy", "none")
+        self.scenario_manager = RuntimeScenarioManager(scenario_dataset, strategy=strategy,
+            keep_zero_vectors=cfg.CONFIG["runtime"]["novelty_detection"].get("keep_zero_vectors", False))
+        self.scenario_manager.start()
 
         self.lidar_processed = list()
         self.track = autonomous_agent.Track.SENSORS
@@ -526,6 +528,14 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             self._init()
 
         self.step += 1
+
+        if (self.collection_duration > 0) \
+                and (self.step >= ((self.collection_delay + self.collection_duration) * self.frame_rate)):
+            raise AgentTerminationSignal("Agent requested scenario termination: Collection Timeout Reached!")
+
+        if (self.submition_route_limit > 0) and (self.num_submited >= self.submition_route_limit):
+            raise AgentTerminationSignal("Agent requested scenario termination: Submition Route Limit Reached!")
+
         if self.step % self.skip_frames != 0 and self.step > 4:
             return self.prev_control
 
@@ -753,7 +763,12 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
                     self.video_recorder.write_frame(surface)
 
             if SAVE_PATH is not None:
-                self.save(tick_data)
+                if ((self.collection_interval > 0) and (self.step % (self.collection_interval * self.frame_rate) != 0)) \
+                or ((self.collection_delay is not None) and (self.step < (self.collection_delay * self.frame_rate))):
+                    pass
+                    # logger.info(f"Skipping data collection at step {self.step} due to collection interval or delay.")
+                else:
+                    self.save(tick_data)
 
         return control
 
@@ -762,36 +777,33 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
 
         :param tick_data: Tick data to be saved.
         """
-        if ((self.collection_interval > 0) and (self.step % (self.collection_interval * self.frame_rate) != 0)) \
-                or ((self.collection_delay is not None) and (self.step < (self.collection_delay * self.frame_rate))):
-            return
-        if (self.collection_duration > 0) \
-                and (self.step >= ((self.collection_delay + self.collection_duration) * self.frame_rate)):
-            raise AgentTerminationSignal("Agent requested scenario termination: Collection Timeout Reached!")
-
-        if (self.collection_route_limit > 0) and (self.num_collected >= self.collection_route_limit):
-            raise AgentTerminationSignal("Agent requested scenario termination: Collection Route Limit Reached!")
 
         frame = self.step // self.skip_frames
         if display_agent:
             Image.fromarray(tick_data["surface"]).save(
                 self.save_path / "meta" / ("%04d.jpg" % frame)
             )
-        # print("####################Saving realtime Data...####################")
 
-        if self.scenario_manager:
-            meta = {"step": self.step, "frame": frame}
-            self.scenario_manager.submit(tick_data, meta)
-        else:
-            with open(os.path.join(self.save_path, f"tick_data_{frame:04d}.pkl"), 'wb') as _f:
-                pickle.dump(tick_data, _f)
-                self.num_collected += 1
+        meta = {"step": self.step, "frame": frame}
+        self.scenario_manager.submit(tick_data, meta)
+        self.num_submited += 1
+        # else:
+        #     with open(os.path.join(self.save_path, f"tick_data_{frame:04d}.pkl"), 'wb') as _f:
+        #         pickle.dump(tick_data, _f)
+        #         self.num_submited += 1
         return
 
     def destroy(self):
         """Cleanup agent resources upon scenario end."""
         if self.video_recorder:
             self.video_recorder.stop_recording()
+        # Ensure the runtime scenario manager finishes processing queued items
+        if self.scenario_manager is not None:
+            try:
+                self.scenario_manager.stop()
+            except Exception:
+                pass
+            self.scenario_manager = None
         if self.ensemble:
             del self.nets
         else:

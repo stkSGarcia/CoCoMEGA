@@ -64,12 +64,12 @@ class DPPStreamingSelector:
         feat = self._as_unit_row(feat)
 
         if self.max_selected is not None and self.n_sel >= self.max_selected:
-            return False
+            return False, None, None
 
         # First item: accept immediately
         if self.n_sel == 0:
             self._accept_direct(feat)
-            return True
+            return True, None, None
 
         # k_iS = X @ feat  (cosine kernel on unit vectors)
         k_iS = self.X @ feat
@@ -80,6 +80,7 @@ class DPPStreamingSelector:
 
         # Schur complement d^2
         d2 = float(k_ii - np.dot(w, w))
+        angle_deg = self.d2_to_angle_deg(d2)
         # Geometry threshold
         if d2 >= self.tau:
             # Rank-1 Cholesky append:
@@ -93,9 +94,13 @@ class DPPStreamingSelector:
             # Append to X
             self.X = np.vstack([self.X, feat[None, :]])
             self.n_sel += 1
-            return True
+            return True, d2, angle_deg
 
-        return False
+        return False, d2, angle_deg
+
+    def d2_to_angle_deg(self, d2):
+        d2 = float(np.clip(d2, 0.0, 1.0))
+        return np.degrees(np.arcsin(np.sqrt(d2)))
 
     def size(self) -> int:
         return self.n_sel

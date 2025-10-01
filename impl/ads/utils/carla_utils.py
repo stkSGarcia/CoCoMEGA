@@ -10,7 +10,6 @@ from impl.ads.utils.docker_utils import setup_carla
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from leaderboard.utils.route_manipulation import interpolate_trajectory
 
-from impl.ads.utils.visualization import default_style
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +29,8 @@ def initialize_carla(host=None, port=None, tm_port=None, gpu_device=None, seed=2
     """
     try:
         # Initialize the Carla client and the world
-        if "standalone" in cfg.CONFIG["docker"] and cfg.CONFIG["docker"]["standalone"]:
-            default_conf = cfg.CONFIG["docker"]["standalone"]
+        if "standalone" in cfg.CONFIG["simulation"] and cfg.CONFIG["simulation"]["standalone"]:
+            default_conf = cfg.CONFIG["simulation"]["standalone"]
         else:
             default_conf = cfg.CONFIG["simulation"]["instances"][0]
         host = host or default_conf["host"]
@@ -63,9 +62,28 @@ def carla_partial_cleanup():
     DestroyActor = carla.command.DestroyActor
     batch = []
 
-    # Destroy all actors that are alive
+    # Destroy all actors that are alive while keeping world settings intact
     for actor_id in CarlaDataProvider._carla_actor_pool.copy():
         actor = CarlaDataProvider._carla_actor_pool[actor_id]
+        # Stop and detach sensor streams before destruction to avoid dangling streams on the server
+        try:
+            if hasattr(actor, 'type_id') and isinstance(actor.type_id, str) and actor.type_id.startswith("sensor."):
+                try:
+                    # Stop streaming callbacks
+                    if hasattr(actor, 'stop'):
+                        actor.stop()
+                except Exception:
+                    pass
+                try:
+                    # Detach any listener callback
+                    if hasattr(actor, 'listen'):
+                        actor.listen(lambda _: None)
+                except Exception:
+                    pass
+        except Exception:
+            # Defensive: best-effort cleanup
+            pass
+
         if actor.is_alive:
             batch.append(DestroyActor(actor))
 
@@ -78,6 +96,14 @@ def carla_partial_cleanup():
                 pass
             else:
                 raise e
+
+    # Let the server process the destructions (single tick)
+    try:
+        world = CarlaDataProvider.get_world()
+        if world is not None:
+            world.tick()
+    except Exception:
+        pass
 
     # Now only clear actor-related internal maps
     CarlaDataProvider._actor_velocity_map.clear()
@@ -344,7 +370,8 @@ def compass_to_yaw(compass):
 
 def get_direction(trajectory):
     """
-    Infer route direction (:data:`forward`, :data:`left`, :data:`right`, or :data:`opposite`) from a trajectory.
+    Infer route direction (:data:`forward`, :data:`left`, or :data:`right`) from a trajectory.
+    Note: 'opposite' direction is not supported and will be mapped to 'forward'.
 
     :param trajectory: List of (location, road option) tuples.
     :return: String representing the general direction.
@@ -352,6 +379,7 @@ def get_direction(trajectory):
     direction = "forward"
     reached_junction = False
     reference_wp = None
+    warned_opposite = False
     for location, _ in trajectory:
         waypoint = CarlaDataProvider.get_map().get_waypoint(location)
 
@@ -371,7 +399,11 @@ def get_direction(trajectory):
             elif 45.0 <= diff < 150.0:
                 direction = 'right'
             else:
-                direction = 'opposite'
+                # Map 'opposite' direction to 'forward' since opposite is not supported
+                direction = 'forward'
+                if not warned_opposite:
+                    logger.warning(f"Opposite direction detected (diff={diff:.1f}), mapping to 'forward'")
+                    warned_opposite = True
 
     return direction
 
