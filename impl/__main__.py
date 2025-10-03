@@ -120,18 +120,21 @@ def fetch_realtime_data(agent: str,
     # Resolve run directory:
     # - resume=True  → pick latest folder containing run_name
     # - resume=False → create a new timestamped folder that includes run_name
+    run_dir = None
+    safe = run_name.replace(" ", "_")
     if resume:
         candidates = sorted(
-            [p for p in base_dir.glob(f"{run_name}") if p.is_dir()],
+            [p for p in base_dir.glob(f"{safe}") if p.is_dir()],
             key=lambda p: p.stat().st_mtime,
             reverse=True
         )
-        if not candidates:
-            raise RuntimeError(f"No existing run folder found matching '{run_name}' to resume.")
-        run_dir = candidates[0]
-    else:
-        safe = run_name.replace(" ", "_")
-        run_dir = base_dir / f"{time.strftime('%Y%m%d-%H%M%S')}_{safe}"
+        if candidates:
+            run_dir = candidates[0]
+        else:
+            logger.warning(f"No existing run folder found matching '{safe}' to resume. Starting a new run instead.")
+
+    if run_dir is None:
+        run_dir = base_dir / f"{safe}_{time.strftime('%Y%m%d-%H%M%S')}"
         run_dir.mkdir(parents=True, exist_ok=False)
 
     # Standard checkpoint layout inside each run
