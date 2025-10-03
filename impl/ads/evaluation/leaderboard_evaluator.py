@@ -157,10 +157,12 @@ class CustomizedEvaluator(LeaderboardEvaluator):
             if args.record:
                 self.client.stop_recorder()
 
+            self._cleanup()
+
             # Remove all actors
             scenario.remove_all_actors()
 
-            self._cleanup()
+
 
         except Exception as e:
             print("\n\033[91mFailed to stop the scenario, the statistics might be empty:")

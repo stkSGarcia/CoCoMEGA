@@ -174,7 +174,34 @@ def fetch_realtime_data(agent: str,
 
     run_free_environments(environment_confs)
 
+def generate_train_data():
+    """Run free simulations to generate training data using rule-based agents."""
 
+    from impl.ads.evaluation.simulation_runner import run_free_environments
+    os.environ["tag"] = "generate_train_data"
+    logger.info(f"Generating training data...")
+
+    os.makedirs(cfg.CONFIG["workspace"]["data_gen_checkpoint"], exist_ok=True)
+    os.makedirs(cfg.CONFIG["workspace"]["train_data"], exist_ok=True)
+
+    workspace_conf = {
+        "cp_root": cfg.CONFIG["workspace"]["data_gen_checkpoint"],
+        "output_root": cfg.CONFIG["workspace"]["train_data"]
+    }
+    environment_confs = get_enviroment_confs()
+    make_yamls()
+    for i in range(len(environment_confs)):
+        weather = environment_confs[i]["weather"]
+        environment_confs[i] = {
+            **environment_confs[i],
+            **workspace_conf,
+            **{
+                "agent_path": os.path.join(cfg.CONFIG["interfuser"]["repo"],
+                                           "leaderboard", "team_code", "auto_pilot.py"),
+                "agent_config": os.path.join(cfg.CONFIG["data_collection"]["yaml_root"], f"weather-{weather}.yaml"),
+            }
+        }
+    run_free_environments(environment_confs)
 
 def train_interfuser(args):
     """Train an Interfuser model using the collected training data and provided arguments.
@@ -340,7 +367,7 @@ if __name__ == "__main__":
 
     parser_crd = subparsers.add_parser("fetch_realtime_data",
                                        help="Execute free environments to fetch realtime data.")
-    parser_crd.add_argument("-a", "--agent", type=str, default="v1", help="Agent version or name.")
+    parser_crd.add_argument("-a", "--agent", type=str, default=cfg.CONFIG["runtime"]["agent"], help="Agent version or name.")
     parser_crd.add_argument("--run-name", type=str, default=f"{time.strftime('%Y%m%d-%H%M%S')}",
                             help="A short name for this run. Will be included in the run folder name.")
     parser_crd.add_argument("--resume", action="store_true",
@@ -350,7 +377,7 @@ if __name__ == "__main__":
     parser_crd.add_argument("--novelty-strategy",
                             type=str,
                             choices=("cosine_max", "dpp_stream", "none"),
-                            default="dpp_stream",
+                            default=cfg.CONFIG["runtime"]["novelty_detection"]["strategy"],
                             help="Novelty management strategy to use.")
 
     parser_crd.add_argument("--discard-original-features", action="store_true",
