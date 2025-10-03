@@ -6,6 +6,7 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 from sklearn.model_selection import cross_val_score, RandomizedSearchCV
 from sklearn.model_selection import train_test_split
@@ -15,6 +16,34 @@ from impl import config as cfg
 from impl.ads.scenario.scenario_definition import ScenarioDefinition
 
 logger = logging.getLogger(__name__)
+
+
+class AngularEncoder(BaseEstimator, TransformerMixin):
+    """Expand angular columns (in degrees) into sin and cos features."""
+
+    def __init__(self):
+        pass
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        # Ensure numpy array
+        X = np.array(X, dtype=float)
+        radians = np.radians(X)
+        sin_vals = np.sin(radians)
+        cos_vals = np.cos(radians)
+        # Stack sin and cos side by side
+        return np.hstack([sin_vals, cos_vals])
+
+    def get_feature_names_out(self, input_features=None):
+        # Duplicate names with _sin and _cos suffix
+        names = []
+        for col in input_features:
+            names.append(f"{col}_sin")
+            names.append(f"{col}_cos")
+        return np.array(names)
+
 
 CATEGORIES = {
     "town": ["town01", "town02", "town03", "town04", "town05", "town06", "town07", "town10"],
@@ -82,20 +111,23 @@ def vectorize(solutions, mode="stats"):
 
 
 def _preprocess_vectors(raw_vectors):
-    categorical_cols, categories_list = [], []
+    categorical_cols, categories_list, angular_cols = [], [], []
     for col in raw_vectors.columns:
-        if all(key not in col for key in CATEGORIES.keys()): continue
-        categorical_cols.append(col)
+        if all(key not in col for key in CATEGORIES.keys()):
+            if ("angle" in col or "yaw" in col or "rotation" in col) and "ego" not in col:
+                angular_cols.append(col)
+                continue
+
         for keyword in CATEGORIES.keys():
             if keyword in col:
+                categorical_cols.append(col)
                 categories_list.append(CATEGORIES[keyword])
                 break
-        else:
-            categories_list.append("auto")  # Fallback: let encoder auto-detect categories for this column.
 
     preprocessor = ColumnTransformer(
         transformers=[
             ("categorical", OneHotEncoder(categories=categories_list, sparse=False), categorical_cols),
+            ("angular", AngularEncoder(), angular_cols),
         ],
         remainder="passthrough",
         verbose_feature_names_out=False,
@@ -373,6 +405,7 @@ def vectorize_scenarios(scenarios, keep_original=False):
         match_idx = vectors.query(filtered_rule).index
         vectors.loc[match_idx, rule] = 1
     return vectors if keep_original else vectors[RULE_FEATURES].copy()
+
 
 def save_rules(rules, filename):
     (cfg.CONFIG["workspace"]["rulefit"] / f"{filename}.pkl").write_bytes(pickle.dumps(rules[rules.coef != 0]))

@@ -167,14 +167,15 @@ def vectorize_realtime_data(rt_data):
     return scenario_def
 
 
-def rulefit_vectorize(scenario):
+def rulefit_vectorize(scenario, keep_original=True):
     """
     Convert a generated :class:`ScenarioDefinition` instance into a feature vector based on the generated rules from Rulefit model.
 
     :param scenario: Generated :class:`ScenarioDefinition` instance.
+    :param keep_original_features: Whether to keep the original features in the feature vector.
     :return: Feature vector representing the scenario.
     """
-    return vectorize_scenarios([scenario])
+    return vectorize_scenarios([scenario], keep_original=keep_original)
 
 
 def create_dataset_index(dataset_root, weathers=None, towns=None):

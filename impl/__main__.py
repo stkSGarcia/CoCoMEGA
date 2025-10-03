@@ -97,30 +97,57 @@ def simulate(num: int, file: str):
             [ScenarioDefinition.generate_random_or_leaderboard() for _ in range(num)])
 
 
-def fetch_realtime_data(agent: str, output: str):
+def fetch_realtime_data(agent: str,
+                        run_name: str,
+                        resume: bool,
+                        novelty_strategy: str,
+                        discard_original_features: bool):
     """Run free simulations to fetch realtime data for a specific agent.
+
     :param agent: Name or version of the agent.
-    :param output: Path to save the collected realtime data.
+    :param run_name: A human-chosen identifier that will appear in the run folder name.
+    :param resume: If True, resume the most recent run whose folder name contains run_name.
+    :param novelty_strategy: Strategy for novelty management (e.g., 'cosine_max', 'dpp_stream', 'none').
+    :param discard_original_features: Whether to discard original scenario features in embeddings.
     """
     from impl.ads.evaluation.simulation_runner import run_free_environments
     os.environ["tag"] = "fetch_realtime_data"
-    if output is None:
-        output = cfg.CONFIG["workspace"]["realtime_data"]
-        cp_root = cfg.CONFIG["workspace"]["data_collection_checkpoint"]
-    else:
-        cp_root = os.path.join(output, "checkpoints")
-    logger.info(f"Running free simulation environment for agent {agent} to fetch realtime data...")
 
-    os.makedirs(cfg.CONFIG["workspace"]["realtime_data"], exist_ok=True)
-    os.makedirs(output, exist_ok=True)
+    # Base directory for realtime data (unchanged location)
+    base_dir = Path(cfg.CONFIG["workspace"]["realtime_data"])
+    base_dir.mkdir(parents=True, exist_ok=True)
+
+    # Resolve run directory:
+    # - resume=True  → pick latest folder containing run_name
+    # - resume=False → create a new timestamped folder that includes run_name
+    if resume:
+        candidates = sorted(
+            [p for p in base_dir.glob(f"{run_name}") if p.is_dir()],
+            key=lambda p: p.stat().st_mtime,
+            reverse=True
+        )
+        if not candidates:
+            raise RuntimeError(f"No existing run folder found matching '{run_name}' to resume.")
+        run_dir = candidates[0]
+    else:
+        safe = run_name.replace(" ", "_")
+        run_dir = base_dir / f"{time.strftime('%Y%m%d-%H%M%S')}_{safe}"
+        run_dir.mkdir(parents=True, exist_ok=False)
+
+    # Standard checkpoint layout inside each run
+    cp_root = run_dir / "checkpoints"
+    cp_root.mkdir(parents=True, exist_ok=True)
+
+    logger.info(f"Realtime data run directory: {run_dir}")
+    logger.info(f"Checkpoint directory: {cp_root}")
 
     agent_conf = cfg.CONFIG["interfuser"].copy()
     del agent_conf["versions"]
     version_conf = [_c for _c in cfg.CONFIG["interfuser"]["versions"] if _c["name"] == agent][0]
 
     workspace_conf = {
-        "cp_root": cp_root,
-        "output_root": output,
+        "cp_root": str(cp_root),
+        "output_root": str(run_dir),
         "scenario_dataset": cfg.CONFIG["workspace"]["runtime_scenario"],
     }
 
@@ -130,6 +157,9 @@ def fetch_realtime_data(agent: str, output: str):
         "collection_duration": str(cfg.CONFIG["runtime"]["collection_duration"]),
         "collection_interval": str(cfg.CONFIG["runtime"]["collection_interval"]),
         "submition_route_limit": str(cfg.CONFIG["runtime"]["submition_route_limit"]),
+        # NEW: novelty manager configuration
+        "novelty_strategy": novelty_strategy,
+        "discard_original_features": str(bool(discard_original_features)),
     }
 
     environment_confs = get_enviroment_confs()
@@ -144,35 +174,6 @@ def fetch_realtime_data(agent: str, output: str):
 
     run_free_environments(environment_confs)
 
-
-def generate_train_data():
-    """Run free simulations to generate training data using rule-based agents."""
-
-    from impl.ads.evaluation.simulation_runner import run_free_environments
-    os.environ["tag"] = "generate_train_data"
-    logger.info(f"Generating training data...")
-
-    os.makedirs(cfg.CONFIG["workspace"]["data_gen_checkpoint"], exist_ok=True)
-    os.makedirs(cfg.CONFIG["workspace"]["train_data"], exist_ok=True)
-
-    workspace_conf = {
-        "cp_root": cfg.CONFIG["workspace"]["data_gen_checkpoint"],
-        "output_root": cfg.CONFIG["workspace"]["train_data"]
-    }
-    environment_confs = get_enviroment_confs()
-    make_yamls()
-    for i in range(len(environment_confs)):
-        weather = environment_confs[i]["weather"]
-        environment_confs[i] = {
-            **environment_confs[i],
-            **workspace_conf,
-            **{
-                "agent_path": os.path.join(cfg.CONFIG["interfuser"]["repo"],
-                                           "leaderboard", "team_code", "auto_pilot.py"),
-                "agent_config": os.path.join(cfg.CONFIG["data_collection"]["yaml_root"], f"weather-{weather}.yaml"),
-            }
-        }
-    run_free_environments(environment_confs)
 
 
 def train_interfuser(args):
@@ -339,9 +340,29 @@ if __name__ == "__main__":
 
     parser_crd = subparsers.add_parser("fetch_realtime_data",
                                        help="Execute free environments to fetch realtime data.")
-    parser_crd.add_argument("-a", "--agent", type=str, default="v1", help="Agent version or name")
-    parser_crd.add_argument("--output", type=str, default=None, help="Path of output directory")
-    parser_crd.set_defaults(func=lambda args: fetch_realtime_data(args.agent, args.output))
+    parser_crd.add_argument("-a", "--agent", type=str, default="v1", help="Agent version or name.")
+    parser_crd.add_argument("--run-name", type=str, default=f"{time.strftime('%Y%m%d-%H%M%S')}",
+                            help="A short name for this run. Will be included in the run folder name.")
+    parser_crd.add_argument("--resume", action="store_true",
+                            help="Resume the most recent run whose folder name is --run-name.")
+
+    # NEW: novelty manager strategy
+    parser_crd.add_argument("--novelty-strategy",
+                            type=str,
+                            choices=("cosine_max", "dpp_stream", "none"),
+                            default="dpp_stream",
+                            help="Novelty management strategy to use.")
+
+    parser_crd.add_argument("--discard-original-features", action="store_true",
+                    help="Discard original scenario features in the embedding pipeline.")
+
+    parser_crd.set_defaults(func=lambda args: fetch_realtime_data(
+        args.agent,
+        args.run_name, 
+        args.resume,
+        args.novelty_strategy,
+        args.discard_original_features
+    ))
 
     parser_gtd = subparsers.add_parser("generate_train_data", help="Generate training data using a rule-based agent")
     parser_gtd.set_defaults(func=lambda args: generate_train_data())

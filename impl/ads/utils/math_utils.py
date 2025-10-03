@@ -199,3 +199,21 @@ def calculate_improvements(data, comparison_algs, metric_name, higher_is_better=
             improvement = -improvement
         print(
             f"Average {metric_name} improvement of {alg} ({np.mean(data[alg]):.2f}) compared to {baseline} ({np.mean(data[baseline]):.2f}): {improvement:.2f}% (p-value = {pval:.1e})")
+
+def lvd_from_embeddings(X, eps=1e-8):
+    """X: (k,d) selected embeddings (not necessarily unit)."""
+    Xn = unit_rows(X)
+    K = Xn @ Xn.T
+    # Cholesky for stability; det(K+epsI) = prod(diag(L))^2
+    L = np.linalg.cholesky(K + eps * np.eye(K.shape[0]))
+    logdet = 2.0 * np.sum(np.log(np.diag(L)))
+    k = X.shape[0]
+    return float(np.exp(logdet / k))  # LVD in (0,1]
+
+def closest_pair_angle_deg(X):
+    Xn = unit_rows(X)
+    K = Xn @ Xn.T
+    np.fill_diagonal(K, -np.inf)  # ignore self
+    max_cos = np.max(K)           # closest pair = largest cosine
+    max_cos = np.clip(max_cos, -1.0, 1.0)
+    return float(np.degrees(np.arccos(max_cos)))

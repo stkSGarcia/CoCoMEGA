@@ -273,9 +273,14 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             self.video_recorder = VideoRecorder(self.additional_config["recording_save_path"])
 
         scenario_dataset = os.environ.get("SCENARIO_DATASET", None)
-        strategy = cfg.CONFIG["runtime"]["novelty_detection"].get("strategy", "none")
-        self.scenario_manager = RuntimeScenarioManager(scenario_dataset, strategy=strategy,
-            keep_zero_vectors=cfg.CONFIG["runtime"]["novelty_detection"].get("keep_zero_vectors", False))
+        strategy = os.environ.get("NOVELTY_STRATEGY", None)
+        discard_original_features = os.environ.get("DISCARD_ORIGINAL_FEATURES", False)
+        self.scenario_manager = RuntimeScenarioManager(
+            scenario_dataset,
+            strategy=strategy,
+            discard_original_features = discard_original_features,
+            keep_zero_vectors=cfg.CONFIG["runtime"]["novelty_detection"].get("keep_zero_vectors", False)
+        )
         self.scenario_manager.start()
 
         self.lidar_processed = list()

@@ -151,6 +151,8 @@ def run_environment(conf):
         "COLLECTION_INTERVAL": conf.get("collection_interval", "None"),
         "SUBMITION_ROUTE_LIMIT": conf.get("submition_route_limit", "None"),
         "SCENARIO_DATASET": conf.get("scenario_dataset", "None"),
+        "DISCARD_ORIGINAL_FEATURES": conf.get("discard_original_features", "None"),
+        "NOVELTY_STRATEGY": conf.get("novelty_strategy", "None"),
         # Add RECORD_PATH if needed
         # "RECORD_PATH": "path/to/record",
     })

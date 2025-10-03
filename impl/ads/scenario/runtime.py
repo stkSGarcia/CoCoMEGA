@@ -23,9 +23,12 @@ class RuntimeScenarioManager:
     - supports both Cosine Max and Streaming DPP.
     """
 
-    def __init__(self, dataset_dir: str, strategy: str, keep_zero_vectors: bool = False):
+    def __init__(self, dataset_dir: str, strategy: str, discard_original_features: bool, keep_zero_vectors: bool = False):
         """
         :param dataset_dir: Directory containing per-scenario files.
+        :param strategy: Novelty detection strategy: "none", "cosine_max", "dpp_stream".
+        :param discard_original_features: If True, only store the vectorized features, not the original scenario.
+        :param keep_zero_vectors: If True, keep scenarios that vectorize to all zeros.
         """
         self.dataset_dir = dataset_dir
         if self.dataset_dir:
@@ -35,7 +38,8 @@ class RuntimeScenarioManager:
             self.strategy = strategy
         else:
             raise ValueError(f"Unknown strategy: {self.strategy}")
-
+        self.discard_original_features = discard_original_features
+        self.keep_zero_vectors = keep_zero_vectors
         self.angle_threshold_deg = cfg.CONFIG["runtime"]["novelty_detection"].get("angle_threshold_deg", 20.0)
         self.cosine_similarity_threshold = float(np.cos(np.deg2rad(self.angle_threshold_deg)))
 
@@ -101,7 +105,7 @@ class RuntimeScenarioManager:
             tick_data, meta = msg
             try:
                 scenario = vectorize_realtime_data(tick_data)
-                vec = rulefit_vectorize(scenario)
+                vec = rulefit_vectorize(scenario, keep_original=not self.discard_original_features)
                 
                 # check if vec is not all zeros
                 if np.all(vec == 0):

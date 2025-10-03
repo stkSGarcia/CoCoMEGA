@@ -18,6 +18,7 @@ from impl.ads.evaluation.exceptions import InvalidScenarioDefinitionError
 from impl.ads.scenario.Leaderboard_factory import LeaderBoardFactory
 from impl.ads.utils.carla_utils import load_world, trajectory_interpolation, get_available_directions, get_junction, \
     location_to_dict, dict_to_location, group_junction_directions, get_closest_wp
+from impl.ads.utils.math_utils import cartesian_to_polar
 from impl.ads.utils.trajectory import rotate_vector, single_trajectory_score
 from impl.core.scenario.base_scenario import AbstractScenarioDefinition
 
@@ -719,7 +720,7 @@ class ScenarioDefinition(AbstractScenarioDefinition):
         )
 
         # Vectorize the ego vehicle.
-        df = df.join(self.ego_vehicle.vectorize(prefix=f"{prefix}_ego"))
+        df = df.join(self.ego_vehicle.vectorize(prefix=f"{prefix}_ego", exclude=["angle", "radius"]))
 
         # Vectorize the trajectory.
         df = df.join(pd.DataFrame({f"{prefix}_traj_direction": [self.trajectory["direction"]]}))
@@ -733,9 +734,14 @@ class ScenarioDefinition(AbstractScenarioDefinition):
             "3q": waypoints[int((n_wps - 1) * 0.75)],
             "end": waypoints[-1],
         }
-        df = df.join(pd.DataFrame({f"{prefix}_traj_{i}_{k}": [v - start_wp[k]]
-                                   for i, wp in percentiles.items()
-                                   for k, v in wp[0].items()}))
+        traj_dict = {}
+        for i, wp in percentiles.items():
+            r, theta = cartesian_to_polar(wp[0]["x"] - start_wp["x"], wp[0]["y"] - start_wp["y"])
+            theta = ((theta - self.ego_vehicle.yaw + 180) % 360) - 180
+            traj_dict[f"{prefix}_traj_{i}_radius"] = r
+            traj_dict[f"{prefix}_traj_{i}_angle"] = theta
+
+        df = df.join(pd.DataFrame([traj_dict]))
 
         # Vectorize actors.
         if mode == "padding":
@@ -747,7 +753,8 @@ class ScenarioDefinition(AbstractScenarioDefinition):
                 df = df.join(pd.DataFrame({f"{prefix}_num_{category}": [len(actors)]}))
                 actors = sorted(actors, key=lambda x: x.radius)
                 for i, actor in enumerate(actors):
-                    df = df.join(actor.vectorize(prefix=f"{prefix}_{category}_{i}"))
+                    actor_df = self._convert_yaw(actor.vectorize(prefix=f"{prefix}_{category}_{i}"))
+                    df = df.join(actor_df)
                 i = len(actors)
                 while i < max_actors:
                     cls = getattr(sys.modules[__name__], category.capitalize())
@@ -757,13 +764,15 @@ class ScenarioDefinition(AbstractScenarioDefinition):
             for category in self.DYNAMIC:
                 actors = getattr(self, f"{category}s")
                 df = df.join(pd.DataFrame({f"{prefix}_num_{category}": [len(actors)]}))
-                regions = {k: list(v) for k, v in groupby(actors, lambda x: x.region)}
+                regions = {k: list(v) for k, v in
+                           groupby(actors, lambda x: x.region.name.lower() if x.region else "none")}
                 for region in list(Boundary.Region) + [None]:
-                    region_name = region.name.lower() if region else None
+                    region_name = region.name.lower() if region else "none"
                     actor_list = regions.get(region_name, [])
                     if len(actor_list) > 0:
-                        actor_df = pd.concat([actor.vectorize(prefix=f"{prefix}_{category}_{region_name}")
-                                              for actor in actor_list])
+                        actor_df = pd.concat(
+                            [self._convert_yaw(actor.vectorize(prefix=f"{prefix}_{category}_{region_name}"))
+                             for actor in actor_list])
                         stats = {}
                         for col in actor_df.columns:
                             if "model" in col: continue
@@ -788,6 +797,19 @@ class ScenarioDefinition(AbstractScenarioDefinition):
                             })
                         df = df.join(pd.DataFrame(stats))
 
+        return df
+
+    def _convert_yaw(self, df):
+        """
+        Convert absolute yaw values to relative yaw based on the ego vehicle's orientation.
+
+        :param df: DataFrame containing yaw columns to adjust.
+        :return: DataFrame with adjusted yaw values.
+        """
+        ego_yaw = self.ego_vehicle.yaw
+        for col in df.columns:
+            if "yaw" in col:
+                df[col] = ((df[col] - ego_yaw + 180) % 360) - 180
         return df
 
     @staticmethod
@@ -886,7 +908,7 @@ class Actor(ABC):
         try:
             return cls._BLUEPRINTS["model"].index(actor_blueprint)
         except ValueError:
-            logger.warning(f"No blueprint index found for '{actor_blueprint}', defaulting to 0.")
+            # logger.warning(f"No blueprint index found for '{actor_blueprint}', defaulting to 0.")
             return 0
 
     @classmethod
@@ -994,14 +1016,17 @@ class Actor(ABC):
             "model": self._BLUEPRINTS["model"][self.model]
         }
 
-    def vectorize(self, prefix: str):
+    def vectorize(self, prefix: str, exclude: list = None):
         """Vectorize the actor.
 
         :param prefix: The string added before the actor's attribute name.
         :return: A :class:`DataFrame` representing the vector.
         """
+        filtered_attrs = (set(Actor._ATTRIBUTES + self._ATTRIBUTES))
+        if exclude:
+            filtered_attrs = filtered_attrs - set(exclude)
         return pd.DataFrame({f"{prefix}_{attr}": [getattr(self, attr, None)]
-                             for attr in Actor._ATTRIBUTES + self._ATTRIBUTES})
+                             for attr in filtered_attrs})
 
     @classmethod
     def vectorize_padding(cls, prefix: str):

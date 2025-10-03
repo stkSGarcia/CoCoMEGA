@@ -367,6 +367,21 @@ def compass_to_yaw(compass):
         yaw = compass + 360
     return yaw
 
+def yaw_to_direction(yaw_degrees: float):
+    """Convert CARLA yaw (in degrees) to a unit vector (cos, sin).
+
+    :param yaw_degrees: Yaw angle in CARLA, measured in degrees.
+    :return: (cos_yaw, sin_yaw) representing the forward direction vector.
+    """
+    # Convert to radians
+    yaw_radians = math.radians(yaw_degrees)
+
+    # In CARLA, yaw = 0 means facing +X, and increases counter-clockwise
+    forward_x = math.cos(yaw_radians)
+    forward_y = math.sin(yaw_radians)
+
+    return forward_x, forward_y
+
 
 def get_direction(trajectory):
     """
