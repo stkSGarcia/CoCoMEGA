@@ -413,8 +413,9 @@ class ScenarioDefinition(AbstractScenarioDefinition):
         else:
             if junction is None:
                 if trajectory_def["direction"] != "forward":
-                    raise InvalidScenarioDefinitionError(
-                        f"The trajectory direction is '{trajectory_def['direction']}' but no junction found!")
+                    logger.warning(
+                        f"The trajectory direction is '{trajectory_def['direction']}' but no junction found! Set to 'forward'.")
+                    trajectory_def["direction"] = "forward"
             else:
                 if "junction_exit" not in trajectory_def:
                     wp_dict = group_junction_directions(junction, reference_yaw=trajectory[-1].rotation.yaw)
