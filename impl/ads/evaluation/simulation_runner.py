@@ -114,10 +114,18 @@ def run_environment(conf):
     """
     global carla_host, carla_port, tm_port
 
-    cp_path = os.path.join(conf["cp_root"], f"weather-{conf['weather']}", f"{conf['route_name']}.json")
-    output_path = os.path.join(conf["output_root"], f"weather-{conf['weather']}")
-    os.makedirs(os.path.dirname(cp_path), exist_ok=True)
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    cp_path, output_path, dataset_path = "", "", ""
+    if conf.get("cp_root", None):
+        cp_path = os.path.join(conf["cp_root"], f"weather-{conf['weather']}", f"{conf['route_name']}.json")
+        os.makedirs(os.path.dirname(cp_path), exist_ok=True)
+
+    if conf.get("output_root", None):
+        output_path = os.path.join(conf["output_root"], f"weather-{conf['weather']}")
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    if conf.get("dataset_path", None):
+        dataset_path = conf["dataset_path"]
+        os.makedirs(os.path.dirname(dataset_path), exist_ok=True)
 
     scenarios = os.path.join(cfg.CONFIG["interfuser"]["repo"], "leaderboard", "data", conf["scenario"])
     routes = os.path.join(cfg.CONFIG["interfuser"]["repo"], "leaderboard", "data", conf["route"])
@@ -133,6 +141,7 @@ def run_environment(conf):
         "LEADERBOARD_ROOT": os.path.join(cfg.CONFIG["interfuser"]["repo"], "leaderboard"),
         "CHECKPOINT_ENDPOINT": cp_path,
         "SAVE_PATH": output_path,
+        "DATASET_PATH": dataset_path,
         "TRAFFIC_SEED": "2000",
         "CARLA_SEED": "2000",
         "SCENARIOS": scenarios,
@@ -150,7 +159,6 @@ def run_environment(conf):
         "COLLECTION_DURATION": conf.get("collection_duration", "None"),
         "COLLECTION_INTERVAL": conf.get("collection_interval", "None"),
         "SUBMITION_ROUTE_LIMIT": conf.get("submition_route_limit", "None"),
-        "SCENARIO_DATASET": conf.get("scenario_dataset", "None"),
         "DISCARD_ORIGINAL_FEATURES": conf.get("discard_original_features", "None"),
         "NOVELTY_STRATEGY": conf.get("novelty_strategy", "None"),
         # Add RECORD_PATH if needed

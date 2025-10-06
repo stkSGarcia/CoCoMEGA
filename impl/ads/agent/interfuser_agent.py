@@ -43,7 +43,8 @@ except ImportError:
     raise RuntimeError("cannot import pygame, make sure pygame package is installed")
 
 WEATHER = os.environ.get("CARLA_WEATHER")
-SAVE_PATH = os.environ.get("SAVE_PATH")
+SAVE_PATH = os.environ.get("SAVE_PATH", None)
+DATASET_PATH = os.environ.get("DATASET_PATH", None)
 
 IMAGENET_DEFAULT_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
@@ -272,13 +273,12 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         if self.additional_config is not None and "recording_save_path" in self.additional_config:
             self.video_recorder = VideoRecorder(self.additional_config["recording_save_path"])
 
-        scenario_dataset = os.environ.get("SCENARIO_DATASET", None)
         strategy = os.environ.get("NOVELTY_STRATEGY", None)
         discard_original_features = os.environ.get("DISCARD_ORIGINAL_FEATURES", False)
         self.scenario_manager = RuntimeScenarioManager(
-            scenario_dataset,
+            dataset_dir=DATASET_PATH,
             strategy=strategy,
-            discard_original_features = discard_original_features,
+            discard_original_features=discard_original_features,
             keep_zero_vectors=cfg.CONFIG["runtime"]["novelty_detection"].get("keep_zero_vectors", False)
         )
         self.scenario_manager.start()
@@ -767,15 +767,32 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
                 if self.video_recorder:
                     self.video_recorder.write_frame(surface)
 
-            if SAVE_PATH is not None:
+            if DATASET_PATH is not None:
                 if ((self.collection_interval > 0) and (self.step % (self.collection_interval * self.frame_rate) != 0)) \
-                or ((self.collection_delay is not None) and (self.step < (self.collection_delay * self.frame_rate))):
+                        or ((self.collection_delay is not None) and (
+                        self.step < (self.collection_delay * self.frame_rate))):
                     pass
-                    # logger.info(f"Skipping data collection at step {self.step} due to collection interval or delay.")
                 else:
-                    self.save(tick_data)
+                    self.submit(tick_data)
 
         return control
+
+    def submit(self, tick_data):
+        """Submit collected data to the scenario manager.
+
+        :param tick_data: Tick data to be submitted.
+        """
+        if self.scenario_manager is not None:
+            frame = self.step // self.skip_frames
+            meta = {
+                "step": self.step,
+                "frame": frame,
+                "save_path": os.path.join(f"weather-{tick_data['sim_data']['weather']}",
+                                          f"{tick_data['sim_data']['town'].lower()}"),
+            }
+            self.scenario_manager.submit(tick_data, meta)
+            self.num_submited += 1
+        return
 
     def save(self, tick_data):
         """Save collected data for the current step.
@@ -784,18 +801,11 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         """
 
         frame = self.step // self.skip_frames
+
         if display_agent:
             Image.fromarray(tick_data["surface"]).save(
                 self.save_path / "meta" / ("%04d.jpg" % frame)
             )
-
-        meta = {"step": self.step, "frame": frame}
-        self.scenario_manager.submit(tick_data, meta)
-        self.num_submited += 1
-        # else:
-        #     with open(os.path.join(self.save_path, f"tick_data_{frame:04d}.pkl"), 'wb') as _f:
-        #         pickle.dump(tick_data, _f)
-        #         self.num_submited += 1
         return
 
     def destroy(self):

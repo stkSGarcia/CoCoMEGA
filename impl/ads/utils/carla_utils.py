@@ -44,8 +44,8 @@ def initialize_carla(host=None, port=None, tm_port=None, gpu_device=None, seed=2
                         )
         client = carla.Client(host, port)
         client.set_timeout(cfg.CONFIG["simulation"]["client_timeout"])
-
         CarlaDataProvider.set_client(client)
+        CarlaDataProvider.set_world(client.get_world())
         CarlaDataProvider.set_traffic_manager_port(tm_port)
         CarlaDataProvider.set_random_seed(seed)
 
@@ -336,7 +336,7 @@ def copy_transform(transform):
     )
 
 
-def load_world(town, cleanup=True):
+def load_world(town, cleanup=False):
     """
     Load a CARLA world by town name if not already loaded.
 

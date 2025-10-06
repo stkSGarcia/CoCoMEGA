@@ -2,6 +2,7 @@ import os
 import pickle
 import logging
 import numpy as np
+from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, List
 from multiprocessing import Process, Queue
 import time
@@ -23,7 +24,8 @@ class RuntimeScenarioManager:
     - supports both Cosine Max and Streaming DPP.
     """
 
-    def __init__(self, dataset_dir: str, strategy: str, discard_original_features: bool, keep_zero_vectors: bool = False):
+    def __init__(self, dataset_dir: str, strategy: str, discard_original_features: bool,
+                 keep_zero_vectors: bool = False):
         """
         :param dataset_dir: Directory containing per-scenario files.
         :param strategy: Novelty detection strategy: "none", "cosine_max", "dpp_stream".
@@ -106,7 +108,7 @@ class RuntimeScenarioManager:
             try:
                 scenario = vectorize_realtime_data(tick_data)
                 vec = rulefit_vectorize(scenario, keep_original=not self.discard_original_features)
-                
+
                 # check if vec is not all zeros
                 if np.all(vec == 0):
                     logger.warning(f"[RuntimeScenarioManager] All zeros vector found for scenario {fname}")
@@ -120,21 +122,25 @@ class RuntimeScenarioManager:
                     if self.strategy == "dpp_stream":
                         is_new, d2, angle_deg = self._dpp_selector.consider(feat)
                         if is_new and d2 is None:
-                            logger.info(f"[RuntimeScenarioManager] DPP selected: {is_new}, as there are no selected scenarios")
+                            logger.info(
+                                f"[RuntimeScenarioManager] DPP selected: {is_new}, as there are no selected scenarios")
                         elif not is_new and d2 is None:
                             logger.info(f"[RuntimeScenarioManager] DPP selected: {is_new}, max selected reached")
                         else:
-                            logger.info("[RuntimeScenarioManager] DPP selected: %s, d2: %.4f, angle_deg: %.4f", is_new, d2, angle_deg)
+                            logger.info("[RuntimeScenarioManager] DPP selected: %s, d2: %.4f, angle_deg: %.4f", is_new,
+                                        d2, angle_deg)
                     elif self.strategy == "cosine_max":
                         max_sim, best_idx = self._max_cosine_similarity(feat)
                         if max_sim is None and best_idx is None:
                             is_new = True
-                            logger.info(f"[RuntimeScenarioManager] Max cosine selected: {is_new}, as there are no selected scenarios")
+                            logger.info(
+                                f"[RuntimeScenarioManager] Max cosine selected: {is_new}, as there are no selected scenarios")
                         else:
                             angle_deg = np.degrees(np.arccos(max_sim))
                             is_new = (max_sim <= self.cosine_similarity_threshold)
-                            logger.info(f"[RuntimeScenarioManager] Max cosine selected: {is_new}, closest_idx={best_idx}, angle_deg: {angle_deg}")
-                        
+                            logger.info(
+                                f"[RuntimeScenarioManager] Max cosine selected: {is_new}, closest_idx={best_idx}, angle_deg: {angle_deg}")
+
                     elif self.strategy == "none":
                         logger.info("[RuntimeScenarioManager] No strategy selected, scenario accepted")
                         is_new = True
@@ -143,7 +149,13 @@ class RuntimeScenarioManager:
 
                 if is_new:
                     self.counter += 1
-                    fname = os.path.join(self.dataset_dir, f"scenario_{self.run_id}_{self.counter:05d}.pkl")
+                    if meta.get("save_path", None):
+                        fname = os.path.join(self.dataset_dir, meta["save_path"],
+                                             f"scenario_{self.run_id}_{self.counter:05d}.pkl")
+                        os.makedirs(os.path.dirname(fname), exist_ok=True)
+                    else:
+                        fname = os.path.join(self.dataset_dir, f"scenario_{self.run_id}_{self.counter:05d}.pkl")
+
                     with open(fname, "wb") as f:
                         pickle.dump(
                             {
@@ -168,7 +180,7 @@ class RuntimeScenarioManager:
 
     def _load_existing(self):
         """Load all scenarios already saved in dataset_dir."""
-        files = sorted(f for f in os.listdir(self.dataset_dir) if f.endswith(".pkl"))
+        files = sorted(Path(self.dataset_dir).rglob("*.pkl"))
         feats = []
         for f in files:
             path = os.path.join(self.dataset_dir, f)

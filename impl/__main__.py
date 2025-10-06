@@ -122,19 +122,22 @@ def fetch_realtime_data(agent: str,
     # - resume=False → create a new timestamped folder that includes run_name
     run_dir = None
     safe = run_name.replace(" ", "_")
-    if resume:
-        candidates = sorted(
-            [p for p in base_dir.glob(f"{safe}") if p.is_dir()],
-            key=lambda p: p.stat().st_mtime,
-            reverse=True
-        )
-        if candidates:
-            run_dir = candidates[0]
-        else:
-            logger.warning(f"No existing run folder found matching '{safe}' to resume. Starting a new run instead.")
+
+    candidates = sorted(
+        [p for p in base_dir.glob(f"{safe}") if p.is_dir()],
+        key=lambda p: p.stat().st_mtime,
+        reverse=True
+    )
+    if candidates and resume:
+        logger.info(f"Resuming from existing run folder: {candidates[0]}")
+        run_dir = candidates[0]
+    elif candidates and not resume:
+        raise FileExistsError(f"Run folder '{candidates[0]}' already exists. Use --resume to resume from it.")
+    elif resume:
+        logger.warning(f"No existing run folder found matching '{safe}' to resume. Starting a new run instead.")
 
     if run_dir is None:
-        run_dir = base_dir / f"{safe}_{time.strftime('%Y%m%d-%H%M%S')}"
+        run_dir = base_dir / f"{safe}"
         run_dir.mkdir(parents=True, exist_ok=False)
 
     # Standard checkpoint layout inside each run
@@ -150,8 +153,7 @@ def fetch_realtime_data(agent: str,
 
     workspace_conf = {
         "cp_root": str(cp_root),
-        "output_root": str(run_dir),
-        "scenario_dataset": cfg.CONFIG["workspace"]["runtime_scenario"],
+        "dataset_path": str(run_dir),
     }
 
     exec_conf = {
