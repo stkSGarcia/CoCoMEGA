@@ -41,6 +41,7 @@ class AngularEncoder(BaseEstimator, TransformerMixin):
         names = []
         for col in input_features:
             names.append(f"{col}_sin")
+        for col in input_features:
             names.append(f"{col}_cos")
         return np.array(names)
 
