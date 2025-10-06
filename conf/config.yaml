@@ -194,7 +194,10 @@ violation:
 trajectory:
   towns: [ "town05" ]
   initial_speed_limit: 5
-  junction_distance_limit: 50
+  trajectory_length: 150
+  junction_distance_lower_bound: 40
+  junction_distance_upper_bound: 100
+  junction_distance_seconds: 6
   predefined:
     - town: town05
       start:

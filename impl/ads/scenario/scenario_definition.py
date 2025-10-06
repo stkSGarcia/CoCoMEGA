@@ -374,7 +374,7 @@ class ScenarioDefinition(AbstractScenarioDefinition):
             initial_speed = random.uniform(0, cfg.CONFIG["trajectory"]["initial_speed_limit"])
             direction, exit_waypoint = random.choice(get_available_directions(
                 start_transform,
-                distance_limit=cfg.CONFIG["trajectory"]["junction_distance_limit"]
+                ego_speed=initial_speed,
             ))
             junction_exit = location_to_dict(exit_waypoint.transform.location) if exit_waypoint is not None else None
             trajectory_def = {
@@ -400,37 +400,56 @@ class ScenarioDefinition(AbstractScenarioDefinition):
         :return: A tuple of trajectory waypoints, GPS route, CARLA route, and junction status.
         :raises InvalidScenarioDefinitionError: If the trajectory direction is not valid given the starting location.
         """
-        initial_location = carla.Location(x=trajectory_def["start"]["x"], y=trajectory_def["start"]["y"],
-                                          z=trajectory_def["start"]["z"])
-        trajectory, junction = get_junction(initial_location,
-                                            distance_limit=cfg.CONFIG["trajectory"]["junction_distance_limit"])
+        start = trajectory_def.get("start")
+        direction = trajectory_def.get("direction")
+        initial_location = carla.Location(x=start["x"], y=start["y"], z=start["z"])
+        trajectory, length, junction = get_junction(initial_location, start["speed"])
         is_junction = (junction is not None)
-        if trajectory_def["direction"] is None:
+        remaining_length = max(0, int(cfg.CONFIG["trajectory"]["trajectory_length"] - length))
+
+        if remaining_length == 0:
+            if direction and direction != "forward":
+                logger.warning(
+                    f"The trajectory direction is '{trajectory_def['direction']}' but the vehicle is far"
+                    f" from a junction! Set to \"forward\"."
+                )
+                trajectory_def["direction"] = "forward"
+        elif is_junction:
+            if "junction_exit" not in trajectory_def:
+                wp_dict = group_junction_directions(junction, reference_yaw=trajectory[-1].rotation.yaw)
+                if direction:
+                    wp_list = wp_dict.get(direction, None)
+                    if not wp_list:
+                        raise InvalidScenarioDefinitionError(
+                            f"No \"{trajectory_def['direction']}\" direction found in the junction!")
+                else:
+                    options = [(direction, val) for direction, val in wp_dict.items() if val]
+                    if not options:
+                        raise InvalidScenarioDefinitionError(f"No available direction found in the junction!")
+                    wp_list = options[0][1]
+                closest_wp = get_closest_wp(wp_list, reference_loc=trajectory[-1].location)
+                trajectory_def["junction_exit"] = location_to_dict(closest_wp.transform.location)
+
+            assert trajectory_def["junction_exit"] is not None
+            waypoint = CarlaDataProvider.get_map().get_waypoint(
+                dict_to_location(trajectory_def["junction_exit"]))
+            for i in range(remaining_length):
+                trajectory.append(waypoint.transform)
+                waypoint = waypoint.next(1)[0]
+        else:
+            if direction and direction != "forward":
+                logger.warning(
+                    f"The trajectory direction is '{trajectory_def['direction']}' but the vehicle is far"
+                    f" from a junction! Set to \"forward\"."
+                )
+                trajectory_def["direction"] = "forward"
             waypoint = CarlaDataProvider.get_map().get_waypoint(trajectory[-1].location)
-            for i in range(cfg.CONFIG["trajectory"]["junction_distance_limit"]):
+            for _ in range(remaining_length):
                 waypoint = waypoint.next(1)[0]
                 trajectory.append(waypoint.transform)
-        else:
-            if junction is None:
-                if trajectory_def["direction"] != "forward":
-                    logger.warning(
-                        f"The trajectory direction is '{trajectory_def['direction']}' but no junction found! Set to 'forward'.")
-                    trajectory_def["direction"] = "forward"
-            else:
-                if "junction_exit" not in trajectory_def:
-                    wp_dict = group_junction_directions(junction, reference_yaw=trajectory[-1].rotation.yaw)
-                    if trajectory_def["direction"] not in wp_dict or not wp_dict[trajectory_def["direction"]]:
-                        raise InvalidScenarioDefinitionError(
-                            f"No '{trajectory_def['direction']}' direction found in the junction!")
-                    closest_wp = get_closest_wp(wp_dict[trajectory_def["direction"]],
-                                                reference_loc=trajectory[-1].location)
-                    trajectory_def["junction_exit"] = location_to_dict(closest_wp.transform.location)
 
-                assert trajectory_def["junction_exit"] is not None
-                waypoint = CarlaDataProvider.get_map().get_waypoint(dict_to_location(trajectory_def["junction_exit"]))
-                for i in range(cfg.CONFIG["trajectory"]["junction_distance_limit"]):
-                    trajectory.append(waypoint.transform)
-                    waypoint = waypoint.next(1)[0]
+        if len(trajectory) <= 2:
+            raise InvalidScenarioDefinitionError(f"The generated trajectory is too short: {len(trajectory)} <= 2.")
 
         trajectory, gps_route, route = trajectory_interpolation([t.location for t in trajectory])
 

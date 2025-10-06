@@ -213,7 +213,8 @@ class LeaderBoardFactory:
         ego_location = carla.Location(x=scenario.trajectory["start"]["x"], y=scenario.trajectory["start"]["y"],
                                       z=scenario.trajectory["start"]["z"])
 
-        _, junction = get_junction(ego_location)
+        _, _, junction = get_junction(ego_location, ego_speed=scenario.trajectory["start"]["speed"])
+
         entry_wps, _ = get_junction_topology(junction)
 
         # Filter waypoints for the specified lane direction

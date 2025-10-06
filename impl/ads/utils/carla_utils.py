@@ -10,7 +10,6 @@ from impl.ads.utils.docker_utils import setup_carla
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from leaderboard.utils.route_manipulation import interpolate_trajectory
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -214,16 +213,17 @@ def trajectory_interpolation(trajectory):
     return trajectory, gps_route, route
 
 
-def get_junction(location, distance_limit=None):
+def get_junction(location, ego_speed):
     """
     Find the nearest junction from a location.
 
     :param location: CARLA location.
-    :param distance_limit: Maximum distance to search.
     :return: (Partial trajectory to junction, junction object or :data:`None`)
     """
     waypoint = CarlaDataProvider.get_map().get_waypoint(location)
     partial_trajectory = [waypoint.transform]
+
+    junction_search_limit = get_junction_search_limit(ego_speed)
 
     # Find the nearest junction
     dist = 0
@@ -231,14 +231,14 @@ def get_junction(location, distance_limit=None):
         waypoint = waypoint.next(1.0)[0]
         dist += 1
         partial_trajectory.append(waypoint.transform)
-        if (distance_limit is not None) and dist > distance_limit:
-            return partial_trajectory, None
+        if dist >= junction_search_limit:
+            return partial_trajectory, dist, None
 
     junction = waypoint.get_junction()
-    return partial_trajectory, junction
+    return partial_trajectory, dist, junction
 
 
-def loc_dist(loc1, loc2):
+def loc_dist(loc1, loc2, _3d=False):
     """
     Compute Euclidean distance between two CARLA locations.
 
@@ -246,6 +246,13 @@ def loc_dist(loc1, loc2):
     :param loc2: Second CARLA location.
     :return: Distance in meters.
     """
+    if _3d:
+        return math.sqrt(
+            math.pow(loc1.x - loc2.x, 2) \
+            + math.pow(loc1.y - loc2.y, 2) \
+            + math.pow(loc1.z - loc2.z, 2)
+        )
+
     return math.sqrt(
         math.pow(loc1.x - loc2.x, 2) \
         + math.pow(loc1.y - loc2.y, 2)
@@ -367,6 +374,7 @@ def compass_to_yaw(compass):
         yaw = compass + 360
     return yaw
 
+
 def yaw_to_direction(yaw_degrees: float):
     """Convert CARLA yaw (in degrees) to a unit vector (cos, sin).
 
@@ -383,55 +391,46 @@ def yaw_to_direction(yaw_degrees: float):
     return forward_x, forward_y
 
 
-def get_direction(trajectory):
+def get_direction(trajectory, ego_speed):
     """
-    Infer route direction (:data:`forward`, :data:`left`, or :data:`right`) from a trajectory.
-    Note: 'opposite' direction is not supported and will be mapped to 'forward'.
+    Infer route direction (:data:`forward`, :data:`left`, :data:`right`, or :data:`opposite`) from a trajectory.
 
     :param trajectory: List of (location, road option) tuples.
+    :param ego_speed: Speed in m/s to determine junction search distance.
     :return: String representing the general direction.
     """
     direction = "forward"
-    reached_junction = False
-    reference_wp = None
-    warned_opposite = False
-    for location, _ in trajectory:
-        waypoint = CarlaDataProvider.get_map().get_waypoint(location)
+    junction_search_limit = get_junction_search_limit(ego_speed)
+    traveled = 0
+    i = 0
+    while traveled < junction_search_limit:
+        location, road_option = trajectory[i]
 
-        # Find the nearest junction
-        if waypoint.is_junction:
-            if not reached_junction:
-                reference_wp = waypoint
-            reached_junction = True
-            continue
+        if road_option.name == "STRAIGHT":
+            break
+        elif road_option.name == "LEFT":
+            direction = "left"
+            break
+        elif road_option.name == "RIGHT":
+            direction = "right"
+            break
 
-        if reached_junction and not waypoint.is_junction:
-            diff = (waypoint.transform.rotation.yaw - reference_wp.transform.rotation.yaw) % 360
-            if (diff > 315.0) or (diff < 45.0):
-                direction = 'forward'
-            elif 210.0 < diff <= 315.0:
-                direction = 'left'
-            elif 45.0 <= diff < 150.0:
-                direction = 'right'
-            else:
-                # Map 'opposite' direction to 'forward' since opposite is not supported
-                direction = 'forward'
-                if not warned_opposite:
-                    logger.warning(f"Opposite direction detected (diff={diff:.1f}), mapping to 'forward'")
-                    warned_opposite = True
+        if i > 0:
+            traveled += loc_dist(location, trajectory[i - 1][0], _3d=True)
+        i += 1
 
     return direction
 
 
-def get_available_directions(initial_transform, distance_limit=None):
+def get_available_directions(initial_transform, ego_speed):
     """
     Get available exit directions from a junction based on an initial transform.
 
     :param initial_transform: CARLA transform.
-    :param distance_limit: Distance limit to search for junctions.
+    :param ego_speed: Speed in m/s to determine junction search distance.
     :return: List of (direction, closest waypoint) tuples.
     """
-    trajectory, junction = get_junction(initial_transform.location, distance_limit=distance_limit)
+    trajectory, junction = get_junction(initial_transform.location, ego_speed=ego_speed)
     if junction is None: return [("forward", None)]
     wp_dict = group_junction_directions(junction, reference_yaw=trajectory[-1].rotation.yaw)
     directions = [(direction, get_closest_wp(wp_list, reference_loc=trajectory[-1].location)) for direction, wp_list in
@@ -445,11 +444,11 @@ def group_junction_directions(junction, reference_yaw):
 
     :param junction: CARLA junction object.
     :param reference_yaw: Yaw to compare against.
-    :return: Dictionary with keys ``forward``, ``left``, ``right`` and lists of waypoints.
+    :return: Dictionary with keys ``forward``, ``left``, ``right``, ``opposite`` and lists of waypoints.
     """
     _, exit_wps = get_junction_topology(junction)
 
-    wp_dict = {"forward": [], "left": [], "right": []}
+    wp_dict = {"forward": [], "left": [], "right": [], "opposite": []}
     for wp in exit_wps:
         diff = (wp.transform.rotation.yaw - reference_yaw) % 360
         if (diff > 315.0) or (diff < 45.0):
@@ -458,5 +457,21 @@ def group_junction_directions(junction, reference_yaw):
             wp_dict["left"].append(wp)
         elif 45.0 <= diff < 150.0:
             wp_dict["right"].append(wp)
+        else:
+            wp_dict["opposite"].append(wp)
 
     return wp_dict
+
+
+def get_junction_search_limit(ego_speed):
+    junction_search_limit = min(
+        cfg.CONFIG["trajectory"]["trajectory_length"],
+        max(
+            cfg.CONFIG["trajectory"]["junction_distance_lower_bound"],
+            min(
+                cfg.CONFIG["trajectory"]["junction_distance_seconds"] * ego_speed,
+                cfg.CONFIG["trajectory"]["junction_distance_upper_bound"]
+            )
+        )
+    )
+    return junction_search_limit

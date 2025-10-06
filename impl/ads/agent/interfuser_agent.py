@@ -758,7 +758,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
                     "yaw": ego_trans.rotation.yaw,
                     "speed": tick_data["speed"]
                 },
-                "direction": get_direction(CarlaDataProvider._ego_vehicle_route),
+                "direction": get_direction(CarlaDataProvider._ego_vehicle_route, tick_data["speed"]),
             }
 
             if display_agent:
