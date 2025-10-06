@@ -351,10 +351,10 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             # string += uuid.uuid4().hex
 
             print(string)
-
-            self.save_path = pathlib.Path(SAVE_PATH) / string
-            self.save_path.mkdir(parents=True, exist_ok=False)
-            (self.save_path / "meta").mkdir(parents=True, exist_ok=False)
+            if SAVE_PATH:
+                self.save_path = pathlib.Path(SAVE_PATH) / string
+                self.save_path.mkdir(parents=True, exist_ok=False)
+                (self.save_path / "meta").mkdir(parents=True, exist_ok=False)
 
     def _init(self):
         """Initialize route planner, vehicle and environment settings."""
