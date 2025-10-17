@@ -160,6 +160,8 @@ scenario:
     walker: 0.5
     static: 0.1
   max_actors: 4
+  max_actor_distance: 100.0
+  max_speed: 35.0
   init_selection_factor: 10
   dist_scaling: 1.0 # 0.4
   tournament: 3

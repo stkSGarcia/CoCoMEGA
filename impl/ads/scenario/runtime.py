@@ -11,6 +11,7 @@ from impl.ads.utils.dpp_streaming import DPPStreamingSelector
 from impl.ads.utils.leaderboad_utils import rulefit_vectorize, vectorize_realtime_data
 
 from impl import config as cfg
+from impl.ads.utils.math_utils import block_normalize_rows
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +108,8 @@ class RuntimeScenarioManager:
             tick_data, meta = msg
             try:
                 scenario = vectorize_realtime_data(tick_data)
-                vec = rulefit_vectorize(scenario, keep_original=not self.discard_original_features)
+                vec, block_sizes = rulefit_vectorize(scenario, keep_original=not self.discard_original_features)
+                feat = np.asarray(vec, dtype=np.float32)
 
                 # check if vec is not all zeros
                 if np.all(vec == 0):
@@ -117,7 +119,7 @@ class RuntimeScenarioManager:
                     else:
                         is_new = False
                 else:
-                    feat = self._l2_normalize(vec)
+                    feat = block_normalize_rows(vec, block_sizes)
                     # Novelty check
                     if self.strategy == "dpp_stream":
                         is_new, d2, angle_deg = self._dpp_selector.consider(feat)
@@ -155,12 +157,13 @@ class RuntimeScenarioManager:
                         os.makedirs(os.path.dirname(fname), exist_ok=True)
                     else:
                         fname = os.path.join(self.dataset_dir, f"scenario_{self.run_id}_{self.counter:05d}.pkl")
-
                     with open(fname, "wb") as f:
                         pickle.dump(
                             {
                                 "scenario": scenario,
                                 "vector": vec,
+                                "vector_norm": feat,
+                                "block_sizes": block_sizes,
                                 "rt_data": tick_data,
                                 "meta": meta,
                             },
@@ -175,6 +178,7 @@ class RuntimeScenarioManager:
                     logger.info("[RuntimeScenarioManager] New scenario saved: %s", fname)
             except Exception as e:
                 logger.warning("[RuntimeScenarioManager] Error processing scenario: %s", e)
+                raise e
 
     # ---------------- Internals ----------------
 
@@ -187,13 +191,15 @@ class RuntimeScenarioManager:
             try:
                 with open(path, "rb") as fh:
                     data = pickle.load(fh)
-                vec = np.asarray(data["vector"], dtype=np.float32)
-                feats.append(self._l2_normalize(vec))
-                self._entries.append({"vector": vec, "meta": data.get("meta", {})})
+                vec = np.asarray(data["vector"], dtype=np.float64)
+                vec_norm = np.asarray(data["vector_norm"], dtype=np.float64)
+
+                feats.append(vec_norm.reshape(1, -1))
+                self._entries.append({"vector": vec, "vector_norm": vec_norm, "meta": data.get("meta", {})})
                 self.counter += 1
             except Exception as e:
                 logger.warning("[RuntimeScenarioManager] Failed to load %s: %s", path, e)
-        self._matrix = np.stack(feats, axis=0).astype(np.float32) if feats else None
+        self._matrix = np.vstack(feats).astype(np.float64) if feats else None
         logger.info("[RuntimeScenarioManager] Loaded %d existing scenarios", len(self._entries))
 
     def _max_cosine_similarity(self, feat: np.ndarray) -> Tuple[float, Optional[int]]:
@@ -202,11 +208,3 @@ class RuntimeScenarioManager:
         sims = (self._matrix @ feat.reshape(-1, 1)).reshape(-1)
         best_idx = int(np.argmax(sims))
         return float(sims[best_idx]), best_idx
-
-    @staticmethod
-    def _l2_normalize(v: np.ndarray, eps: float = 1e-8) -> np.ndarray:
-        v = np.asarray(v, dtype=np.float32).reshape(-1)
-        n = float(np.linalg.norm(v))
-        if not np.isfinite(n) or n < eps:
-            return np.zeros((1,), dtype=np.float32)
-        return v / n

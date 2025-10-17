@@ -46,6 +46,26 @@ class AngularEncoder(BaseEstimator, TransformerMixin):
         return np.array(names)
 
 
+class ClippedMaxScaler(BaseEstimator, TransformerMixin):
+    """ Scale numerical features by a maximum value and clip to [0, 1]."""
+
+    def __init__(self, max_val):
+        self.max_val = max_val
+        pass
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        X = np.array(X, dtype=np.float32)
+        X = X / self.max_val
+        X = np.clip(X, a_min=0, a_max=1)  # ensure non-negative
+        return X
+
+    def get_feature_names_out(self, input_features=None):
+        return np.array([f"{col}_scaled" for col in input_features])
+
+
 CATEGORIES = {
     "town": ["town01", "town02", "town03", "town04", "town05", "town06", "town07", "town10"],
     "weather": list(range(0, 12)),
@@ -112,32 +132,56 @@ def vectorize(solutions, mode="stats"):
 
 
 def _preprocess_vectors(raw_vectors):
-    categorical_cols, categories_list, angular_cols = [], [], []
+    col_types = {
+        "cat": [],
+        "ang": [],
+        "dist": [],
+        "spd": [],
+        "num": [],
+    }
+    categories_list = []
     for col in raw_vectors.columns:
         if all(key not in col for key in CATEGORIES.keys()):
-            if ("angle" in col or "yaw" in col or "rotation" in col) and "ego" not in col:
-                angular_cols.append(col)
+            if "angle" in col or "yaw" in col or "rotation" in col:
+                col_types["ang"].append(col)
+                continue
+            if "speed" in col:
+                col_types["spd"].append(col)
+                continue
+            if "radius" in col:
+                col_types["dist"].append(col)
                 continue
 
-        for keyword in CATEGORIES.keys():
-            if keyword in col:
-                categorical_cols.append(col)
-                categories_list.append(CATEGORIES[keyword])
+            col_types["num"].append(col)
+            continue
+        for key, categories in CATEGORIES.items():
+            if key in col:
+                col_types["cat"].append(col)
+                categories_list.append(categories)
                 break
 
     preprocessor = ColumnTransformer(
         transformers=[
-            ("categorical", OneHotEncoder(categories=categories_list, sparse=False), categorical_cols),
-            ("angular", AngularEncoder(), angular_cols),
+            ("distance", ClippedMaxScaler(max_val=cfg.CONFIG["scenario"]["max_actor_distance"]), col_types["dist"]),
+            ("speed", ClippedMaxScaler(max_val=cfg.CONFIG["scenario"]["max_speed"]), col_types["spd"]),
+            ("angular", AngularEncoder(), col_types["ang"]),
+            ("numerical", "passthrough", col_types["num"]),
+            ("categorical", OneHotEncoder(categories=categories_list, sparse=False), col_types["cat"]),
         ],
         remainder="passthrough",
         verbose_feature_names_out=False,
     )
 
+    block_sizes = [
+        len(col_types["dist"]) + len(col_types["spd"]),
+        2 * len(col_types["ang"]) + len(col_types["num"]),
+        sum([len(c) for c in categories_list]),
+    ]
+
     transformed_array = preprocessor.fit_transform(raw_vectors)
     features = preprocessor.get_feature_names_out()
     vectors = pd.DataFrame(transformed_array, columns=features).fillna(-999)
-    return vectors, features
+    return vectors, features, block_sizes
 
 
 def model_fit(X, y):
@@ -391,9 +435,10 @@ def vectorize_scenarios(scenarios, keep_original=False):
 
     raw_vectors = pd.concat([scenario.vectorize(-1, prefix="source", mode="stats") for scenario in scenarios],
                             ignore_index=True)
-    vectors, features = _preprocess_vectors(raw_vectors)
+    vectors, features, block_sizes = _preprocess_vectors(raw_vectors)
     if len(RULES) == 0: return vectors
 
+    block_sizes.append(len(RULES))
     for i, row in RULES.iterrows():
         rule = row["rule"]
         vectors[rule] = 0
@@ -405,7 +450,7 @@ def vectorize_scenarios(scenarios, keep_original=False):
 
         match_idx = vectors.query(filtered_rule).index
         vectors.loc[match_idx, rule] = 1
-    return vectors if keep_original else vectors[RULE_FEATURES].copy()
+    return (vectors, block_sizes) if keep_original else (vectors[RULE_FEATURES].copy(), [len(RULES)])
 
 
 def save_rules(rules, filename):

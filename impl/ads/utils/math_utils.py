@@ -217,3 +217,64 @@ def closest_pair_angle_deg(X):
     max_cos = np.max(K)           # closest pair = largest cosine
     max_cos = np.clip(max_cos, -1.0, 1.0)
     return float(np.degrees(np.arccos(max_cos)))
+
+import numpy as np
+
+def l2_normalize_rows(X: np.ndarray, eps: float = 1e-12) -> np.ndarray:
+    """
+    Row-wise L2 normalize the entire vector.
+
+    Parameters
+    ----------
+    X : array-like of shape (n_samples, n_features)
+    eps : float
+        Small value to avoid division by zero.
+
+    Returns
+    -------
+    np.ndarray
+        Row-normalized matrix; all-zero rows remain zero.
+    """
+    X = np.asarray(X, dtype=float)
+    norms = np.linalg.norm(X, axis=1, keepdims=True)
+    mask = norms > eps
+    Xn = X.copy()
+    if np.any(mask):
+        Xn[mask[:, 0]] = X[mask[:, 0]] / norms[mask].reshape(-1, 1)
+    return Xn
+
+
+def block_normalize_rows(X: np.ndarray, block_sizes, eps: float = 1e-12) -> np.ndarray:
+    """
+    First L2-normalize each contiguous block per row, then L2-normalize the whole row.
+
+    Parameters
+    ----------
+    X : array-like of shape (n_samples, n_features)
+    block_sizes : list[int]
+        Sizes of contiguous feature blocks; must sum to n_features.
+    eps : float
+
+    Returns
+    -------
+    np.ndarray
+        Matrix with per-block normalization followed by full-row L2 normalization.
+    """
+    X = np.asarray(X, dtype=float)
+    n, d = X.shape
+    if sum(block_sizes) != d:
+        raise ValueError(f"block_sizes must sum to {d}, got {sum(block_sizes)}")
+
+    Xb = X.copy()
+    start = 0
+    for size in block_sizes:
+        end = start + size
+        if size > 0:
+            B = Xb[:, start:end]
+            norms = np.linalg.norm(B, axis=1, keepdims=True)
+            mask = norms > eps
+            if np.any(mask):
+                Xb[mask[:, 0], start:end] = B[mask[:, 0]] / norms[mask].reshape(-1, 1)
+        start = end
+
+    return l2_normalize_rows(Xb, eps=eps)
