@@ -142,7 +142,7 @@ class RuntimeScenarioManager:
                             is_new = (max_sim <= self.cosine_similarity_threshold)
                             logger.info(
                                 f"[RuntimeScenarioManager] Max cosine selected: {is_new}, closest_idx={best_idx}, angle_deg: {angle_deg}")
-                            logger.debug(f"[RuntimeScenarioManager] Max cosine similarity: {max_sim}, feature: {feat}")
+                            logger.info(f"[RuntimeScenarioManager] Max cosine similarity: {max_sim}, feature: {feat}")
 
                     elif self.strategy == "none":
                         logger.info("[RuntimeScenarioManager] No strategy selected, scenario accepted")
