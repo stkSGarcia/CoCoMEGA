@@ -274,7 +274,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             self.video_recorder = VideoRecorder(self.additional_config["recording_save_path"])
 
         strategy = os.environ.get("NOVELTY_STRATEGY", None)
-        discard_original_features = os.environ.get("DISCARD_ORIGINAL_FEATURES", False)
+        discard_original_features = os.environ.get("DISCARD_ORIGINAL_FEATURES", "False").lower() == "true"
         self.scenario_manager = RuntimeScenarioManager(
             dataset_dir=DATASET_PATH,
             strategy=strategy,
