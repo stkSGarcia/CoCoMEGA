@@ -475,3 +475,14 @@ def get_junction_search_limit(ego_speed):
         )
     )
     return junction_search_limit
+
+def distance(actor1, actor2):
+    """Compute the Euclidean distance between two actors in the 2D plane.
+
+    :param actor1: First CARLA actor.
+    :param actor2: Second CARLA actor.
+    :return: Distance in meters.
+    """
+    loc1 = actor1.get_location()
+    loc2 = actor2.get_location()
+    return math.sqrt((loc1.x - loc2.x) ** 2 + (loc1.y - loc2.y) ** 2)

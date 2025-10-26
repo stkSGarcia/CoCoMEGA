@@ -139,9 +139,6 @@ def vectorize_realtime_data(rt_data):
     scenario_def.weather = int(rt_data["sim_data"]["weather"])
     scenario_def.set_brightness(rt_data["sim_data"]["brightness"])
     scenario_def.town = rt_data["sim_data"]["town"]
-    scenario_def.is_junction_est = rt_data["traffic"]["is_junction"]
-    scenario_def.stop_sign_est = rt_data["traffic"]["stop_sign"]
-    scenario_def.red_light_est = rt_data["traffic"]["red_light"]
 
     for _id, other_actor in rt_data["sim_data"]["other_actors"].items():
         relative_position = (

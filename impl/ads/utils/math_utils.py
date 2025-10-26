@@ -1,6 +1,4 @@
 import math
-
-import numpy as np
 import pandas as pd
 from scipy.stats import mannwhitneyu, combine_pvalues, wilcoxon
 
@@ -200,9 +198,10 @@ def calculate_improvements(data, comparison_algs, metric_name, higher_is_better=
         print(
             f"Average {metric_name} improvement of {alg} ({np.mean(data[alg]):.2f}) compared to {baseline} ({np.mean(data[baseline]):.2f}): {improvement:.2f}% (p-value = {pval:.1e})")
 
+
 def lvd_from_embeddings(X, eps=1e-8):
     """X: (k,d) selected embeddings (not necessarily unit)."""
-    Xn = unit_rows(X)
+    Xn = l2_normalize_rows(X)
     K = Xn @ Xn.T
     # Cholesky for stability; det(K+epsI) = prod(diag(L))^2
     L = np.linalg.cholesky(K + eps * np.eye(K.shape[0]))
@@ -210,15 +209,18 @@ def lvd_from_embeddings(X, eps=1e-8):
     k = X.shape[0]
     return float(np.exp(logdet / k))  # LVD in (0,1]
 
+
 def closest_pair_angle_deg(X):
-    Xn = unit_rows(X)
+    Xn = l2_normalize_rows(X)
     K = Xn @ Xn.T
     np.fill_diagonal(K, -np.inf)  # ignore self
-    max_cos = np.max(K)           # closest pair = largest cosine
+    max_cos = np.max(K)  # closest pair = largest cosine
     max_cos = np.clip(max_cos, -1.0, 1.0)
     return float(np.degrees(np.arccos(max_cos)))
 
+
 import numpy as np
+
 
 def l2_normalize_rows(X: np.ndarray, eps: float = 1e-12) -> np.ndarray:
     """
@@ -278,3 +280,114 @@ def block_normalize_rows(X: np.ndarray, block_sizes, eps: float = 1e-12) -> np.n
         start = end
 
     return l2_normalize_rows(Xb, eps=eps)
+
+
+def d2_to_angle_deg(d2):
+    d2 = float(np.clip(d2, 0.0, 1.0))
+    return np.degrees(np.arcsin(np.sqrt(d2)))
+
+
+def as_unit_matrix(M: np.ndarray) -> np.ndarray:
+    M = np.asarray(M, dtype=np.float32)
+    norms = np.linalg.norm(M, axis=1, keepdims=True)
+    norms[norms == 0] = 1.0
+    return M / norms
+
+
+def solve_lower(RT: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Solve (R^T) w = b, where R is upper-triangular → R^T is lower-triangular."""
+    L = RT  # lower-triangular
+    b = b.astype(np.float32, copy=False)
+    n = L.shape[0]
+    w = np.empty_like(b)
+    for i in range(n):
+        s = b[i]
+        if i > 0:
+            s -= np.dot(L[i, :i], w[:i])
+        w[i] = s / (L[i, i] if L[i, i] != 0 else 1e-12)
+    return w
+
+
+def angle_between_vectors(v1, v2):
+    """Calculate angle between two 2D vectors in degrees.
+
+    :param v1: First vector.
+    :param v2: Second vector.
+    :return: Angle in degrees.
+    """
+    dot_product = v1.x * v2.x + v1.y * v2.y
+    magnitude_v1 = math.sqrt(v1.x ** 2 + v1.y ** 2)
+    magnitude_v2 = math.sqrt(v2.x ** 2 + v2.y ** 2)
+    cos_angle = dot_product / (magnitude_v1 * magnitude_v2)
+    angle = math.acos(cos_angle)
+    return math.degrees(angle)
+
+
+def distance_vector(v1, v2):
+    """
+    Compute vector difference between v1 and v2.
+
+    :param v1: Dict with ``x``, ``y``.
+    :param v2: Dict with ``x``, ``y``.
+    :return: Vector difference as a dictionary.
+    """
+    return {'x': v1['x'] - v2['x'], 'y': v1['y'] - v2['y']}
+
+
+def angle_between_vectors_dict(v1, v2):
+    """
+    Compute angle in degrees between two 2D vectors (dictionary version).
+
+    :param v1: First vector.
+    :param v2: Second vector.
+    :return: Angle in degrees.
+    """
+    dot_product = v1['x'] * v2['x'] + v1['y'] * v2['y']
+    magnitude_v1 = math.sqrt(v1['x'] ** 2 + v1['y'] ** 2)
+    magnitude_v2 = math.sqrt(v2['x'] ** 2 + v2['y'] ** 2)
+    if magnitude_v1 * magnitude_v2 == 0:
+        return 0
+    cos_angle = dot_product / (magnitude_v1 * magnitude_v2)
+    cos_angle = clip(cos_angle, -1, 1)
+    angle = math.acos(cos_angle)
+
+    return math.degrees(angle)
+
+
+def vector_size(v):
+    """
+    Compute the Euclidean norm of a vector.
+
+    :param v: A 2D vector.
+    :return: Magnitude of the vector.
+    """
+    return math.sqrt(v['x'] ** 2 + v['y'] ** 2)
+
+
+def rotate_vector(v, degree):
+    """
+    Rotate a 2D vector by a specified angle.
+
+    :param v: Vector to rotate.
+    :param degree: Angle in degrees.
+    :return: Rotated vector as a dictionary.
+    """
+    theta = math.radians(degree)
+    return {'x': v['x'] * math.cos(theta) - v['y'] * math.sin(theta),
+            'y': v['x'] * math.sin(theta) + v['y'] * math.cos(theta)}
+
+
+def clip(value, _min, _max):
+    """
+    Clamp a value between a min and max.
+
+    :param value: Input value.
+    :param _min: Minimum allowed value.
+    :param _max: Maximum allowed value.
+    :return: Clamped value.
+    """
+    if value < _min:
+        value = _min
+    elif value > _max:
+        value = _max
+    return value

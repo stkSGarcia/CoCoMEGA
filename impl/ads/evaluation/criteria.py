@@ -7,33 +7,8 @@ import csv
 import math
 
 from impl import config as cfg
-
-
-def _distance(actor1, actor2):
-    """Compute the Euclidean distance between two actors in the 2D plane.
-
-    :param actor1: First CARLA actor.
-    :param actor2: Second CARLA actor.
-    :return: Distance in meters.
-    """
-    loc1 = actor1.get_location()
-    loc2 = actor2.get_location()
-    return math.sqrt((loc1.x - loc2.x) ** 2 + (loc1.y - loc2.y) ** 2)
-
-
-def _angle_between_vectors(v1, v2):
-    """Calculate angle between two 2D vectors in degrees.
-
-    :param v1: First vector.
-    :param v2: Second vector.
-    :return: Angle in degrees.
-    """
-    dot_product = v1.x * v2.x + v1.y * v2.y
-    magnitude_v1 = math.sqrt(v1.x ** 2 + v1.y ** 2)
-    magnitude_v2 = math.sqrt(v2.x ** 2 + v2.y ** 2)
-    cos_angle = dot_product / (magnitude_v1 * magnitude_v2)
-    angle = math.acos(cos_angle)
-    return math.degrees(angle)
+from impl.ads.utils.carla_utils import distance
+from impl.ads.utils.math_utils import angle_between_vectors
 
 
 class VehicleMeasurementTest(Criterion):
@@ -90,18 +65,18 @@ class VehicleMeasurementTest(Criterion):
 
             if len(self.other_actors) > 0:
                 measure_dict[f"ego-nearest-distance"] = min(
-                    [_distance(self.actor, other_actor) for other_actor in self.other_actors])
+                    [distance(self.actor, other_actor) for other_actor in self.other_actors])
 
-                fov_distances = [_distance(self.actor, other_actor) \
+                fov_distances = [distance(self.actor, other_actor) \
                                  for other_actor in self.other_actors if self._isin_fov(other_actor)]
                 measure_dict[f"fov-nearest-distance"] = min(fov_distances) if len(fov_distances) > 0 else np.inf
                 role_names = set([other_actor.attributes['role_name'] for other_actor in self.other_actors])
                 for role_name in role_names:
                     measure_dict[f"ego-nearest-distance-{role_name}"] = min(
-                        [_distance(self.actor, other_actor) for other_actor in self.other_actors if
+                        [distance(self.actor, other_actor) for other_actor in self.other_actors if
                          other_actor.attributes['role_name'] == role_name])
 
-                    fov_rolename_distances = [_distance(self.actor, other_actor) \
+                    fov_rolename_distances = [distance(self.actor, other_actor) \
                                               for other_actor in self.other_actors \
                                               if other_actor.attributes['role_name'] == role_name \
                                               and self._isin_fov(other_actor)]
@@ -140,6 +115,6 @@ class VehicleMeasurementTest(Criterion):
 
         vector_to_actor = carla.Vector2D(actor_location.x - ego_location.x,
                                          actor_location.y - ego_location.y, )
-        angle = _angle_between_vectors(forward_vector, vector_to_actor)
+        angle = angle_between_vectors(forward_vector, vector_to_actor)
 
         return angle <= self.fov / 2

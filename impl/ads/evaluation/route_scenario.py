@@ -378,66 +378,6 @@ class RouteScenario(BasicScenario):
                                                      color=carla.Color(10, 10, 225),
                                                      life_time=cfg.CONFIG["simulation"]["scenario_duration"] + 1)
 
-    def _scenario_sampling(self, potential_scenarios_definitions, random_seed=0):
-        """
-        The function used to sample the scenarios that are going to happen for this route.
-        """
-
-        # fix the random seed for reproducibility
-        rgn = random.RandomState(random_seed)
-
-        def position_sampled(scenario_choice, sampled_scenarios):
-            """
-            Check if a position was already sampled, i.e. used for another scenario.
-            """
-            for existent_scenario in sampled_scenarios:
-                # If the scenarios have equal positions then it is true.
-                if compare_scenarios(scenario_choice, existent_scenario):
-                    return True
-
-            return False
-
-        def select_scenario(list_scenarios):
-            # priority to the scenarios with higher number: 10 has priority over 9, etc.
-            higher_id = -1
-            selected_scenario = None
-            for scenario in list_scenarios:
-                try:
-                    scenario_number = int(scenario['name'].split('Scenario')[1])
-                except:
-                    scenario_number = -1
-
-                if scenario_number >= higher_id:
-                    higher_id = scenario_number
-                    selected_scenario = scenario
-
-            return selected_scenario
-
-        def select_scenario_randomly(list_scenarios):
-            # randomly select a scenario
-            return rgn.choice(list_scenarios)
-
-        # The idea is to randomly sample a scenario per trigger position.
-        sampled_scenarios = []
-        for trigger in potential_scenarios_definitions.keys():
-            possible_scenarios = potential_scenarios_definitions[trigger]
-
-            # scenario_choice = select_scenario(possible_scenarios) # original prioritized sampling
-            scenario_choice = select_scenario_randomly(possible_scenarios)  # random sampling
-            del possible_scenarios[possible_scenarios.index(scenario_choice)]
-            # We keep sampling and testing if this position is present on any of the scenarios.
-            while position_sampled(scenario_choice, sampled_scenarios):
-                if possible_scenarios is None or not possible_scenarios:
-                    scenario_choice = None
-                    break
-                scenario_choice = rgn.choice(possible_scenarios)
-                del possible_scenarios[possible_scenarios.index(scenario_choice)]
-
-            if scenario_choice is not None:
-                sampled_scenarios.append(scenario_choice)
-
-        return sampled_scenarios
-
     def _build_scenario_configuration(self, scenario_def, ego_vehicle, agent_instance):
         """Assemble the ScenarioConfiguration object."""
         list_of_actor_conf_instances = self._get_actors_instances(scenario_def.get_other_actors())
@@ -467,12 +407,6 @@ class RouteScenario(BasicScenario):
 
         return list_of_actors
 
-    def _create_behavior(self):
-        """Define the main behavior tree of the scenario (typically idle)."""
-        behavior = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL)
-        behavior.add_child(py_trees.behaviours.Running(name="Keep Running"))
-        return behavior
-
     def _create_test_criteria(self):
         """Define the success and monitoring criteria for the scenario."""
         criteria = []
@@ -486,7 +420,7 @@ class RouteScenario(BasicScenario):
             scenario_def_id=self.scenario_definition.id_,
         )
 
-        #collision_criterion = CollisionTest(self.ego_vehicles[0], terminate_on_failure=True)
+        # collision_criterion = CollisionTest(self.ego_vehicles[0], terminate_on_failure=True)
         criteria.append(vehicle_measurement)
 
         return criteria

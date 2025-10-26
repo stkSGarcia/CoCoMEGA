@@ -21,7 +21,7 @@ from leaderboard.autoagents import autonomous_agent
 from impl.ads.evaluation.exceptions import AgentTerminationSignal
 from impl.ads.utils.carla_utils import location_to_dict, get_direction
 from impl.ads.utils.leaderboad_utils import estimate_other_actor_data
-from impl.ads.scenario.runtime import RuntimeScenarioManager
+from impl.ads.scenario.runtime import RuntimeScenarioManager, CosineMaxSelector, StreamingDPPSelector
 from timm.models import create_model
 from team_code.utils import lidar_to_histogram_features, transform_2d_points
 from team_code.planner import RoutePlanner
@@ -49,6 +49,12 @@ DATASET_PATH = os.environ.get("DATASET_PATH", None)
 IMAGENET_DEFAULT_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
 
+CLS_DICT = {
+    "none": RuntimeScenarioManager,
+    "cosine_max": CosineMaxSelector,
+    "dpp_stream": StreamingDPPSelector,
+}
+
 
 class DisplayInterface(object):
     """Display interface for visualizing agent's sensor data."""
@@ -74,9 +80,6 @@ class DisplayInterface(object):
         :return: Display surface as a numpy array.
         """
         rgb = input_data['rgb']
-        rgb_left = input_data['rgb_left']
-        rgb_right = input_data['rgb_right']
-        rgb_focus = input_data['rgb_focus']
         map = input_data['map']
         surface = np.zeros((600, 1200, 3), np.uint8)
         surface[:, :800] = rgb
@@ -275,7 +278,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
 
         strategy = os.environ.get("NOVELTY_STRATEGY", None)
         discard_original_features = os.environ.get("DISCARD_ORIGINAL_FEATURES", "False").lower() == "true"
-        self.scenario_manager = RuntimeScenarioManager(
+        self.scenario_manager = CLS_DICT.get(strategy)(
             dataset_dir=DATASET_PATH,
             strategy=strategy,
             discard_original_features=discard_original_features,
@@ -350,7 +353,6 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             )
             # string += uuid.uuid4().hex
 
-            print(string)
             if SAVE_PATH:
                 self.save_path = pathlib.Path(SAVE_PATH) / string
                 self.save_path.mkdir(parents=True, exist_ok=False)
@@ -703,7 +705,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
             self.prev_control = control
             self.prev_surround_map = surround_map
 
-        if (display_agent) or (SAVE_PATH is not None):
+        if display_agent or (SAVE_PATH is not None):
             tick_data["raw"] = traffic_meta
             tick_data["bev_feature"] = bev_feature
             tick_data["traffic"] = {

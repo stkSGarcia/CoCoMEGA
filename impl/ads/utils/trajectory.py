@@ -1,8 +1,8 @@
 import importlib
-import math
 from collections.abc import Sequence
 
 from impl import config as cfg
+from impl.ads.utils.math_utils import vector_size, angle_between_vectors_dict, distance_vector
 
 
 class TrajectorySolver:
@@ -138,78 +138,8 @@ def single_trajectory_score(scen_route, pert_route):
         if vector_size(forward_vector) == 0: continue
         for pp in pert_route:
             vector_to_actor = distance_vector(pp, scen_route[i])
-            angle = angle_between_vectors(forward_vector, vector_to_actor)
+            angle = angle_between_vectors_dict(forward_vector, vector_to_actor)
             if ((-30 <= angle <= 30) or (330 <= angle <= 390)) and vector_size(vector_to_actor) <= \
                     cfg.CONFIG["violation"]["max_ego_distance"]:
                 score += 1
     return score
-
-
-def distance_vector(v1, v2):
-    """
-    Compute vector difference between v1 and v2.
-
-    :param v1: Dict with ``x``, ``y``.
-    :param v2: Dict with ``x``, ``y``.
-    :return: Vector difference as a dictionary.
-    """
-    return {'x': v1['x'] - v2['x'], 'y': v1['y'] - v2['y']}
-
-
-def angle_between_vectors(v1, v2):
-    """
-    Compute angle in degrees between two 2D vectors.
-
-    :param v1: First vector.
-    :param v2: Second vector.
-    :return: Angle in degrees.
-    """
-    dot_product = v1['x'] * v2['x'] + v1['y'] * v2['y']
-    magnitude_v1 = math.sqrt(v1['x'] ** 2 + v1['y'] ** 2)
-    magnitude_v2 = math.sqrt(v2['x'] ** 2 + v2['y'] ** 2)
-    if magnitude_v1 * magnitude_v2 == 0:
-        return 0
-    cos_angle = dot_product / (magnitude_v1 * magnitude_v2)
-    cos_angle = clip(cos_angle, -1, 1)
-    angle = math.acos(cos_angle)
-
-    return math.degrees(angle)
-
-
-def vector_size(v):
-    """
-    Compute the Euclidean norm of a vector.
-
-    :param v: A 2D vector.
-    :return: Magnitude of the vector.
-    """
-    return math.sqrt(v['x'] ** 2 + v['y'] ** 2)
-
-
-def rotate_vector(v, degree):
-    """
-    Rotate a 2D vector by a specified angle.
-
-    :param v: Vector to rotate.
-    :param degree: Angle in degrees.
-    :return: Rotated vector as a dictionary.
-    """
-    theta = math.radians(degree)
-    return {'x': v['x'] * math.cos(theta) - v['y'] * math.sin(theta),
-            'y': v['x'] * math.sin(theta) + v['y'] * math.cos(theta)}
-
-
-def clip(value, _min, _max):
-    """
-    Clamp a value between a min and max.
-
-    :param value: Input value.
-    :param _min: Minimum allowed value.
-    :param _max: Maximum allowed value.
-    :return: Clamped value.
-    """
-    if value < _min:
-        value = _min
-    elif value > _max:
-        value = _max
-    return value

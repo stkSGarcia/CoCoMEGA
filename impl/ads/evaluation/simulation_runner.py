@@ -34,7 +34,6 @@ arguments = [
      os.path.join(cfg.CONFIG["interfuser"]["repo"], "leaderboard/data/training_routes/routes_town05_long.xml")),
     ("REPETITIONS", "repetitions", 1),
     ("CHALLENGE_TRACK_CODENAME", "track", "SENSORS"),
-    # ("CHECKPOINT_ENDPOINT", "checkpoint", os.path.join(CONFIG["workspace"]["sim_result"], "checkpoint.json")),
     ("TEAM_AGENT", "agent", "impl/ads/agent/interfuser_agent.py"),
     ("TEAM_CONFIG", "agent_config", "impl/ads/agent/interfuser_config_v1.py"),
     ("DEBUG_CHALLENGE", "debug", 0),

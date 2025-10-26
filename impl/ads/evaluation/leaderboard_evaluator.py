@@ -94,9 +94,6 @@ class CustomizedEvaluator(LeaderboardEvaluator):
             scenario = RouteScenario(world=self.world, config=config, debug_mode=args.debug)
             self.statistics_manager.set_scenario(scenario.scenario)
 
-            # self.agent_instance._init()
-            # self.agent_instance.sensor_interface = SensorInterface()
-
             # Night mode
             if config.weather.sun_altitude_angle < 0.0:
                 for vehicle in scenario.ego_vehicles:
@@ -132,23 +129,6 @@ class CustomizedEvaluator(LeaderboardEvaluator):
         except Exception as e:
             logger.error(f"\n\033[91mError during the simulation:\n > {e}\033[0m\n")
 
-        # except AgentError as e:
-        #     # The agent has failed -> stop the route
-        #     print("\n\033[91mStopping the route, the agent has crashed:")
-        #     print("> {}\033[0m\n".format(e))
-        #     traceback.print_exc()
-
-        #     crash_message = "Agent crashed"
-
-        # except Exception as e:
-        #     print("\n\033[91mError during the simulation:")
-        #     print("> {}\033[0m\n".format(e))
-        #     traceback.print_exc()
-        #
-        #     crash_message = "Simulation crashed"
-        #     entry_status = "Crashed"
-
-        # Stop the scenario
         try:
             print("\033[1m> Stopping the route\033[0m")
             self.manager.stop_scenario()

@@ -163,7 +163,7 @@ def _mutate_attrs(this, attrs, boundary: Boundary, mutpb, eta, std):
 class ScenarioDefinition(AbstractScenarioDefinition):
     """Defines a scenario for simulation including ego, actors, weather, and trajectory."""
 
-    ATTRIBUTES = ["weather", "brightness", "stop_sign_est", "red_light_est", "is_junction_est"]
+    ATTRIBUTES = ["weather", "brightness"]
     DYNAMIC = ["vehicle", "walker", "static"]
     _BLUEPRINTS = cfg.CONFIG["blueprint"]["scenario"]
     _BOUNDARY = Boundary(cfg.CONFIG["boundary"]["env"])
@@ -180,9 +180,6 @@ class ScenarioDefinition(AbstractScenarioDefinition):
             self.statics = []
             self.weather = None
             self.brightness = None
-            self.stop_sign_est = None
-            self.red_light_est = None
-            self.is_junction_est = None
         elif isinstance(instance, ScenarioDefinition):
             self.town = instance.town
             self.ego_vehicle = instance.ego_vehicle
@@ -192,9 +189,6 @@ class ScenarioDefinition(AbstractScenarioDefinition):
             self.statics = instance.statics
             self.weather = instance.weather
             self.brightness = instance.brightness
-            self.stop_sign_est = instance.stop_sign_est
-            self.red_light_est = instance.red_light_est
-            self.is_junction_est = instance.is_junction_est
 
     def dist(self, other, **kwargs):
         """
@@ -335,9 +329,6 @@ class ScenarioDefinition(AbstractScenarioDefinition):
         scenario.ego_vehicle.angle = 0
         scenario.ego_vehicle.radius = 0
         scenario.ego_vehicle.region = None
-        scenario.stop_sign_est = 0
-        scenario.red_light_est = 0
-        scenario.is_junction_est = 0
 
         for attr in ScenarioDefinition.ATTRIBUTES:
             setattr(scenario, attr, ScenarioDefinition._BOUNDARY.random(attr))
@@ -735,8 +726,7 @@ class ScenarioDefinition(AbstractScenarioDefinition):
         # Vectorize global attributes.
         df = pd.DataFrame({f"{prefix}_town": [self.town.lower()]}).join(
             pd.DataFrame({f"{prefix}_{attr}": [getattr(self, attr, None)]
-                          for attr in self.ATTRIBUTES
-                          if attr not in ("stop_sign_est", "red_light_est", "is_junction_est")})
+                          for attr in self.ATTRIBUTES})
         )
 
         # Vectorize the ego vehicle.

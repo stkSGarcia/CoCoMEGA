@@ -17,6 +17,7 @@ import argparse
 from argparse import RawTextHelpFormatter
 import importlib
 import os
+import gc
 import sys
 import signal
 import logging
@@ -85,8 +86,7 @@ class ScenarioEvaluator(object):
         self.sensor_icons = []
 
         # First of all, we need to create the client that will send the requests
-        # to the simulator. Here we'll assume the simulator is accepting
-        # requests in the localhost at port 2000.
+        # to the simulator.
         if CarlaDataProvider.get_client() is None:
             tag = os.environ.get("tag", "default")
             initialize_carla(tag=tag)
@@ -96,10 +96,10 @@ class ScenarioEvaluator(object):
         if cfg.CONFIG["simulation"]["autopilot"]:
             self.traffic_manager = self.client.get_trafficmanager(int(args.trafficManagerPort))
 
-        # dist = pkg_resources.get_distribution("carla")
-        # if dist.version != 'leaderboard':
-        #     if LooseVersion(dist.version) < LooseVersion('0.9.10'):
-        #         raise ImportError("CARLA version 0.9.10.1 or newer required. CARLA version found: {}".format(dist))
+        dist = pkg_resources.get_distribution("carla")
+        if dist.version != 'leaderboard':
+            if LooseVersion(dist.version) < LooseVersion('0.9.10'):
+                raise ImportError("CARLA version 0.9.10.1 or newer required. CARLA version found: {}".format(dist))
 
         # Load agent
         module_name = os.path.basename(args.agent).split('.')[0]
@@ -144,7 +144,6 @@ class ScenarioEvaluator(object):
         """
         Cleanup the CARLA world and destroy all actors. Also resets internal states and watchdogs.
         """
-        # Keep world synchronous; just disable autopilot/TM if needed
         if self.manager and self.manager.get_running_status() \
                 and hasattr(self, 'world') and self.world:
             self.world.set_weather(CarlaDataProvider.find_weather_presets()[0][0])
@@ -194,9 +193,6 @@ class ScenarioEvaluator(object):
         CarlaDataProvider._ego_vehicle_route = None
         CarlaDataProvider._carla_actor_pool = dict()
         CarlaDataProvider._spawn_index = 0
-        # CarlaDataProvider._rng = None
-        # CarlaDataProvider._world = None
-        # CarlaDataProvider._map = None
 
         for i, _ in enumerate(self.ego_vehicles):
             if self.ego_vehicles[i]:
@@ -211,7 +207,6 @@ class ScenarioEvaluator(object):
             self.agent_instance.destroy()
             self.agent_instance = None
 
-        import gc
         gc.collect()
 
     def _prepare_ego_vehicles(self, ego_vehicles, wait_for_ego_vehicles=False):
@@ -224,10 +219,14 @@ class ScenarioEvaluator(object):
 
         if not wait_for_ego_vehicles:
             for vehicle in ego_vehicles:
-                self.ego_vehicles.append(CarlaDataProvider.request_new_actor(vehicle.model,
-                                                                             vehicle.transform, vehicle.rolename,
-                                                                             color=vehicle.color,
-                                                                             vehicle_category=vehicle.category))
+                self.ego_vehicles.append(
+                    CarlaDataProvider.request_new_actor(
+                        vehicle.model,
+                        vehicle.transform, vehicle.rolename,
+                        color=vehicle.color,
+                        vehicle_category=vehicle.category,
+                    )
+                )
 
         else:
             ego_vehicle_missing = True
@@ -252,7 +251,6 @@ class ScenarioEvaluator(object):
         # sync state
         CarlaDataProvider.get_world().tick()
 
-    # @profile
     def _load_and_wait_for_world(self, args):
         """
         Load the required CARLA map and configure the simulation environment.
@@ -329,7 +327,7 @@ class ScenarioEvaluator(object):
         except Exception as e:
             # The agent setup has failed -> start the next route
             logger.error(f"\n\033[91mCould not set up the required agent: {e}")
-            # traceback.print_exc()
+            traceback.print_exc()
             self._cleanup()
             raise AgentSetupFailedError(f"\n\033[91mCould not set up the required agent: {e}")
 
@@ -388,21 +386,11 @@ class ScenarioEvaluator(object):
             if args.record:
                 self.client.stop_recorder()
 
-            # Remove all actors
-            # self.client.apply_batch([carla.command.SetAutopilot(actor.id, False, self.traffic_manager.get_port())
-            #                          for actor in scenario.other_actors
-            #                          if actor and isinstance(actor, carla.Vehicle)])
-            # scenario.remove_all_actors()
-            # self.client.apply_batch([carla.command.DestroyActor(actor)
-            #                          for actor in scenario.other_actors
-            #                          if actor is not None])
-            # scenario.other_actors = []
-
             self._cleanup()
 
         except Exception as e:
             logger.error(f"\n\033[91mFailed to stop the scenario: {e}")
-            # traceback.print_exc()
+            traceback.print_exc()
             raise StoppingScenarioFailedError(f"\n\033[91mFailed to stop the scenario: {e}")
         finally:
             if args.record:
