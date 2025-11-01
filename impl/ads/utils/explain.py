@@ -127,7 +127,7 @@ def vectorize(solutions, mode="stats"):
             follow_up.vectorize(max_actors, prefix="follow_up", mode="stats"),
         ], axis=1) for source, follow_up in zip(source_scens, follow_up_scens)]
     raw_vectors = pd.concat(vector_dfs, ignore_index=True)
-    vectors, features = _preprocess_vectors(raw_vectors)
+    vectors, features, _ = _preprocess_vectors(raw_vectors)
     return vectors, fitnesses, fitnesses_v1, fitnesses_v2, features
 
 
