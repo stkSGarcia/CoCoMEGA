@@ -40,8 +40,8 @@ class DomainFactory:
             domain_config = yaml.safe_load(domain_config_path.read_text()) if domain_config_path.is_file() else {}
             custom_config = yaml.safe_load(custom_config_path.read_text()) if custom_config_path.is_file() else {}
 
-            cfg.merge_dict(cfg.CONFIG, domain_config)
-            cfg.merge_dict(cfg.CONFIG, custom_config)
+            cfg.merge_dict(cfg.CONFIG, domain_config, exclude=["workspace"])
+            cfg.merge_dict(cfg.CONFIG, custom_config, exclude=["workspace"])
         except Exception as e:
             logger.warning(f"Exception Occurred While Reading Config: {e}")
 

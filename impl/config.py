@@ -13,14 +13,17 @@ logger = logging.getLogger(__name__)
 CONFIG = {}  # Always use this variable by using ``from impl import config as cfg; cfg.CONFIG``.
 
 
-def merge_dict(default: dict, user: dict):
+def merge_dict(default: dict, user: dict, exclude=[]):
     """Recursively merge user dictionary into the default dictionary.
 
     :param default: The default configuration dictionary.
     :param user: The user-provided configuration dictionary.
+    :param exclude: List of keys to exclude from merging.
     :return: Merged configuration dictionary.
     """
     for k, v in user.items():
+        if k in exclude:
+            continue
         if k not in default or not isinstance(default[k], dict):
             default[k] = v
         else:
