@@ -24,5 +24,4 @@ DOMAIN_REGISTRY = {
     "Perturbation": Perturbations,
     "Evaluation": SortEvaluator,
     "MRSet": mr_set,
-    "Config": "config.yaml",
 }

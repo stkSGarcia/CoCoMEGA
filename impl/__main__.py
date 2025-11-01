@@ -13,11 +13,7 @@ import argformat
 import torch
 
 from impl import config as cfg
-from impl.ads.evaluation.simulation_runner import ADSEvaluator
-from impl.ads.scenario.scenario_definition import ScenarioDefinition
-from impl.ads.utils.docker_utils import cleanup_containers
-from impl.ads.utils.leaderboad_utils import get_enviroment_confs, make_yamls, create_dataset_index, \
-    vectorize_realtime_data
+
 from impl.core.algorithm.ccea import CCEA
 from impl.core.algorithm.ga import GeneticAlgorithm
 from impl.core.algorithm.moccea import MOCCEA
@@ -59,7 +55,10 @@ def search(algorithm: str, resume: bool, folder_name: str):
     :param folder_name: Folder name to resume from.
     """
     from impl import problem
-    os.environ["tag"] = "search"
+    from impl.ads.utils.docker_utils import cleanup_containers
+
+    tag = "search"
+    os.environ["tag"] = tag
     if resume:
         cfg.init_project_directory(folder_name, resume)
     else:
@@ -78,6 +77,8 @@ def search(algorithm: str, resume: bool, folder_name: str):
         raise ValueError(f"Unsupported algorithm: {algorithm}.")
     solver.solve(resume=resume)
 
+    cleanup_containers(tag=tag)
+
 
 def simulate(num: int, file: str):
     """Simulate random or solution-based driving scenarios.
@@ -86,7 +87,12 @@ def simulate(num: int, file: str):
     :param file: Path to a solution file; if :data:`None`, simulate randomly.
     """
     from impl.ads.evaluation.simulation_runner import run_solutions
-    os.environ["tag"] = "simulate"
+    from impl.ads.evaluation.simulation_runner import ADSEvaluator
+    from impl.ads.scenario.scenario_definition import ScenarioDefinition
+    from impl.ads.utils.docker_utils import cleanup_containers
+
+    tag = "simulate"
+    os.environ["tag"] = tag
     cfg.init_project_directory("sim")
     if file:
         logger.info(f"Loading solution file: {file}.")
@@ -95,6 +101,8 @@ def simulate(num: int, file: str):
         logger.info(f"Running random scenarios.")
         ADSEvaluator(mr_set=None).run_scenarios(
             [ScenarioDefinition.generate_random_or_leaderboard() for _ in range(num)])
+
+    cleanup_containers(tag=tag)
 
 
 def fetch_realtime_data(agent: str,
@@ -107,11 +115,15 @@ def fetch_realtime_data(agent: str,
     :param agent: Name or version of the agent.
     :param run_name: A human-chosen identifier that will appear in the run folder name.
     :param resume: If True, resume the most recent run whose folder name contains run_name.
-    :param novelty_strategy: Strategy for novelty management (e.g., 'cosine_max', 'dpp_stream', 'none').
+    :param novelty_strategy: Strategy for novelty management (e.g., 'cosine', 'dpp', 'none').
     :param discard_original_features: Whether to discard original scenario features in embeddings.
     """
     from impl.ads.evaluation.simulation_runner import run_free_environments
-    os.environ["tag"] = "fetch_realtime_data"
+    from impl.ads.utils.leaderboad_utils import get_environment_confs
+    from impl.ads.utils.docker_utils import cleanup_containers
+
+    tag = "fetch_realtime_data"
+    os.environ["tag"] = tag
 
     # Base directory for realtime data (unchanged location)
     base_dir = Path(cfg.CONFIG["workspace"]["realtime_data"])
@@ -167,7 +179,7 @@ def fetch_realtime_data(agent: str,
         "discard_original_features": str(bool(discard_original_features)),
     }
 
-    environment_confs = get_enviroment_confs()
+    environment_confs = get_environment_confs()
     for i in range(len(environment_confs)):
         environment_confs[i] = {
             **environment_confs[i],
@@ -179,11 +191,18 @@ def fetch_realtime_data(agent: str,
 
     run_free_environments(environment_confs)
 
+    cleanup_containers(tag=tag)
+
+
 def generate_train_data():
     """Run free simulations to generate training data using rule-based agents."""
 
     from impl.ads.evaluation.simulation_runner import run_free_environments
-    os.environ["tag"] = "generate_train_data"
+    from impl.ads.utils.leaderboad_utils import get_environment_confs, make_yamls
+    from impl.ads.utils.docker_utils import cleanup_containers
+
+    tag = "generate_train_data"
+    os.environ["tag"] = tag
     logger.info(f"Generating training data...")
 
     os.makedirs(cfg.CONFIG["workspace"]["data_gen_checkpoint"], exist_ok=True)
@@ -193,7 +212,7 @@ def generate_train_data():
         "cp_root": cfg.CONFIG["workspace"]["data_gen_checkpoint"],
         "output_root": cfg.CONFIG["workspace"]["train_data"]
     }
-    environment_confs = get_enviroment_confs()
+    environment_confs = get_environment_confs()
     make_yamls()
     for i in range(len(environment_confs)):
         weather = environment_confs[i]["weather"]
@@ -208,13 +227,30 @@ def generate_train_data():
         }
     run_free_environments(environment_confs)
 
+    cleanup_containers(tag=tag)
+
+
 def train_interfuser(args):
     """Train an Interfuser model using the collected training data and provided arguments.
 
     :param args: Parsed training arguments.
     :return: Return code of the training process.
     """
-    os.environ["tag"] = "train"
+    from impl.ads.utils.leaderboad_utils import create_dataset_index
+    from impl.ads.utils.docker_utils import cleanup_containers
+
+    tag = "train"
+    os.environ["tag"] = tag
+
+    defaults = cfg.CONFIG["training"].copy()
+    defaults["output"] = cfg.CONFIG["workspace"].get("trained_models")
+
+    for key, value in vars(args).items():
+        if value is not None:
+            defaults[key.replace("-", "_")] = value
+
+    args = argparse.Namespace(**defaults)
+
     logger.info(f"Creating dataset index...")
     create_dataset_index(cfg.CONFIG["workspace"]["train_data"],
                          weathers=args.train_weathers + args.val_weathers,
@@ -284,6 +320,8 @@ def train_interfuser(args):
 
     process = subprocess.run(command, env=child_env, check=True, shell=True, text=True, stdout=None, stderr=None)
 
+    cleanup_containers(tag=tag)
+
     return process.returncode
 
 
@@ -294,6 +332,8 @@ def convert2scenarios(directory: str, n: int, towns: List[str]):
     :param n: Number of scenarios to sample (:data:`0` for all).
     :param towns: List of allowed towns for filtering.
     """
+    from impl.ads.utils.leaderboad_utils import vectorize_realtime_data
+    from impl.ads.utils.docker_utils import cleanup_containers
 
     def vectorize(path):
         """Helper function to vectorize a runtime data file if it matches town criteria.
@@ -312,7 +352,8 @@ def convert2scenarios(directory: str, n: int, towns: List[str]):
             logger.error(f"Failed to vectorize runtime data from {path}, error message {e}.")
             return None
 
-    os.environ["tag"] = "convert"
+    tag = "convert"
+    os.environ["tag"] = tag
     scenarios = []
     if n < 1:
         for data_path in Path(directory).rglob("*.pkl"):
@@ -337,6 +378,8 @@ def convert2scenarios(directory: str, n: int, towns: List[str]):
 
     (cfg.CONFIG["workspace"]["runtime_scenario"] /
      f"rt_scen_{str(int(round(time.time() * 1000)))}.pickle").write_bytes(pickle.dumps(scenarios))
+
+    cleanup_containers(tag=tag)
 
 
 if __name__ == "__main__":
@@ -372,7 +415,8 @@ if __name__ == "__main__":
 
     parser_crd = subparsers.add_parser("fetch_realtime_data",
                                        help="Execute free environments to fetch realtime data.")
-    parser_crd.add_argument("-a", "--agent", type=str, default=cfg.CONFIG["runtime"]["agent"], help="Agent version or name.")
+    parser_crd.add_argument("-a", "--agent", type=str, default="v1",
+                            help="Agent version or name.")
     parser_crd.add_argument("--run-name", type=str, default=f"{time.strftime('%Y%m%d-%H%M%S')}",
                             help="A short name for this run. Will be included in the run folder name.")
     parser_crd.add_argument("--resume", action="store_true",
@@ -381,16 +425,16 @@ if __name__ == "__main__":
     # NEW: novelty manager strategy
     parser_crd.add_argument("--novelty-strategy",
                             type=str,
-                            choices=("cosine_max", "dpp_stream", "none"),
-                            default=cfg.CONFIG["runtime"]["novelty_detection"]["strategy"],
+                            choices=("cosine", "dpp", "none"),
+                            default="dpp",
                             help="Novelty management strategy to use.")
 
     parser_crd.add_argument("--discard-original-features", action="store_true",
-                    help="Discard original scenario features in the embedding pipeline.")
+                            help="Discard original scenario features in the embedding pipeline.")
 
     parser_crd.set_defaults(func=lambda args: fetch_realtime_data(
         args.agent,
-        args.run_name, 
+        args.run_name,
         args.resume,
         args.novelty_strategy,
         args.discard_original_features
@@ -402,55 +446,38 @@ if __name__ == "__main__":
     parser_train = subparsers.add_parser("train", help="Train an Interfuser agent using generated data.")
 
     parser_train.add_argument("--gpu-num", type=int,
-                              default=cfg.CONFIG["training"]["gpu_num"],
                               help="Number of GPUS for training.")
     parser_train.add_argument("--train-weathers", type=parse_list(int, ","),
-                              default=cfg.CONFIG["training"]["train_weathers"],
                               help="List of weathers for training, e.g. '0,1,2,3'")
     parser_train.add_argument("--train-towns", type=parse_list(int, ","),
-                              default=cfg.CONFIG["training"]["train_towns"],
                               help="List of towns for training, e.g. '1,2,3'")
     parser_train.add_argument("--val-weathers", type=parse_list(int, ","),
-                              default=cfg.CONFIG["training"]["val_weathers"],
                               help="List of weathers for validation, e.g. '0,1,2,3'")
     parser_train.add_argument("--val-towns", type=parse_list(int, ","),
-                              default=cfg.CONFIG["training"]["val_towns"],
                               help="List of towns for validation, e.g. '1,2,3'")
     parser_train.add_argument("--model", type=str,
-                              default="interfuser_baseline",
                               help="Model to train, default: 'interfuser_baseline'")
     parser_train.add_argument("--epochs", type=int,
-                              default=cfg.CONFIG["training"]["epochs"],
                               help="Number of training epochs.")
     parser_train.add_argument("--warmup-epochs", type=int,
-                              default=cfg.CONFIG["training"]["warmup_epochs"],
                               help="Number of warmup epochs.")
     parser_train.add_argument("--lr", type=float,
-                              default=cfg.CONFIG["training"]["lr"],
                               help="Learning rate.")
     parser_train.add_argument("--batch-size", type=int,
-                              default=cfg.CONFIG["training"]["batch_size"],
                               help="Size of batches.")
     parser_train.add_argument("--eval-metric", type=str,
-                              default=cfg.CONFIG["training"]["eval_metric"],
                               help="Evaluation metric.")
     parser_train.add_argument("--opt", type=str,
-                              default=cfg.CONFIG["training"]["opt"],
                               help="Optimization algorithm.")
     parser_train.add_argument("--opt-eps", type=float,
-                              default=cfg.CONFIG["training"]["opt_eps"],
                               help="Optimization tolerance.")
     parser_train.add_argument("--weight-decay", type=float,
-                              default=cfg.CONFIG["training"]["weight_decay"],
                               help="Weight decay regularization parameter.")
     parser_train.add_argument("--backbone-lr", type=float,
-                              default=cfg.CONFIG["training"]["backbone_lr"],
                               help="Learning rate of backbone models.")
     parser_train.add_argument("--output", type=str,
-                              default=cfg.CONFIG["workspace"].get("trained_models"),
                               help="Path to training output and results.")
     parser_train.add_argument("--workers", type=int,
-                              default=cfg.CONFIG["training"]["workers"],
                               help="How many training processes to use.")
     group = parser_train.add_mutually_exclusive_group()
     group.add_argument("--resume", action="store_true",
@@ -472,5 +499,3 @@ if __name__ == "__main__":
         sys.exit(1)
     arguments = parser.parse_args()
     arguments.func(arguments)
-    tag = os.environ.get("tag", "default")
-    cleanup_containers(tag=tag)

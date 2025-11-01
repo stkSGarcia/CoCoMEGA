@@ -1,10 +1,22 @@
 import pickle
 import random
+import os
 import sys
+from impl import config as cfg
+
+# Add InterFuser to the path
+for path in [
+    "carla/PythonAPI",
+    "carla/PythonAPI/carla",
+    "carla/PythonAPI/carla/dist/carla-0.9.10-py3.7-linux-x86_64.egg",
+    "leaderboard",
+    "leaderboard/team_code",
+    "scenario_runner",
+]:
+    sys.path.append(os.path.join(cfg.CONFIG["interfuser"]["repo"], path))
 
 from deap import creator
 
-from impl import config as cfg
 from impl.ads.evaluation.simulation_runner import ADSEvaluator
 from impl.ads.mr.predefined import mr_set1, mr_set3
 from impl.ads.scenario.scenario_definition import ScenarioDefinition
@@ -33,6 +45,7 @@ if (cfg.CONFIG["search"]["seeds"] == "runtime" or
     runtime_scenarios = []
 
     import impl.ads.scenario.scenario_definition as scen_def_module
+
     sys.modules["impl.scenario.scenario_definition"] = scen_def_module
 
     for data_path in cfg.CONFIG["workspace"]["runtime_scenario"].rglob("*.*"):
@@ -79,6 +92,7 @@ def _pop_scenario():
 
     return pop_scenario
 
+
 def _pop_perturbation():
     """Initialize the perturbation population."""
     pop_size = cfg.CONFIG["perturbation"]["pop_size"]
@@ -96,6 +110,7 @@ def _pop_perturbation():
 
     return pop_perturbation
 
+
 #: Defined :const:`DOMAIN_REGISTRY`.
 DOMAIN_REGISTRY = {
     "Scenario": ScenarioDefinition,
@@ -104,5 +119,4 @@ DOMAIN_REGISTRY = {
     "PerturbationInit": _pop_perturbation,
     "Evaluation": ADSEvaluator,
     "MRSet": mr_set,
-    "Config": "config.yaml",
 }

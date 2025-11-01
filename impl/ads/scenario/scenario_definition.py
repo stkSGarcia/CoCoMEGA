@@ -18,8 +18,8 @@ from impl.ads.evaluation.exceptions import InvalidScenarioDefinitionError
 from impl.ads.scenario.Leaderboard_factory import LeaderBoardFactory
 from impl.ads.utils.carla_utils import load_world, trajectory_interpolation, get_available_directions, get_junction, \
     location_to_dict, dict_to_location, group_junction_directions, get_closest_wp
-from impl.ads.utils.math_utils import cartesian_to_polar
-from impl.ads.utils.trajectory import rotate_vector, single_trajectory_score
+from impl.ads.utils.math_utils import cartesian_to_polar, rotate_vector
+from impl.ads.utils.trajectory import single_trajectory_score
 from impl.core.scenario.base_scenario import AbstractScenarioDefinition
 
 logger = logging.getLogger(__name__)

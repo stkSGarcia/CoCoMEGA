@@ -126,16 +126,6 @@ def init_config():
     else:
         logger.warning("Cannot find log configuration file.")
 
-    # Add InterFuser to the path
-    for path in [
-        "carla/PythonAPI",
-        "carla/PythonAPI/carla",
-        "carla/PythonAPI/carla/dist/carla-0.9.10-py3.7-linux-x86_64.egg",
-        "leaderboard",
-        "leaderboard/team_code",
-        "scenario_runner",
-    ]:
-        sys.path.append(os.path.join(CONFIG["interfuser"]["repo"], path))
 
 
 def init_project_directory(name: str, resume=False):

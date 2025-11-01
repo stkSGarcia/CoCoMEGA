@@ -51,8 +51,8 @@ IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
 
 CLS_DICT = {
     "none": RuntimeScenarioManager,
-    "cosine_max": CosineMaxSelector,
-    "dpp_stream": StreamingDPPSelector,
+    "cosine": CosineMaxSelector,
+    "dpp": StreamingDPPSelector,
 }
 
 
@@ -280,7 +280,6 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         discard_original_features = os.environ.get("DISCARD_ORIGINAL_FEATURES", "False").lower() == "true"
         self.scenario_manager = CLS_DICT.get(strategy)(
             dataset_dir=DATASET_PATH,
-            strategy=strategy,
             discard_original_features=discard_original_features,
             keep_zero_vectors=cfg.CONFIG["runtime"]["novelty_detection"].get("keep_zero_vectors", False)
         )

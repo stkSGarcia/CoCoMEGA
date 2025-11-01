@@ -25,11 +25,10 @@ class RuntimeScenarioManager:
     - supports both Cosine Max and Streaming DPP.
     """
 
-    def __init__(self, dataset_dir: str, strategy: str, discard_original_features: bool,
+    def __init__(self, dataset_dir: str, discard_original_features: bool,
                  keep_zero_vectors: bool = False, partitions=[]):
         """
         :param dataset_dir: Directory containing per-scenario files.
-        :param strategy: Novelty detection strategy: "none", "cosine_max", "dpp_stream".
         :param discard_original_features: If True, only store the vectorized features, not the original scenario.
         :param keep_zero_vectors: If True, keep scenarios that vectorize to all zeros.
         :param partitions: List of features to partition when comparing scenarios.
@@ -38,10 +37,6 @@ class RuntimeScenarioManager:
         if self.dataset_dir:
             os.makedirs(self.dataset_dir, exist_ok=True)
 
-        if strategy in ("none", "cosine_max", "dpp_stream",):
-            self.strategy = strategy
-        else:
-            raise ValueError(f"Unknown strategy: {self.strategy}")
         self.discard_original_features = discard_original_features
         self.keep_zero_vectors = keep_zero_vectors
         self.angle_threshold_deg = cfg.CONFIG["runtime"]["novelty_detection"].get("angle_threshold_deg", 20.0)
@@ -109,6 +104,7 @@ class RuntimeScenarioManager:
                     is_new = self.keep_zero_vectors
                 else:
                     feat = block_normalize_rows(vec, block_sizes)
+                    feat = feat.reshape(-1)
                     # Novelty check
                     is_new, info = self.consider(feat, partition_values)
                     logger.info(f"[RuntimeScenarioManager] Selected: {is_new}, info: {info}")
@@ -223,10 +219,10 @@ class CosineMaxSelector(RuntimeScenarioManager):
         if "mat" not in loc or loc["mat"] is None or loc["mat"].shape[0] == 0:
             return True, {"reason": "No existing entries in the selected partition"}
 
-        sims = (loc["mat"] @ feat.reshape(-1, 1)).reshape(-1)
+        sims = (loc["mat"] @ feat.reshape(-1))
         best_idx = int(np.argmax(sims))
         max_sim = float(sims[best_idx])
-        angle_deg = np.degrees(np.arccos(max_sim))
+        angle_deg = np.degrees(np.arccos(np.clip(max_sim, a_min=-1, a_max=1)))
         is_new = (max_sim <= self.cosine_similarity_threshold)
         return is_new, {"angle_deg": angle_deg, "max_sim": max_sim, "best_idx": best_idx},
 
@@ -275,7 +271,7 @@ class StreamingDPPSelector(RuntimeScenarioManager):
         k_ii = 1.0 + self.jitter
 
         # Solve R^T w = k_iS  (forward substitution on lower-triangular R^T)
-        w = self._solve_lower(RT=loc["R"].T, b=k_iS)
+        w = solve_lower(RT=loc["R"].T, b=k_iS)
 
         # Schur complement d^2
         d2 = float(k_ii - np.dot(w, w))
@@ -287,7 +283,7 @@ class StreamingDPPSelector(RuntimeScenarioManager):
 
         partition_values = self._get_partition_values(entry)
         loc = self._get_loc(root=self._matrix, partition_values=partition_values)
-        feat = entry["vector_norm"].reshape(-1, 1)
+        feat = entry["vector_norm"].reshape(-1)
         if "R" not in loc:
             d = math.sqrt(1.0 + self.jitter)
             loc["R"] = np.array([[d]], dtype=np.float32)

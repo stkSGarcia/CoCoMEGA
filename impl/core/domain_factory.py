@@ -33,6 +33,18 @@ class DomainFactory:
         Initializes the :class:`DomainFactory` with the specified domain name.
         """
         self.domain_name = domain_name
+
+        try:
+            domain_config_path = Path(f"impl/{domain_name}") / "config.yaml"
+            custom_config_path = Path("config.yaml")
+            domain_config = yaml.safe_load(domain_config_path.read_text()) if domain_config_path.is_file() else {}
+            custom_config = yaml.safe_load(custom_config_path.read_text()) if custom_config_path.is_file() else {}
+
+            cfg.merge_dict(cfg.CONFIG, domain_config)
+            cfg.merge_dict(cfg.CONFIG, custom_config)
+        except Exception as e:
+            logger.warning(f"Exception Occurred While Reading Config: {e}")
+
         try:
             self.domain_registry = importlib.import_module(f"impl.{domain_name}.register")
             self.domain_path = Path(self.domain_registry.__file__).parent
@@ -46,18 +58,6 @@ class DomainFactory:
 
         if not isinstance(self.domain_dict, dict):
             raise TypeError(f"'DOMAIN_REGISTRY' in 'domains.{domain_name}.register' must be a dict.")
-
-        try:
-            config = self._get_component("Config")
-            config_path = self.domain_path / config
-            if config_path.is_file():
-                domain_config = yaml.safe_load(config_path.read_text())
-                if domain_config is not None:
-                    cfg.merge_dict(cfg.CONFIG, domain_config)
-            else:
-                logger.warning(f"Domain config path does not exist: '{config_path}'.")
-        except KeyError:
-            logger.warning(f"Key 'Config' not found in the domain registry for '{domain_name}'.")
 
     def _get_component(self, name: str):
         try:

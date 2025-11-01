@@ -75,7 +75,7 @@ for route, scenario in routes.items():
 reweight_array = np.array([1.0, 3.5, 3.5, 2.0, 3.5, 2.0, 8.0])
 
 
-def get_enviroment_confs():
+def get_environment_confs():
     """
     Generate a list of environment configurations based on towns, weathers, and route types.
 
