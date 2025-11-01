@@ -761,7 +761,6 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
                 },
                 "direction": get_direction(CarlaDataProvider._ego_vehicle_route, tick_data["speed"]),
             }
-
             if display_agent:
                 surface = self._hic.run_interface(tick_data)
                 tick_data["surface"] = surface

@@ -329,6 +329,7 @@ class ScenarioDefinition(AbstractScenarioDefinition):
         scenario.ego_vehicle.angle = 0
         scenario.ego_vehicle.radius = 0
         scenario.ego_vehicle.region = None
+        scenario.ego_vehicle.model = 9
 
         for attr in ScenarioDefinition.ATTRIBUTES:
             setattr(scenario, attr, ScenarioDefinition._BOUNDARY.random(attr))

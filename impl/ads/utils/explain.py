@@ -154,12 +154,14 @@ def _preprocess_vectors(raw_vectors):
 
             col_types["num"].append(col)
             continue
-        for key, categories in CATEGORIES.items():
+        for key in sorted(CATEGORIES.keys()):
             if key in col:
                 col_types["cat"].append(col)
-                categories_list.append(categories)
+                categories_list.append(CATEGORIES[key])
                 break
-
+    for k in col_types:
+        if k == "cat": continue
+        col_types[k] = sorted(col_types[k])
     preprocessor = ColumnTransformer(
         transformers=[
             ("distance", ClippedMaxScaler(max_val=cfg.CONFIG["scenario"]["max_actor_distance"]), col_types["dist"]),
