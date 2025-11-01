@@ -130,7 +130,6 @@ def init_config():
         logger.warning("Cannot find log configuration file.")
 
 
-
 def init_project_directory(name: str, resume=False):
     """Create the necessary directories for executions or resume from an existing project directory.
 

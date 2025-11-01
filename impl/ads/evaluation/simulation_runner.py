@@ -15,10 +15,11 @@ from types import SimpleNamespace
 import numpy as np
 import pandas as pd
 from deap import tools, creator
+from impl import config as cfg
+
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
-from impl import config as cfg
 from impl.ads.utils.visualization import visualize_violation
 from impl.ads.evaluation.exceptions import InvalidScenarioDefinitionError
 from impl.ads.scenario.scenario_definition import ScenarioDefinition
@@ -465,8 +466,7 @@ class ADSEvaluator(BaseEvaluator):
             except Exception as e:
                 # logger.error(f"Scenario failed: {scenario}, message: {e}.")
                 logger.error(f"Scenario failed, message: {e}.")
-                if cfg.CONFIG['debug']:
-                    traceback.print_exc()
+                traceback.print_exc()
                 is_successful = False
             finally:
                 del evaluator

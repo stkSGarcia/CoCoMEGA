@@ -407,6 +407,28 @@ class RouteScenario(BasicScenario):
 
         return list_of_actors
 
+    def _create_behavior(self):
+        """
+        Create the behavior tree for the route scenario.
+        
+        For route scenarios, the ego vehicle is controlled by the agent,
+        so the behavior tree mainly handles other actors' behaviors.
+        Returns a simple sequence tree structure that runs until scenario completion.
+        """
+        # For route scenarios where ego is agent-controlled,
+        # create a simple behavior tree that runs until scenario completion
+        # The ego vehicle behavior is handled by the agent, not the behavior tree
+        
+        # Import Idle behavior which runs for a specified duration
+        # This keeps the behavior tree running until the scenario timeout
+        from srunner.scenariomanager.scenarioatomics.atomic_behaviors import Idle
+        
+        # Create a root sequence that runs idle behavior (scenario runs until timeout/completion)
+        root = py_trees.composites.Sequence("RouteScenario")
+        root.add_child(Idle(self.timeout))
+        
+        return root
+
     def _create_test_criteria(self):
         """Define the success and monitoring criteria for the scenario."""
         criteria = []

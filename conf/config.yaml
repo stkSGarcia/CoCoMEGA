@@ -22,7 +22,10 @@ search:
     max_sim: 500  # Set`null` to make it unlimited
     max_gen: 100  # Set`null` to make it unlimited
     max_time: 3600  # Set`null` to make it unlimited
-  seeds: null  # Options: runtime, previous, null
+  seeds:
+    source: null  # Options: runtime, previous, null
+    version: 1.0 # Used when source is runtime. Version 1 is the legacy pickling format, version 2 is the new data fetcher structure.
+    name: null # used for runtime source and version 2 only. Specify the name of the runtime scenario bundle to load seeds from.
   critical:
     mode: dpp  # Options: dpp, threshold
     k: null

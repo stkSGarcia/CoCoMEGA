@@ -430,7 +430,7 @@ def get_available_directions(initial_transform, ego_speed):
     :param ego_speed: Speed in m/s to determine junction search distance.
     :return: List of (direction, closest waypoint) tuples.
     """
-    trajectory, junction = get_junction(initial_transform.location, ego_speed=ego_speed)
+    trajectory, length, junction = get_junction(initial_transform.location, ego_speed=ego_speed)
     if junction is None: return [("forward", None)]
     wp_dict = group_junction_directions(junction, reference_yaw=trajectory[-1].rotation.yaw)
     directions = [(direction, get_closest_wp(wp_list, reference_loc=trajectory[-1].location)) for direction, wp_list in

@@ -278,12 +278,14 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
 
         strategy = os.environ.get("NOVELTY_STRATEGY", None)
         discard_original_features = os.environ.get("DISCARD_ORIGINAL_FEATURES", "False").lower() == "true"
-        self.scenario_manager = CLS_DICT.get(strategy)(
-            dataset_dir=DATASET_PATH,
-            discard_original_features=discard_original_features,
-            keep_zero_vectors=cfg.CONFIG["runtime"]["novelty_detection"].get("keep_zero_vectors", False)
-        )
-        self.scenario_manager.start()
+
+        if strategy:
+            self.scenario_manager = CLS_DICT.get(strategy)(
+                dataset_dir=DATASET_PATH,
+                discard_original_features=discard_original_features,
+                keep_zero_vectors=cfg.CONFIG["runtime"]["novelty_detection"].get("keep_zero_vectors", False)
+            )
+            self.scenario_manager.start()
 
         self.lidar_processed = list()
         self.track = autonomous_agent.Track.SENSORS
