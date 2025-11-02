@@ -17,7 +17,6 @@ import pandas as pd
 from deap import tools, creator
 from impl import config as cfg
 
-
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
 from impl.ads.utils.visualization import visualize_violation
@@ -572,15 +571,16 @@ class ADSEvaluator(BaseEvaluator):
 
         return tv_solutions, rv_sim_num + tv_sim_num
 
-    def _perform_evaluation(self, solutions, scenarios, agent_name):
+    def _perform_evaluation(self, solutions, scenarios, agent_name, reeval=False):
         """Run simulations for scenarios and attach evaluation results to solutions.
 
         :param solutions: List of solutions to update.
         :param scenarios: Scenarios to simulate.
         :param agent_name: Name of the agent to run simulations with.
+        :param reeval: Whether to perform reevaluation.
         :return: Tuple (updated_solutions, number_of_simulations).
         """
-        reeval = []
+        reeval_list = []
         results, sim_num = self.run_scenarios(scenarios, agent_name=agent_name)
         for solution, source, follow_up in zip(solutions, results[::2], results[1::2]):
             eval_data = SimpleNamespace()
@@ -590,9 +590,9 @@ class ADSEvaluator(BaseEvaluator):
                 eval_data.is_violated, extent = self.fitness(source, follow_up)
                 if extent:
                     eval_data.fitness = extent
-                    if extent[0] >= cfg.CONFIG["violation"]["reevaluation"]["threshold"]:
+                    if reeval and extent[0] >= cfg.CONFIG["violation"]["reevaluation"]["threshold"]:
                         eval_data.reeval = True
-                        reeval.append(solution)
+                        reeval_list.append(solution)
                     else:
                         eval_data.reeval = False
                 else:
@@ -602,9 +602,10 @@ class ADSEvaluator(BaseEvaluator):
                 eval_data.fitness = None
             setattr(solution, agent_name, eval_data)
 
-        reeval_sim_num = self._reevaluate_dt(reeval, agent_name)
-
-        return solutions, sim_num + reeval_sim_num
+        if reeval and len(reeval_list) > 0:
+            reeval_sim_num = self._reevaluate_dt(reeval_list, agent_name)
+            return solutions, sim_num + reeval_sim_num
+        return solutions, sim_num
 
     def _reevaluate(self, solutions):
         """Reevaluate selected solutions multiple times and aggregate the results.
