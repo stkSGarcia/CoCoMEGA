@@ -24,6 +24,7 @@ from impl.ads.evaluation.exceptions import InvalidScenarioDefinitionError
 from impl.ads.scenario.scenario_definition import ScenarioDefinition
 from impl.ads.utils.carla_utils import initialize_carla
 from impl.ads.utils.process_utils import run_silently
+from impl.core.domain_factory import DomainFactory
 from impl.core.evaluation.base_evaluation import BaseEvaluator
 from impl.core.scenario.base_scenario import AbstractScenarioDefinition
 
@@ -187,7 +188,6 @@ def run_environment(conf):
         f"--trafficManagerSeed", "2000",
     ]
 
-    # Capture output so failures are visible even from worker processes
     log_dir = cfg.CONFIG["workspace"]["log"] if "workspace" in cfg.CONFIG and "log" in cfg.CONFIG["workspace"] else None
     log_path = None
     if log_dir is not None:
@@ -198,21 +198,41 @@ def run_environment(conf):
             log_path = None
 
     try:
-        process = subprocess.run(
-            command,
-            env=child_env,
-            check=False,
-            shell=False,
-            text=True,
-            capture_output=True,
-        )
+        with subprocess.Popen(
+                command,
+                env=child_env,
+                shell=False,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+        ) as process, \
+                open(log_path, "a", encoding="utf-8") if log_path else open(os.devnull, "w") as f:
+
+            f.write("[command]\n")
+            f.write(" ".join(command) + "\n")
+            f.write("[output]\n")
+
+            # Stream output to both console and log
+            for line in process.stdout:
+                sys.stdout.write(line)
+                sys.stdout.flush()
+                f.write(line)
+            process.wait()
+
+            f.write(f"\n[returncode] {process.returncode}\n")
+
+            if process.returncode != 0:
+                raise RuntimeError(
+                    f"Leaderboard evaluator failed with return code {process.returncode}. "
+                    + (f"See log: {log_path}" if log_path else "")
+                )
+
     except Exception as e:
-        # Log unexpected launcher errors
         if log_path is not None:
             with open(log_path, "a", encoding="utf-8") as f:
                 f.write("[launcher-exception]\n")
                 f.write(f"{e}\n")
-        raise e
+        raise
 
     # Persist subprocess outputs
     if log_path is not None:
