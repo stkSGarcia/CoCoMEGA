@@ -7,6 +7,7 @@ import subprocess
 import sys
 import json
 import traceback
+from concurrent.futures import as_completed
 from concurrent.futures import ProcessPoolExecutor
 from copy import deepcopy
 from math import sqrt
@@ -439,31 +440,80 @@ class ADSEvaluator(BaseEvaluator):
         if additional_confs is None:
             additional_confs = list(itertools.repeat(None, len(scenarios)))
         assert len(additional_confs) == len(scenarios)
+
+        results = []
+        is_executed = []
+
+        # Parallel branch
         if cfg.CONFIG["simulation"]["parallel"]:
             process_configs = Manager().Queue()
             for instance in cfg.CONFIG["simulation"]["instances"]:
                 process_configs.put(
-                    (instance["host"], instance["port"], instance["tm_port"], instance["gpu_device"], tag))
-            # FIXME: Traffic manager may cause memory leak.
-            # https://github.com/carla-simulator/carla/issues/3584
-            # https://github.com/carla-simulator/carla/issues/3540
-            # https://github.com/carla-simulator/leaderboard/issues/81
-            # https://github.com/carla-simulator/carla/issues/2781
-            with ProcessPoolExecutor(max_workers=len(cfg.CONFIG["simulation"]["instances"]),
-                                     initializer=_init_carla, initargs=(process_configs,)) as executor:
-                results = executor.map(ADSEvaluator.run_scenario, scenarios,
-                                       itertools.repeat(agent_name, len(scenarios)),
-                                       itertools.repeat(rerun, len(scenarios)), additional_confs)
+                    (instance["host"], instance["port"], instance["tm_port"], instance["gpu_device"], tag)
+                )
+
+            # Enable low-level crash reporting (for segfaults)
+            import faulthandler
+            faulthandler.enable(file=sys.stderr, all_threads=True)
+
+            # Run in parallel and capture exceptions
+            with ProcessPoolExecutor(
+                    max_workers=len(cfg.CONFIG["simulation"]["instances"]),
+                    initializer=_init_carla,
+                    initargs=(process_configs,),
+            ) as executor:
+                future_to_scenario = {
+                    executor.submit(
+                        ADSEvaluator.run_scenario,
+                        scenario,
+                        agent_name,
+                        rerun,
+                        conf,
+                    ): scenario
+                    for scenario, conf in zip(scenarios, additional_confs)
+                }
+
+                for future in as_completed(future_to_scenario):
+                    scenario = future_to_scenario[future]
+                    try:
+                        res = future.result()
+                        results.append(res)
+                        is_executed.append(res[1])
+                    except Exception as e:
+                        err_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+                        logger.error(
+                            f"[run_scenarios] Worker crashed for scenario {getattr(scenario, 'id_', 'unknown')}:\n{err_str}")
+                        sys.stderr.write(
+                            f"[run_scenarios] Worker crashed for scenario {getattr(scenario, 'id_', 'unknown')}:\n{err_str}")
+                        results.append((None, False))
+                        is_executed.append(False)
+
+        # Sequential branch
         else:
             global carla_host, carla_port, tm_port, gpu_device
             instance = cfg.CONFIG["simulation"]["instances"][0]
-            carla_host, carla_port, tm_port, gpu_device = (instance["host"], instance["port"],
-                                                           instance["tm_port"], instance["gpu_device"])
-            results = map(ADSEvaluator.run_scenario, scenarios, itertools.repeat(agent_name, len(scenarios)),
-                          itertools.repeat(rerun, len(scenarios)), additional_confs)
+            carla_host, carla_port, tm_port, gpu_device = (
+                instance["host"],
+                instance["port"],
+                instance["tm_port"],
+                instance["gpu_device"],
+            )
 
-        results, is_executed = zip(*results)
-        return results, is_executed.count(True)
+            for scenario, conf in zip(scenarios, additional_confs):
+                try:
+                    result = ADSEvaluator.run_scenario(scenario, agent_name, rerun, conf)
+                    results.append(result)
+                    is_executed.append(result[1])
+                except Exception as e:
+                    err_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+                    logger.error(
+                        f"[run_scenarios] Sequential run failed for scenario {getattr(scenario, 'id_', 'unknown')}:\n{err_str}")
+                    sys.stderr.write(
+                        f"[run_scenarios] Sequential run failed for scenario {getattr(scenario, 'id_', 'unknown')}:\n{err_str}")
+                    results.append((None, False))
+                    is_executed.append(False)
+
+        return results, sum(is_executed)
 
     def fitness(self, source, follow_up):
         """Calculate the fitness value and check if it violates the metamorphic relations.
@@ -638,7 +688,7 @@ class ADSEvaluator(BaseEvaluator):
 
         return tv_solutions, rv_sim_num + tv_sim_num
 
-    def _perform_evaluation(self, solutions, scenarios, agent_name, reeval=False):
+    def _perform_evaluation(self, solutions, scenarios, agent_name, reeval=True):
         """Run simulations for scenarios and attach evaluation results to solutions.
 
         :param solutions: List of solutions to update.
@@ -651,6 +701,8 @@ class ADSEvaluator(BaseEvaluator):
         results, sim_num = self.run_scenarios(scenarios, agent_name=agent_name)
         for solution, source, follow_up in zip(solutions, results[::2], results[1::2]):
             eval_data = SimpleNamespace()
+            source, source_executed = source
+            follow_up, follow_up_executed = follow_up
             if source is not None and follow_up is not None:
                 eval_data.source = source
                 eval_data.follow_up = follow_up
@@ -705,6 +757,8 @@ class ADSEvaluator(BaseEvaluator):
         results, sim_num = self.run_scenarios(scenarios, rerun=True)
 
         for i, source, follow_up in zip(range(len(solutions) * (repeat - 1)), results[::2], results[1::2]):
+            source, source_executed = source
+            follow_up, follow_up_executed = follow_up
             solution = solutions[int(i / (repeat - 1))]
             fitness = deepcopy(solution.fitness)
             if source is not None and follow_up is not None:
@@ -777,6 +831,8 @@ class ADSEvaluator(BaseEvaluator):
         results, sim_num = self.run_scenarios(scenarios, agent_name=agent_name, rerun=True)
 
         for i, source, follow_up in zip(range(len(solutions) * (repeat - 1)), results[::2], results[1::2]):
+            source, source_executed = source
+            follow_up, follow_up_executed = follow_up
             solution = solutions[int(i / (repeat - 1))]
             eval_data = getattr(solution, agent_name)
             fitness = deepcopy(eval_data.fitness)
