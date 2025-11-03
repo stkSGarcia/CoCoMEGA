@@ -187,7 +187,54 @@ def run_environment(conf):
         f"--trafficManagerSeed", "2000",
     ]
 
-    process = subprocess.run(command, env=child_env, check=True, shell=False, text=True, stdout=None, stderr=None)
+    # Capture output so failures are visible even from worker processes
+    log_dir = cfg.CONFIG["workspace"]["log"] if "workspace" in cfg.CONFIG and "log" in cfg.CONFIG["workspace"] else None
+    log_path = None
+    if log_dir is not None:
+        try:
+            log_dir.mkdir(parents=True, exist_ok=True)
+            log_path = log_dir / f"leaderboard_{carla_host}_{carla_port}_{tm_port}.log"
+        except Exception:
+            log_path = None
+
+    try:
+        process = subprocess.run(
+            command,
+            env=child_env,
+            check=False,
+            shell=False,
+            text=True,
+            capture_output=True,
+        )
+    except Exception as e:
+        # Log unexpected launcher errors
+        if log_path is not None:
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write("[launcher-exception]\n")
+                f.write(f"{e}\n")
+        raise e
+
+    # Persist subprocess outputs
+    if log_path is not None:
+        try:
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write("[command]\n")
+                f.write(" ".join(command) + "\n")
+                f.write("[stdout]\n")
+                if process.stdout:
+                    f.write(process.stdout)
+                f.write("\n[stderr]\n")
+                if process.stderr:
+                    f.write(process.stderr)
+                f.write(f"\n[returncode] {process.returncode}\n")
+        except Exception:
+            pass
+
+    if process.returncode != 0:
+        raise RuntimeError(
+            f"Leaderboard evaluator failed with return code {process.returncode}. "
+            + (f"See log: {log_path}" if log_path else "")
+        )
 
     return process.returncode
 
@@ -447,7 +494,7 @@ class ADSEvaluator(BaseEvaluator):
         setattr(config, "additional_config", additional_config)
         logger.debug(f"Starting simulation, scenario id: {scenario.id_}, carla instance: {config.host}:{config.port}, "
                      f"traffic manager port: {config.trafficManagerPort} on cuda device {config.gpu_device}.")
-        logger.debug(scenario)
+        # logger.debug(scenario)
 
         is_successful = False
         for _ in range(1 + cfg.CONFIG["simulation"]["retry_times"]):

@@ -18,6 +18,7 @@ from impl.core.algorithm.ccea import CCEA
 from impl.core.algorithm.ga import GeneticAlgorithm
 from impl.core.algorithm.moccea import MOCCEA
 from impl.core.algorithm.rs import RandomSearch
+from impl.core.domain_factory import DomainFactory
 
 logger = logging.getLogger("impl")
 
@@ -86,6 +87,7 @@ def simulate(num: int, file: str):
     :param num: Number of scenarios to simulate.
     :param file: Path to a solution file; if :data:`None`, simulate randomly.
     """
+    DomainFactory("ads")  # Ensure the domain is loaded.
     from impl.ads.evaluation.simulation_runner import run_solutions
     from impl.ads.evaluation.simulation_runner import ADSEvaluator
     from impl.ads.scenario.scenario_definition import ScenarioDefinition
@@ -118,6 +120,7 @@ def fetch_realtime_data(agent: str,
     :param novelty_strategy: Strategy for novelty management (e.g., 'cosine', 'dpp', 'none').
     :param discard_original_features: Whether to discard original scenario features in embeddings.
     """
+    DomainFactory("ads")  # Ensure the domain is loaded.
     from impl.ads.evaluation.simulation_runner import run_free_environments
     from impl.ads.utils.leaderboad_utils import get_environment_confs
     from impl.ads.utils.docker_utils import cleanup_containers
@@ -197,6 +200,7 @@ def fetch_realtime_data(agent: str,
 def generate_train_data():
     """Run free simulations to generate training data using rule-based agents."""
 
+    DomainFactory("ads")  # Ensure the domain is loaded.
     from impl.ads.evaluation.simulation_runner import run_free_environments
     from impl.ads.utils.leaderboad_utils import get_environment_confs, make_yamls
     from impl.ads.utils.docker_utils import cleanup_containers
@@ -236,6 +240,7 @@ def train_interfuser(args):
     :param args: Parsed training arguments.
     :return: Return code of the training process.
     """
+    DomainFactory("ads")  # Ensure the domain is loaded.
     from impl.ads.utils.leaderboad_utils import create_dataset_index
     from impl.ads.utils.docker_utils import cleanup_containers
 
@@ -332,6 +337,7 @@ def convert2scenarios(directory: str, n: int, towns: List[str]):
     :param n: Number of scenarios to sample (:data:`0` for all).
     :param towns: List of allowed towns for filtering.
     """
+    DomainFactory("ads")  # Ensure the domain is loaded.
     from impl.ads.utils.leaderboad_utils import vectorize_realtime_data
     from impl.ads.utils.docker_utils import cleanup_containers
 

@@ -18,6 +18,10 @@ from PIL import Image
 from torchvision import transforms
 from leaderboard.autoagents import autonomous_agent
 
+from impl.core.domain_factory import DomainFactory
+
+DomainFactory("ads")  # Ensure the ads domain is registered.
+
 from impl.ads.evaluation.exceptions import AgentTerminationSignal
 from impl.ads.utils.carla_utils import location_to_dict, get_direction
 from impl.ads.utils.leaderboad_utils import estimate_other_actor_data
