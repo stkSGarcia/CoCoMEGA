@@ -135,7 +135,6 @@ class RuntimeScenarioManager:
                     logger.info("[RuntimeScenarioManager] New scenario saved: %s", fname)
             except Exception as e:
                 logger.warning("[RuntimeScenarioManager] Error processing scenario: %s", e)
-                raise e
 
     # ---------------- Internals ----------------
 
