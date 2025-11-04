@@ -26,7 +26,8 @@ class RuntimeScenarioManager:
     """
 
     def __init__(self, dataset_dir: str, discard_original_features: bool,
-                 keep_zero_vectors: bool = False, partitions=[]):
+                 keep_zero_vectors: bool = False,
+                 partitions=cfg.CONFIG["runtime"]["novelty_detection"].get("partitions", [])):
         """
         :param dataset_dir: Directory containing per-scenario files.
         :param discard_original_features: If True, only store the vectorized features, not the original scenario.
@@ -196,7 +197,8 @@ class CosineMaxSelector(RuntimeScenarioManager):
     """
 
     def __init__(self, dataset_dir: str, discard_original_features: bool,
-                 keep_zero_vectors: bool = False, partitions=[]):
+                 keep_zero_vectors: bool = False,
+                 partitions=cfg.CONFIG["runtime"]["novelty_detection"].get("partitions", [])):
         """
         :param dataset_dir: Directory containing per-scenario files.
         :param discard_original_features: If True, only store the vectorized features, not the original scenario.
@@ -236,7 +238,8 @@ class StreamingDPPSelector(RuntimeScenarioManager):
     """
 
     def __init__(self, dataset_dir: str, discard_original_features: bool,
-                 keep_zero_vectors: bool = False, partitions=[]):
+                 keep_zero_vectors: bool = False,
+                 partitions=cfg.CONFIG["runtime"]["novelty_detection"].get("partitions", [])):
         """
         :param dataset_dir: Directory containing per-scenario files.
         :param discard_original_features: If True, only store the vectorized features, not the original scenario.
@@ -284,6 +287,7 @@ class StreamingDPPSelector(RuntimeScenarioManager):
         partition_values = self._get_partition_values(entry)
         loc = self._get_loc(root=self._matrix, partition_values=partition_values)
         feat = entry["vector_norm"].reshape(-1)
+        num_entries = loc["mat"].shape[0] if "mat" in loc else 0
         if "R" not in loc:
             d = math.sqrt(1.0 + self.jitter)
             loc["R"] = np.array([[d]], dtype=np.float32)
@@ -295,7 +299,7 @@ class StreamingDPPSelector(RuntimeScenarioManager):
 
             loc["R"] = np.block([
                 [loc["R"], w[:, None]],
-                [np.zeros((1, self.n_sel), dtype=np.float32), np.array([[d]], dtype=np.float32)]
+                [np.zeros((1, num_entries), dtype=np.float32), np.array([[d]], dtype=np.float32)]
             ])
 
         super()._add_entry(entry)

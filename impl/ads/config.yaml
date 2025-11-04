@@ -90,6 +90,8 @@ runtime:
     angle_threshold_deg: 10.0
     dpp_max_selected: null # Set`null` to make it unlimited
     keep_zero_vectors: false # Set`true` to keep zero vectors
+    partitions:
+      - town
   instances:
     - host: localhost
       port: 2100
