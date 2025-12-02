@@ -183,7 +183,7 @@ Also define subclasses of ``AbstractRelation`` to define output relations for yo
             super().__init__(*args, **kwargs)
             # Initialize parameters
 
-        is_violated(self, original_output: Any, perturbed_output: Any, **kwargs) -> (bool, float):
+        def is_violated(self, original_output: Any, perturbed_output: Any, **kwargs) -> (bool, float):
             # Implement violation checking logic
             return True, 1.0  # the first value indicates if the relation is violated, the second indicates the extend of violation.
 
@@ -192,13 +192,17 @@ Also define subclasses of ``AbstractRelation`` to define output relations for yo
             super().__init__(*args, **kwargs)
             # Initialize parameters
 
-        is_violated(self, original_output: Any, perturbed_output: Any, **kwargs) -> (bool, float):
+        def is_violated(self, original_output: Any, perturbed_output: Any, **kwargs) -> (bool, float):
             # Implement violation checking logic
             return True, 1.0  # the first value indicates if the relation is violated, the second indicates the extend of violation.
 
 domain_predefined.py
 """"""""""""""""""""""""
 Define the metamorphic relations using the perturbations and output relations defined above in ``mr/domain_predefined.py``:
+
+.. important::
+You can combine multiple MRs into an ``MRSet`` as long as they share the same output relation. The ``MRSet`` can then be
+used to generate complex input transformations that involve multiple perturbations of its MRs.
 
 .. code-block:: python
     :linenos:
@@ -211,11 +215,10 @@ Define the metamorphic relations using the perturbations and output relations de
     factory1 = Perturbation1Factory(...)
     factory2 = Perturbation2Factory(...)
 
-    relation1 = DomainOutputRelation1(...)
-    relation2 = DomainOutputRelation2(...)
+    relation = DomainOutputRelation(...)
 
-    mr1 = MR([factory1], relation1)
-    mr2 = MR([factory2], relation2)
+    mr1 = MR([factory1], relation)
+    mr2 = MR([factory2], relation)
 
     mr_set = MRSet([mr1, mr2], source_gen_func=YourScenario.generate_random_scenario)
 
@@ -244,6 +247,7 @@ You must also register your new components in ``register.py`` so they can be use
 - Scenario: The scenario definition class.
 - ScenarioInit: A function to initialize the scenario population.
 - Perturbation: The perturbation factories and their definitions.
+- PerturbationInit: A function to initialize the perturbation population.
 - Evaluation: The evaluation class that will assess the scenarios.
 - MRSet: The set of metamorphic relations, including the perturbations and output relations.
 - Config: The configuration file for the domain.

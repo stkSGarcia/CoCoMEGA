@@ -40,26 +40,26 @@ Incorporate Runtime Scenarios
 
 If you apply constraints or runtime initialization to the search, you must also generate a set of representative runtime scenarios.
 
-#. Collect runtime data
+#. Fetch runtime data
 
-   To collect runtime data, use the command below:
-
-   .. code-block:: shell
-      :linenos:
-
-      python -m impl collect_runtime_data
-
-#. Convert runtime data to runtime scenarios
+   To collect realtime data, use the command below:
 
    .. code-block:: shell
       :linenos:
 
-      python -m impl convert -d [dir_of_runtime_data]
+      python -m impl fetch_realtime_data
+
+#. Use runtime scenarios in search
+
+To use the collected runtime scenarios as seeds for initializing individuals in the search, set ``search:seeds:source``
+to ``runtime`` in your configuration file. Then, run the search as usual.
+
 
 Train You Own InterFuser
 ------------------------
 
-If you are performing differential testing, you need to train an additional InterFuser model.
+If you are performing differential testing, you may need to train an additional InterFuser model to represent a
+different version of the autonomous driving agent.
 
 #. Generate training data
 

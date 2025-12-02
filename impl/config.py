@@ -21,13 +21,14 @@ def merge_dict(default: dict, user: dict, exclude=[]):
     :param exclude: List of keys to exclude from merging.
     :return: Merged configuration dictionary.
     """
-    for k, v in user.items():
-        if k in exclude:
-            continue
-        if k not in default or not isinstance(default[k], dict):
-            default[k] = v
-        else:
-            default[k] = merge_dict(default[k], v)
+    if user:
+        for k, v in user.items():
+            if k in exclude:
+                continue
+            if k not in default or not isinstance(default[k], dict):
+                default[k] = v
+            else:
+                default[k] = merge_dict(default[k], v)
     return default
 
 

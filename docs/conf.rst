@@ -1,8 +1,9 @@
 Configuration Parameters Overview
 =================================
 
-The project uses a structured configuration file (``conf/config.yaml``) to manage various aspects of the testing framework.
-Below is a high-level overview of the key parameters and sections in the configuration file.
+The project uses structured configuration files (``conf/config.yaml`` for generic and ``impl/{domain}/config.yaml``
+for domain-specific configurations) to manage various aspects of the testing framework. Below is a high-level overview
+of the key parameters and sections in the configuration files.
 
 General Settings
 ----------------
@@ -22,7 +23,7 @@ Subdirectories include:
 - ``result``: Execution results.
 - ``visualization``: Generated visualizations.
 - ``test_result``: Results of executed tests.
-- ``runtime_scenario``: Collected runtime scenarios.
+- ``realtime_data``: Collected realtime scenarios.
 - ``previous_solution``: Generated solutions from previous searches.
 
 InterFuser Agent Settings (``interfuser``)
@@ -85,6 +86,7 @@ Control the runtime environments for runtime data collection:
 - ``collection_duration``: The duration of data collection (in seconds).
 - ``collection_interval``: The interval between each data collection (in seconds).
 - ``submition_route_limit``: Maximum number of submited runtime data for each route (use 0 for no-limit).
+- ``novelty_detection``: Configuration of the scenario novelty detector.
 - ``instances``: CARLA docker instances for simulating runtime environments (controls the extent of parallelization for data collection).
 
 Search Algorithm Parameters (``search``)

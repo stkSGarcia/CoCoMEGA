@@ -44,7 +44,7 @@ docker:
 simulation:
   parallel: true
   retry_times: 1
-  display_agent: false
+  display_agent: true
   scenario_duration: 20
   measurement_interval: 5
   client_timeout: 10
@@ -92,6 +92,7 @@ runtime:
     keep_zero_vectors: false # Set`true` to keep zero vectors
     partitions:
       - town
+      - weather
   instances:
     - host: localhost
       port: 2100
@@ -112,9 +113,8 @@ search:
     reference: "v1"
     test: "v2"
   seeds:
-    source: null  # Options: runtime, previous, null
-    version: 1.0 # Used when source is runtime. Version 1 is the legacy pickling format, version 2 is the new data fetcher structure.
-    name: null # used for runtime source and version 2 only. Specify the name of the runtime scenario bundle to load seeds from.
+    source: null  # Options: runtime, previous, combined, null
+    name: null # used for 'runtime' source. Specify the name of the runtime scenario bundle to load seeds from.
   critical:
     mode: dpp  # Options: dpp, threshold
     k: null

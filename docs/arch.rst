@@ -48,7 +48,9 @@ Below is an overview of the code structure, showing its key modules:
            │   ├── mr.py
            │   └── predefined.py
            ├── scenario/
+           │   ├── runtime.py
            │   └── scenario_definition.py
+
            ├── agent/
            │   ├── interfuser_agent.py
            │   └── interfuser_config_[version].py
@@ -118,7 +120,7 @@ Metamorphic Relation Module (``impl/core/mr/``)
 
 The metamorphic relation module constains several abstract base classes that define how metamorphic relations are
 represented and checked. This is central to encoding the testing oracle for CoCoMagic (what constitutes a failure or
-interesting finding in the autonomous driving context). ``base_mr.py`` defines core classes for metamorphic relations:
+interesting finding). ``base_mr.py`` defines core classes for metamorphic relations:
 
 - ``AbstractPerturbation``: Represents a single modification to apply to a scenario (e.g., adding a pedestrian, changing
   weather conditions). It includes the category of the perturbation (what is being changed), the operation type
@@ -132,8 +134,8 @@ interesting finding in the autonomous driving context). ``base_mr.py`` defines c
 - ``MR``: Represents a full metamorphic relation, which ties together one or more ``Perturbation`` instances with an
   expected output relation. For example, an MR might consist of a perturbation "add a pedestrian in path" and an
   expected relation "ego vehicle's speed should decrease".
-- ``MRSet``: A collection of multiple MRs, which can be used together if needed (the framework can consider several
-  MRs at once or switch between sets for different experiments). This module also provides methods to apply
+- ``MRSet``: A collection of multiple MRs, with the same output relation. These MRs can be used together at once to
+  generate more complex input transformations. This module also provides methods to apply
   perturbations to a scenario and to evaluate whether an MR is violated by comparing simulation outcomes from the
   original and perturbed scenarios.
 
@@ -182,6 +184,10 @@ The customized domain. For example, in the autonomous driving system (``ads``) d
 
 - ``scenario/``: Manages the generation of driving scenarios in the CARLA simulator.
 
+    - ``runtime.py``: Implements functionality to fetch and store runtime scenarios from real-world driving data.
+      This module interacts with CARLA to recreate scenarios based on logged data, allowing the search to use
+      representative real-world situations as seeds. It includes methods to parse logged data, reconstruct actor
+      positions and behaviors, and save them in a format compatible with the scenario definition used in the search.
     - ``scenario_definition.py``: Defines the ``ScenarioDefinition`` class and related data structures that represent a
       driving scenario. A scenario includes the route (or road configuration), traffic actors (ego vehicle, other vehicles,
       pedestrians), environmental conditions (weather, brightness), and any specific parameters or positions. This file

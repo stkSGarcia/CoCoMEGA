@@ -1,4 +1,5 @@
 import os
+import sys
 import pickle
 import logging
 import math
@@ -14,6 +15,33 @@ from impl import config as cfg
 from impl.ads.utils.math_utils import block_normalize_rows, d2_to_angle_deg, solve_lower
 
 logger = logging.getLogger(__name__)
+
+
+def load_runtime_scenarios():
+    runtime_scenarios = []
+
+    import impl.ads.scenario.scenario_definition as scen_def_module
+    sys.modules["impl.scenario.scenario_definition"] = scen_def_module
+
+    rt_root = cfg.CONFIG["workspace"]["realtime_data"]
+    if cfg.CONFIG["search"]["seeds"]["name"]:
+        rt_root = rt_root / cfg.CONFIG["search"]["seeds"]["name"]
+    if not rt_root.is_dir():
+        raise ValueError(f"Runtime scenario directory {rt_root} not found.")
+
+    for data_path in rt_root.rglob("*.pkl"):
+        data = pickle.loads(data_path.read_bytes())
+        if isinstance(data, dict) and "scenario" in data:
+            runtime_scenarios.append(data["scenario"])
+        elif isinstance(data, list):
+            runtime_scenarios += data
+        else:
+            raise ValueError(f"Unrecognized data format in {data_path}")
+
+    if len(runtime_scenarios) == 0:
+        raise ValueError("No runtime scenarios found.")
+
+    return runtime_scenarios
 
 
 class RuntimeScenarioManager:
@@ -97,7 +125,7 @@ class RuntimeScenarioManager:
                 scenario = vectorize_realtime_data(tick_data)
                 vec, block_sizes = rulefit_vectorize(scenario, keep_original=not self.discard_original_features)
                 feat = np.asarray(vec, dtype=np.float32)
-                partition_values = [getattr(scenario, k, "unknown") for k in self.partitions]
+                partition_values = [str(getattr(scenario, k, "unknown")) for k in self.partitions]
 
                 # check if vec is not all zeros
                 if np.all(vec == 0):
@@ -184,7 +212,7 @@ class RuntimeScenarioManager:
 
     def _get_partition_values(self, entry: Dict[str, Any]) -> List[str]:
         """Get partition values from an entry."""
-        return [getattr(entry["scenario"], k, "unknown") for k in self.partitions]
+        return [str(getattr(entry["scenario"], k, "unknown")) for k in self.partitions]
 
 
 class CosineMaxSelector(RuntimeScenarioManager):

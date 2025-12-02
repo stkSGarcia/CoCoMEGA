@@ -39,28 +39,15 @@ mr_set.labels = set(factory.get_label()
                     if factory.category in ScenarioDefinition.DYNAMIC)
 
 # Load runtime scenarios.
-if (cfg.CONFIG["search"]["seeds"]["source"] == "runtime" or
+if (cfg.CONFIG["search"]["seeds"]["source"] in ["runtime", "combined"] or
         cfg.CONFIG["search"]["constraint"]["enable"] or
         cfg.CONFIG["search"]["multi_objective"]["enable"]):
-    runtime_scenarios = []
-    if cfg.CONFIG["search"]["seeds"]["version"] == 1.0:
-        import impl.ads.scenario.scenario_definition as scen_def_module
+    from impl.ads.scenario.runtime import load_runtime_scenarios
 
-        sys.modules["impl.scenario.scenario_definition"] = scen_def_module
-
-        for data_path in cfg.CONFIG["workspace"]["runtime_scenario"].rglob("*.*"):
-            runtime_scenarios += pickle.loads(data_path.read_bytes())
-        if len(runtime_scenarios) == 0:
-            raise ValueError("No runtime scenarios found.")
-    elif cfg.CONFIG["search"]["seeds"]["version"] == 2.0:
-        rt_root = cfg.CONFIG["workspace"]["realtime_data"] / cfg.CONFIG["search"]["seeds"]["name"]
-        if not rt_root.is_dir():
-            raise ValueError(f"Runtime scenario directory {rt_root} not found.")
-        for data_path in rt_root.rglob("*.pkl"):
-            runtime_scenarios.append(pickle.loads(data_path.read_bytes())["scenario"])
+    runtime_scenarios = load_runtime_scenarios()
 
 # Load seed solutions.
-if cfg.CONFIG["search"]["seeds"]["source"] == "previous":
+if cfg.CONFIG["search"]["seeds"]["source"] in ["previous", "combined"]:
     seed_solutions = []
     for data_path in cfg.CONFIG["workspace"]["previous_solution"].rglob("*.*"):
         seed_solutions += pickle.loads(data_path.read_bytes())
@@ -82,7 +69,14 @@ def _pop_scenario():
     pop_scenario = []
 
     if cfg.CONFIG["search"]["seeds"]["source"] is not None:
-        base_scenarios = runtime_scenarios if cfg.CONFIG["search"]["seeds"]["source"] == "runtime" else seed_scenarios
+        if cfg.CONFIG["search"]["seeds"]["source"] == "previous":
+            base_scenarios = seed_scenarios
+        elif cfg.CONFIG["search"]["seeds"]["source"] == "runtime":
+            base_scenarios = runtime_scenarios
+        elif cfg.CONFIG["search"]["seeds"]["source"] == "combined":
+            base_scenarios = list(seed_scenarios) + list(runtime_scenarios)
+        else:
+            raise ValueError("Invalid seed source.")
         unique = BaseAlgorithm.remove_duplicates(base_scenarios)
         pop_scenario += [creator.Scenario(scenario) for scenario in (
             random.sample(unique, pop_size) if len(unique) > pop_size else unique

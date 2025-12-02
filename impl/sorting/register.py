@@ -17,11 +17,20 @@ def _pop_scenario():
     return pop_scenario
 
 
+def _pop_perturbation():
+    """Initialize the perturbation population."""
+    pop_size = cfg.CONFIG["perturbation"]["pop_size"]
+    pop_perturbation = [creator.Perturbation(mr_set.generate_perturbation()) for _ in range(pop_size)]
+
+    return pop_perturbation
+
+
 #: Defined :const:`DOMAIN_REGISTRY`.
 DOMAIN_REGISTRY = {
     "Scenario": ScenarioDefinition,
     "ScenarioInit": _pop_scenario,
     "Perturbation": Perturbations,
+    "PerturbationInit": _pop_perturbation,
     "Evaluation": SortEvaluator,
     "MRSet": mr_set,
 }
