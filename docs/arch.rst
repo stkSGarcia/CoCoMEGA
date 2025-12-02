@@ -50,7 +50,6 @@ Below is an overview of the code structure, showing its key modules:
            ├── scenario/
            │   ├── runtime.py
            │   └── scenario_definition.py
-
            ├── agent/
            │   ├── interfuser_agent.py
            │   └── interfuser_config_[version].py
