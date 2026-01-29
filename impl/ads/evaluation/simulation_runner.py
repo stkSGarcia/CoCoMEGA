@@ -482,9 +482,9 @@ class ADSEvaluator(BaseEvaluator):
                     except Exception as e:
                         err_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
                         logger.error(
-                            f"[run_scenarios] Worker crashed for scenario {getattr(scenario, 'id_', 'unknown')}:\n{err_str}")
-                        sys.stderr.write(
-                            f"[run_scenarios] Worker crashed for scenario {getattr(scenario, 'id_', 'unknown')}:\n{err_str}")
+                            f"[run_scenarios] Worker crashed for scenario:\n{err_str}",
+                            exc_info=False,
+                        )
                         results.append((None, False))
                         is_executed.append(False)
 
@@ -551,6 +551,8 @@ class ADSEvaluator(BaseEvaluator):
         agent_config = agent_config[0]
         setattr(config, "agent_config", agent_config)
 
+        
+    try:
         if not rerun and agent_name in evaluated_scenarios:
             for evaluated_scenario, evaluated_result in evaluated_scenarios[agent_name]:
                 if scenario == evaluated_scenario:
@@ -604,6 +606,13 @@ class ADSEvaluator(BaseEvaluator):
             evaluated_scenarios[agent_name] = []
         evaluated_scenarios[agent_name].append((scenario, result))
         return result, True
+    except Exception as e:
+        err_str = "".join(traceback.format_exception(type(e), e, e.__traceback__))
+        logger.error(
+            f"[worker] Scenario failed with exception:\n{err_str}",
+            exc_info=False,
+        )
+        raise e
 
     @staticmethod
     def _calculate_similarity(scenario, scenarios):
