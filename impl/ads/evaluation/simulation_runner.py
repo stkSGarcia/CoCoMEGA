@@ -440,11 +440,6 @@ class ADSEvaluator(BaseEvaluator):
         if additional_confs is None:
             additional_confs = list(itertools.repeat(None, len(scenarios)))
         assert len(additional_confs) == len(scenarios)
-
-        results = []
-        is_executed = []
-
-        # Parallel branch
         if cfg.CONFIG["simulation"]["parallel"]:
             process_configs = Manager().Queue()
             for instance in cfg.CONFIG["simulation"]["instances"]:
@@ -452,43 +447,16 @@ class ADSEvaluator(BaseEvaluator):
                     (instance["host"], instance["port"], instance["tm_port"], instance["gpu_device"], tag)
                 )
 
-            # Enable low-level crash reporting (for segfaults)
-            import faulthandler
-            faulthandler.enable(file=sys.stderr, all_threads=True)
-
             # Run in parallel and capture exceptions
             with ProcessPoolExecutor(
                     max_workers=len(cfg.CONFIG["simulation"]["instances"]),
                     initializer=_init_carla,
                     initargs=(process_configs,),
             ) as executor:
-                future_to_scenario = {
-                    executor.submit(
-                        ADSEvaluator.run_scenario,
-                        scenario,
-                        agent_name,
-                        rerun,
-                        conf,
-                    ): scenario
-                    for scenario, conf in zip(scenarios, additional_confs)
-                }
+                results = executor.map(ADSEvaluator.run_scenario, scenarios,
+                                       itertools.repeat(agent_name, len(scenarios)),
+                                       itertools.repeat(rerun, len(scenarios)), additional_confs)
 
-                for future in as_completed(future_to_scenario):
-                    scenario = future_to_scenario[future]
-                    try:
-                        res = future.result()
-                        results.append(res)
-                        is_executed.append(res[1])
-                    except Exception as e:
-                        err_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-                        logger.error(
-                            f"[run_scenarios] Worker crashed for scenario:\n{err_str}",
-                            exc_info=False,
-                        )
-                        results.append((None, False))
-                        is_executed.append(False)
-
-        # Sequential branch
         else:
             global carla_host, carla_port, tm_port, gpu_device
             instance = cfg.CONFIG["simulation"]["instances"][0]
@@ -499,21 +467,11 @@ class ADSEvaluator(BaseEvaluator):
                 instance["gpu_device"],
             )
 
-            for scenario, conf in zip(scenarios, additional_confs):
-                try:
-                    result = ADSEvaluator.run_scenario(scenario, agent_name, rerun, conf)
-                    results.append(result)
-                    is_executed.append(result[1])
-                except Exception as e:
-                    err_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-                    logger.error(
-                        f"[run_scenarios] Sequential run failed for scenario {getattr(scenario, 'id_', 'unknown')}:\n{err_str}")
-                    sys.stderr.write(
-                        f"[run_scenarios] Sequential run failed for scenario {getattr(scenario, 'id_', 'unknown')}:\n{err_str}")
-                    results.append((None, False))
-                    is_executed.append(False)
+            results = map(ADSEvaluator.run_scenario, scenarios, itertools.repeat(agent_name, len(scenarios)),
+                          itertools.repeat(rerun, len(scenarios)), additional_confs)
 
-        return results, sum(is_executed)
+        results, is_executed = zip(*results)
+        return results, is_executed.count(True)
 
     def fitness(self, source, follow_up):
         """Calculate the fitness value and check if it violates the metamorphic relations.
@@ -551,68 +509,59 @@ class ADSEvaluator(BaseEvaluator):
         agent_config = agent_config[0]
         setattr(config, "agent_config", agent_config)
 
-        
-        try:
-            if not rerun and agent_name in evaluated_scenarios:
-                for evaluated_scenario, evaluated_result in evaluated_scenarios[agent_name]:
-                    if scenario == evaluated_scenario:
-                        logger.debug(f"Scenario evaluated for agent {agent_name}: {evaluated_scenario}.")
-                        return evaluated_result, False
+        if not rerun and agent_name in evaluated_scenarios:
+            for evaluated_scenario, evaluated_result in evaluated_scenarios[agent_name]:
+                if scenario == evaluated_scenario:
+                    logger.debug(f"Scenario evaluated for agent {agent_name}: {evaluated_scenario}.")
+                    return evaluated_result, False
 
-            setattr(config, "host", carla_host)
-            setattr(config, "port", carla_port)
-            setattr(config, "trafficManagerPort", tm_port)
-            setattr(config, "gpu_device", gpu_device)
-            setattr(config, "additional_config", additional_config)
-            logger.debug(f"Starting simulation, scenario id: {scenario.id_}, carla instance: {config.host}:{config.port}, "
-                        f"traffic manager port: {config.trafficManagerPort} on cuda device {config.gpu_device}.")
-            # logger.debug(scenario)
+        setattr(config, "host", carla_host)
+        setattr(config, "port", carla_port)
+        setattr(config, "trafficManagerPort", tm_port)
+        setattr(config, "gpu_device", gpu_device)
+        setattr(config, "additional_config", additional_config)
+        logger.debug(f"Starting simulation, scenario id: {scenario.id_}, carla instance: {config.host}:{config.port}, "
+                     f"traffic manager port: {config.trafficManagerPort} on cuda device {config.gpu_device}.")
+        # logger.debug(scenario)
 
-            is_successful = False
-            for _ in range(1 + cfg.CONFIG["simulation"]["retry_times"]):
-                evaluator = None
-                try:
-                    evaluator = ScenarioEvaluator(scenario, config)
-                    evaluator.run(config)
-                    is_successful = True
-                    break
-                except InvalidScenarioDefinitionError as e:
-                    # logger.error(f"Scenario failed: {scenario}, message: {e}.")
-                    logger.error(f"Scenario failed, message: {e}.")
-                    is_successful = False
-                    break
-                except Exception as e:
-                    # logger.error(f"Scenario failed: {scenario}, message: {e}.")
-                    logger.error(f"Scenario failed, message: {e}.")
-                    traceback.print_exc()
-                    is_successful = False
-                finally:
-                    del evaluator
-            if not is_successful:
-                return None, False
-
-            result_path = cfg.CONFIG["workspace"]["sim_result"] / f"{scenario.id_}.csv"
-            if not result_path.exists():
-                logger.warning(f"Scenario results cannot be found: {scenario.id_}.")
-                return None, False
-
+        is_successful = False
+        for _ in range(1 + cfg.CONFIG["simulation"]["retry_times"]):
+            evaluator = None
             try:
-                result = pd.read_csv(result_path)
-                result.set_index(result.columns[0], inplace=True)
+                evaluator = ScenarioEvaluator(scenario, config)
+                evaluator.run(config)
+                is_successful = True
+                break
+            except InvalidScenarioDefinitionError as e:
+                # logger.error(f"Scenario failed: {scenario}, message: {e}.")
+                logger.error(f"Scenario failed, message: {e}.")
+                is_successful = False
+                break
             except Exception as e:
-                logger.error(f"Scenario results cannot be read: {scenario.id_}, message: {e}.")
-                return None, False
-            if agent_name not in evaluated_scenarios:
-                evaluated_scenarios[agent_name] = []
-            evaluated_scenarios[agent_name].append((scenario, result))
-            return result, True
+                # logger.error(f"Scenario failed: {scenario}, message: {e}.")
+                logger.error(f"Scenario failed, message: {e}.")
+                traceback.print_exc()
+                is_successful = False
+            finally:
+                del evaluator
+        if not is_successful:
+            return None, False
+
+        result_path = cfg.CONFIG["workspace"]["sim_result"] / f"{scenario.id_}.csv"
+        if not result_path.exists():
+            logger.warning(f"Scenario results cannot be found: {scenario.id_}.")
+            return None, False
+
+        try:
+            result = pd.read_csv(result_path)
+            result.set_index(result.columns[0], inplace=True)
         except Exception as e:
-            err_str = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-            logger.error(
-                f"[worker] Scenario failed with exception:\n{err_str}",
-                exc_info=False,
-            )
-            raise e
+            logger.error(f"Scenario results cannot be read: {scenario.id_}, message: {e}.")
+            return None, False
+        if agent_name not in evaluated_scenarios:
+            evaluated_scenarios[agent_name] = []
+        evaluated_scenarios[agent_name].append((scenario, result))
+        return result, True
 
     @staticmethod
     def _calculate_similarity(scenario, scenarios):

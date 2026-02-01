@@ -147,6 +147,10 @@ class ScenarioEvaluator(object):
         if self.manager and self.manager.get_running_status() \
                 and hasattr(self, 'world') and self.world:
             self.world.set_weather(CarlaDataProvider.find_weather_presets()[0][0])
+            settings = self.world.get_settings()
+            settings.synchronous_mode = False
+            settings.fixed_delta_seconds = None
+            self.world.apply_settings(settings)
             if cfg.CONFIG["simulation"]["autopilot"]:
                 for v in CarlaDataProvider.get_world().get_actors().filter('vehicle.*'):
                     try:
@@ -154,7 +158,6 @@ class ScenarioEvaluator(object):
                     except Exception:
                         pass
 
-                self.traffic_manager.set_hybrid_physics_mode(False)
                 self.traffic_manager.set_synchronous_mode(False)
 
         if self.manager:
@@ -268,9 +271,7 @@ class ScenarioEvaluator(object):
         self.world.reset_all_traffic_lights()
 
         if cfg.CONFIG["simulation"]["autopilot"]:
-            self.traffic_manager = self.client.get_trafficmanager(int(args.trafficManagerPort))
             self.traffic_manager.set_synchronous_mode(True)
-            self.traffic_manager.set_hybrid_physics_mode(False)
             self.traffic_manager.set_random_device_seed(int(args.trafficManagerSeed))
 
         for _ in range(5):
@@ -293,18 +294,6 @@ class ScenarioEvaluator(object):
         logger.info(
             f"\n\033[1m========= Preparing {self.scenario_definition.id_} (repetition {repetition_index}) =========")
         logger.info("> Setting up the agent\033[0m")
-
-        # --- begin: hard reset of sensor interface state per run ---
-        try:
-            # If leaderboard SensorInterface keeps globals/singletons, reset them
-            from leaderboard.envs.sensor_interface import SensorInterface
-            if hasattr(SensorInterface, "_SensorInterface__sensors"):
-                SensorInterface._SensorInterface__sensors.clear()
-            if hasattr(SensorInterface, "_SensorInterface__queues"):
-                SensorInterface._SensorInterface__queues.clear()
-        except Exception:
-            pass
-        # --- end: hard reset ---
 
         # Set up the user's agent, and the timer to avoid freezing the simulation
         try:
