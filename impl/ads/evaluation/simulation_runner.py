@@ -646,7 +646,7 @@ class ADSEvaluator(BaseEvaluator):
 
         return tv_solutions, rv_sim_num + tv_sim_num
 
-    def _perform_evaluation(self, solutions, scenarios, agent_name, reeval=False):
+    def _perform_evaluation(self, solutions, scenarios, agent_name, reeval=True):
         """Run simulations for scenarios and attach evaluation results to solutions.
 
         :param solutions: List of solutions to update.
