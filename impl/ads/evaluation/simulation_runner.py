@@ -664,7 +664,8 @@ class ADSEvaluator(BaseEvaluator):
                 eval_data.follow_up = follow_up
                 eval_data.is_violated, extent = self.fitness(source, follow_up)
                 if extent:
-                    eval_data.fitness = extent
+                    eval_data.fitness = deepcopy(solution.fitness)
+                    eval_data.fitness.values = extent
                     if reeval and extent[0] >= cfg.CONFIG["violation"]["reevaluation"]["threshold"]:
                         eval_data.reeval = True
                         reeval_list.append(idx)
@@ -811,7 +812,7 @@ class ADSEvaluator(BaseEvaluator):
             fitnesses = [(ev["fitness"].values[0] if ev["fitness"].valid else np.nan) for ev in eval_data.eval_history]
             num_nan_fitnesses = len([f for f in fitnesses if np.isnan(f)])
             if num_nan_fitnesses > float(repeat) / 2:
-                eval_data.fitness = None
+                del eval_data.fitness.values
                 eval_data.source = None
                 eval_data.follow_up = None
                 eval_data.is_violated = False
@@ -820,11 +821,11 @@ class ADSEvaluator(BaseEvaluator):
                 aggregation_arg = np.nanargmin(np.abs([f - aggregate_value for f in fitnesses]))
                 selected_candidate = eval_data.eval_history[aggregation_arg]
 
-                eval_data.fitness = (aggregate_value,)
+                eval_data.fitness.values = (aggregate_value,)
                 eval_data.source = selected_candidate["source"]
                 eval_data.follow_up = selected_candidate["follow_up"]
                 eval_data.is_violated = selected_candidate["is_violated"]
-            
+
             setattr(solutions[idx], agent_name, eval_data)
         return sim_num
 
