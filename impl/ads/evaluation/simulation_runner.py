@@ -657,10 +657,8 @@ class ADSEvaluator(BaseEvaluator):
         """
         reeval_list = []
         results, sim_num = self.run_scenarios(scenarios, agent_name=agent_name)
-        for solution, source, follow_up in zip(solutions, results[::2], results[1::2]):
+        for idx, solution, source, follow_up in zip(range(len(solutions)), solutions, results[::2], results[1::2]):
             eval_data = SimpleNamespace()
-            source, source_executed = source
-            follow_up, follow_up_executed = follow_up
             if source is not None and follow_up is not None:
                 eval_data.source = source
                 eval_data.follow_up = follow_up
@@ -669,7 +667,7 @@ class ADSEvaluator(BaseEvaluator):
                     eval_data.fitness = extent
                     if reeval and extent[0] >= cfg.CONFIG["violation"]["reevaluation"]["threshold"]:
                         eval_data.reeval = True
-                        reeval_list.append(solution)
+                        reeval_list.append(idx)
                     else:
                         eval_data.reeval = False
                 else:
@@ -680,7 +678,8 @@ class ADSEvaluator(BaseEvaluator):
             setattr(solution, agent_name, eval_data)
 
         if reeval and len(reeval_list) > 0:
-            reeval_sim_num = self._reevaluate_dt(reeval_list, agent_name)
+            logger.info(f"Reevaluating {len(reeval_list)} solutions for agent {agent_name}...")
+            reeval_sim_num = self._reevaluate_dt(solutions, reeval_list, agent_name)
             return solutions, sim_num + reeval_sim_num
         return solutions, sim_num
 
@@ -692,6 +691,7 @@ class ADSEvaluator(BaseEvaluator):
         """
         if len(solutions) == 0:
             return 0
+
         repeat = cfg.CONFIG["violation"]["reevaluation"]["repeat"]
         aggregation = cfg.CONFIG["violation"]["reevaluation"]["aggregation"]
         scenarios = []
@@ -715,8 +715,6 @@ class ADSEvaluator(BaseEvaluator):
         results, sim_num = self.run_scenarios(scenarios, rerun=True)
 
         for i, source, follow_up in zip(range(len(solutions) * (repeat - 1)), results[::2], results[1::2]):
-            source, source_executed = source
-            follow_up, follow_up_executed = follow_up
             solution = solutions[int(i / (repeat - 1))]
             fitness = deepcopy(solution.fitness)
             if source is not None and follow_up is not None:
@@ -756,20 +754,21 @@ class ADSEvaluator(BaseEvaluator):
 
         return sim_num
 
-    def _reevaluate_dt(self, solutions, agent_name):
+    def _reevaluate_dt(self, solutions, reeval_list, agent_name):
         """Reevaluate selected solutions multiple times and aggregate the results.
 
-        :param solutions: List of solutions flagged for reevaluation.
+        :param solutions: List of solutions.
+        :param reeval_list: List of indices of solutions to reevaluate.
         :param agent_name: Name of the agent to run simulations with.
         :return: Total number of simulations performed during reevaluation.
         """
-        if len(solutions) == 0:
+        if len(reeval_list) == 0:
             return 0
         repeat = cfg.CONFIG["violation"]["reevaluation"]["repeat"]
         aggregation = cfg.CONFIG["violation"]["reevaluation"]["aggregation"]
         scenarios = []
-        for solution in solutions:
-            eval_data = getattr(solution, agent_name)
+        for idx in reeval_list:
+            eval_data = getattr(solutions[idx], agent_name)
             eval_data.eval_history = [{
                 "source": eval_data.source.copy(),
                 "follow_up": eval_data.follow_up.copy(),
@@ -778,22 +777,18 @@ class ADSEvaluator(BaseEvaluator):
             }]
             eval_data.aggregation = aggregation
             for repetition in range(1, repeat):
-                source = deepcopy(solution[0])
+                source = deepcopy(solutions[idx][0])
                 source.assign_new_id()
                 scenarios.append(source)
-                follow_up = deepcopy(solution[0])
+                follow_up = deepcopy(solutions[idx][0])
                 follow_up.assign_new_id()
-                solution[1].perturb(follow_up)
+                solutions[idx][1].perturb(follow_up)
                 scenarios.append(follow_up)
-        assert len(scenarios) == len(solutions) * 2 * (repeat - 1)
+        assert len(scenarios) == len(reeval_list) * 2 * (repeat - 1)
         results, sim_num = self.run_scenarios(scenarios, agent_name=agent_name, rerun=True)
 
-        for i, source, follow_up in zip(range(len(solutions) * (repeat - 1)), results[::2], results[1::2]):
-            source, source_executed = source
-            follow_up, follow_up_executed = follow_up
-            solution = solutions[int(i / (repeat - 1))]
-            eval_data = getattr(solution, agent_name)
-            fitness = deepcopy(eval_data.fitness)
+        for i, source, follow_up in zip(range(len(reeval_list) * (repeat - 1)), results[::2], results[1::2]):
+            fitness = deepcopy(getattr(solutions[reeval_list[int(i / (repeat - 1))]], agent_name).fitness)
             if source is not None and follow_up is not None:
                 is_violated, extent = self.fitness(source, follow_up)
                 if extent:
@@ -804,15 +799,15 @@ class ADSEvaluator(BaseEvaluator):
                 is_violated = False
                 del fitness.values
 
-            eval_data.eval_history.append({
+            getattr(solutions[reeval_list[int(i / (repeat - 1))]], agent_name).eval_history.append({
                 "source": source,
                 "follow_up": follow_up,
                 "is_violated": is_violated,
                 "fitness": fitness,
             })
 
-        for solution in solutions:
-            eval_data = getattr(solution, agent_name)
+        for idx in reeval_list:
+            eval_data = getattr(solutions[idx], agent_name)
             fitnesses = [(ev["fitness"].values[0] if ev["fitness"].valid else np.nan) for ev in eval_data.eval_history]
             num_nan_fitnesses = len([f for f in fitnesses if np.isnan(f)])
             if num_nan_fitnesses > float(repeat) / 2:
@@ -829,6 +824,8 @@ class ADSEvaluator(BaseEvaluator):
                 eval_data.source = selected_candidate["source"]
                 eval_data.follow_up = selected_candidate["follow_up"]
                 eval_data.is_violated = selected_candidate["is_violated"]
+            
+            setattr(solutions[idx], agent_name, eval_data)
         return sim_num
 
     def _penalize(self, fitness, similarity):
