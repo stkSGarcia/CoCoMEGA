@@ -617,9 +617,11 @@ class ADSEvaluator(BaseEvaluator):
         for i, solution in enumerate(solutions):
             rv_fitness = getattr(solution, reference_version).fitness
             tv_fitness = getattr(solution, test_version).fitness
+            rv_fitness_val = rv_fitness.values if rv_fitness is not None and hasattr(rv_fitness, "values") else None
+            tv_fitness_val = tv_fitness.values if tv_fitness is not None and hasattr(tv_fitness, "values") else None
             if rv_fitness and tv_fitness:
-                solution.fitness.values = (np.abs(rv_fitness[0] - tv_fitness[0]),)
-                solution.fitness_type = reference_version if rv_fitness[0] > tv_fitness[0] else test_version
+                solution.fitness.values = (np.abs(rv_fitness_val[0] - tv_fitness_val[0]),)
+                solution.fitness_type = reference_version if rv_fitness_val[0] > tv_fitness_val[0] else test_version
                 solution.is_violated = solution.fitness.values[0] > 0
             else:
                 del solution.fitness.values
