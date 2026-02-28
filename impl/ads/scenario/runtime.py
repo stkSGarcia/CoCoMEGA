@@ -29,7 +29,7 @@ def load_runtime_scenarios():
     if not rt_root.is_dir():
         raise ValueError(f"Runtime scenario directory {rt_root} not found.")
 
-    for data_path in rt_root.rglob("*.pkl"):
+    for data_path in list(rt_root.rglob("*.pkl")) + list(rt_root.rglob("*.pickle")):
         data = pickle.loads(data_path.read_bytes())
         if isinstance(data, dict) and "scenario" in data:
             runtime_scenarios.append(data["scenario"])

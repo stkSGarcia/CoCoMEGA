@@ -370,14 +370,6 @@ def already_recorded(solution_path, agent_names):
             recorded = False
     return recorded
 
-    try:
-        if len(os.listdir(solution_path / "source")) > 0 and len(os.listdir(solution_path / "follow-up")) > 0:
-            return True
-    except FileNotFoundError:
-        pass
-    return False
-
-
 class ADSEvaluator(BaseEvaluator):
 
     def __init__(self, mr_set):
@@ -389,9 +381,10 @@ class ADSEvaluator(BaseEvaluator):
 
         if cfg.CONFIG["search"]["constraint"]["enable"] or cfg.CONFIG["search"]["multi_objective"]["enable"]:
             from impl.ads.register import runtime_scenarios
-            similarities = [ADSEvaluator._calculate_similarity(scenario, [creator.Scenario(scenario) for scenario in
-                                                                          runtime_scenarios]) for scenario in
-                            scenarios]
+            similarities = [
+                ADSEvaluator._calculate_similarity(scenario, [creator.Scenario(rt_scenario) for rt_scenario in
+                                                              runtime_scenarios]) for scenario in scenarios
+            ]
             for i, solution in enumerate(solutions):
                 solution.similarity = (similarities[i * 2], similarities[i * 2 + 1])
 
