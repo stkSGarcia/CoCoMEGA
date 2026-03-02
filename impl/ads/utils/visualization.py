@@ -790,7 +790,7 @@ def visualize_distinct_solution_over_simulations(projects: Dict[str, List[str]],
             if mrc:
                 y = agg_df["violated_mr_num"].apply(np.mean) * 100 / len(mr_set.mrs)
             else:
-                y = agg_df["distinct_solution_num"].apply(np.mean)
+                y = agg_df["distinct_solution_num"].apply(np.nanmean)
             auc_df = pd.concat([auc_df, pd.DataFrame([{
                 "alg": name,
                 "fitness_threshold": gp_name[0],
