@@ -69,7 +69,7 @@ class ClippedMaxScaler(BaseEstimator, TransformerMixin):
 CATEGORIES = {
     "town": ["town01", "town02", "town03", "town04", "town05", "town06", "town07", "town10"],
     "weather": list(range(0, 12)),
-    "traj_direction": ["forward", "left", "right"],
+    "traj_direction": ["forward", "left", "right", "opposite"],
     "model": list(range(0, 23)),
 }
 
