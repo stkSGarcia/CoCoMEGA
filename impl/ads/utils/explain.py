@@ -102,8 +102,8 @@ def vectorize(solutions, mode="stats"):
         fitnesses.append(solution.fitness.values[0]
                          if solution.fitness_type == cfg.CONFIG["search"]["diff_testing"]["test"]
                          else -solution.fitness.values[0])
-        fitnesses_v1.append(solution.v1.fitness[0])
-        fitnesses_v2.append(solution.v2.fitness[0])
+        fitnesses_v1.append(solution.v1.fitness.values[0])
+        fitnesses_v2.append(solution.v2.fitness.values[0])
         source = solution[0]
         source_scens.append(source)
         follow_up = deepcopy(source)
