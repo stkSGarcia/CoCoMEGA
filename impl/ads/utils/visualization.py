@@ -745,6 +745,12 @@ def visualize_distinct_solution_over_simulations(projects: Dict[str, List[str]],
     :param save_path: The path to save the figure.
     :param show: A boolean to determine whether to show the plots or not.
     """
+
+    def majority_nanmean(l, factor):
+        if np.isnan(l).sum() > len(l) * (1 - factor):
+            return np.nan
+        else:
+            return np.nanmean(l)
     percent_ranges = np.arange(interval, 101, interval)
     ranges = (percent_ranges / 100 * max_sim_num).round(0).astype(int)
     col_num, height = 3, 5
@@ -788,9 +794,9 @@ def visualize_distinct_solution_over_simulations(projects: Dict[str, List[str]],
             agg_df = pd.concat(agg_dfs).groupby("simulation_num").agg(list)
             ax = ax_map[gp_name]
             if mrc:
-                y = agg_df["violated_mr_num"].apply(np.mean) * 100 / len(mr_set.mrs)
+                y = agg_df["violated_mr_num"].apply(majority_nanmean, factor=0.75) * 100 / len(mr_set.mrs)
             else:
-                y = agg_df["distinct_solution_num"].apply(np.nanmean)
+                y = agg_df["distinct_solution_num"].apply(majority_nanmean, factor=0.75)
             auc_df = pd.concat([auc_df, pd.DataFrame([{
                 "alg": name,
                 "fitness_threshold": gp_name[0],

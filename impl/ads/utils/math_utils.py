@@ -63,9 +63,12 @@ def mannwhitneyu_fisher(stat_data, alg_pairs, value_col):
             data2 = alg_data[a2]
 
             # stat, pval = mannwhitneyu(data1, data2, alternative='greater')
-            greater = np.mean(data1) > np.mean(data2)
-            stat, pval = mannwhitneyu(data1, data2, alternative='greater' if greater else 'less')
-            # stat, pval = ttest_ind(data1, data2, equal_var=False)
+            if (data1 == data2).all():
+                pval = 0.5
+            else:
+                greater = np.mean(data1) > np.mean(data2)
+                stat, pval = mannwhitneyu(data1, data2, alternative='greater' if greater else 'less')
+                # stat, pval = ttest_ind(data1, data2, equal_var=False)
             records.append({
                 "fitness_threshold": f_thresh,
                 "distance_threshold": d_thresh,
