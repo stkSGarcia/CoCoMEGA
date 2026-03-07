@@ -83,12 +83,13 @@ if len(RULES) > 0:
     RULE_FEATURES = list(RULES["rule"])
 
 
-def vectorize(solutions, mode="stats"):
+def vectorize(solutions, mode="stats", fill_empty=0.0):
     """Vectorize the solutions.
 
     :param solutions: Solutions to vectorize.
     :param mode: The way to encode actors. Options are :data:`stats` for encoding statistics
         or :data:`padding` for padding shorter lists of actors (default: :data:`stats`).
+    :param fill_empty: The value to fill for empty features (default: 0.0).
     :return: A tuple of vectors, target values (solution fitnesses, v1 fitnesses, and v2 fitnesses),
         and corresponding feature names.
     """
@@ -118,13 +119,13 @@ def vectorize(solutions, mode="stats"):
 
     if mode == "padding":
         vector_dfs = [pd.concat([
-            source.vectorize(max_actors, prefix="source", mode="padding"),
-            follow_up.vectorize(max_actors, prefix="follow_up", mode="padding")
+            source.vectorize(max_actors, prefix="source", mode="padding", fill_empty=fill_empty),
+            follow_up.vectorize(max_actors, prefix="follow_up", mode="padding", fill_empty=fill_empty)
         ], axis=1) for source, follow_up in zip(source_scens, follow_up_scens)]
     else:
         vector_dfs = [pd.concat([
-            source.vectorize(max_actors, prefix="source", mode="stats"),
-            follow_up.vectorize(max_actors, prefix="follow_up", mode="stats"),
+            source.vectorize(max_actors, prefix="source", mode="stats", fill_empty=fill_empty),
+            follow_up.vectorize(max_actors, prefix="follow_up", mode="stats", fill_empty=fill_empty),
         ], axis=1) for source, follow_up in zip(source_scens, follow_up_scens)]
     raw_vectors = pd.concat(vector_dfs, ignore_index=True)
     vectors, features, _ = _preprocess_vectors(raw_vectors)
@@ -182,7 +183,7 @@ def _preprocess_vectors(raw_vectors):
 
     transformed_array = preprocessor.fit_transform(raw_vectors)
     features = preprocessor.get_feature_names_out()
-    vectors = pd.DataFrame(transformed_array, columns=features).fillna(-999)
+    vectors = pd.DataFrame(transformed_array, columns=features)#.fillna(-999)
     return vectors, features, block_sizes
 
 

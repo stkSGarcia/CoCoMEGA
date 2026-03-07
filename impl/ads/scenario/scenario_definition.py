@@ -714,7 +714,7 @@ class ScenarioDefinition(AbstractScenarioDefinition):
         for actor in self.vehicles + self.walkers + self.statics:
             actor.mark = False
 
-    def vectorize(self, max_actors: int, prefix: str, mode="stats"):
+    def vectorize(self, max_actors: int, prefix: str, mode="stats", fill_empty=0.0):
         """Vectorize the scenario.
 
         :param max_actors: Maximum number of actors.
@@ -722,6 +722,7 @@ class ScenarioDefinition(AbstractScenarioDefinition):
         :param prefix: The string added before the feature names.
         :param mode: The way to encode actors. Options are :data:`stats` for encoding statistics
             or :data:`padding` for padding shorter lists of actors (default: :data:`stats`).
+        :param fill_empty: The value used to fill empty statistics when no actor is present in a region (default: :data:`0.0`).
         :return: A :class:`DataFrame` representing the vector.
         """
         # Vectorize global attributes.
@@ -801,10 +802,10 @@ class ScenarioDefinition(AbstractScenarioDefinition):
                         for col in empty_df.columns:
                             if "model" in col: continue
                             stats.update({
-                                f"{col}_min": [0.0],
-                                f"{col}_max": [0.0],
-                                f"{col}_mean": [0.0],
-                                f"{col}_median": [0.0],
+                                f"{col}_min": [fill_empty],
+                                f"{col}_max": [fill_empty],
+                                f"{col}_mean": [fill_empty],
+                                f"{col}_median": [fill_empty],
                             })
                         df = df.join(pd.DataFrame(stats))
 
