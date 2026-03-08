@@ -13,3 +13,4 @@ imodels>=1.4.1
 dppy>=0.3.3
 sphinx
 sphinx-rtd-theme
+scikit-learn>=1.0.2
