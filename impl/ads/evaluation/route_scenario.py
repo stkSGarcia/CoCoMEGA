@@ -159,10 +159,19 @@ def request_new_actor(model, spawn_point, anchor, rolename='scenario', autopilot
 
             if speed is not None and speed > 0:
                 forward_vec = actor.get_transform().rotation.get_forward_vector()
-                velocity_vec = carla.Vector3D(forward_vec.x * speed,
-                                              forward_vec.y * speed,
-                                              forward_vec.z * speed)
-                actor.set_target_velocity(velocity_vec)
+                if isinstance(actor, carla.Walker):
+                    control = carla.WalkerControl()
+                    control.direction = carla.Vector3D(forward_vec.x, forward_vec.y, 0.0)
+                    control.speed = float(speed)
+                    control.jump = False
+                    actor.apply_control(control)
+                else:
+                    velocity_vec = carla.Vector3D(
+                        forward_vec.x * speed,
+                        forward_vec.y * speed,
+                        forward_vec.z * speed
+                    )
+                    actor.set_target_velocity(velocity_vec)
 
             if cfg.CONFIG["simulation"]["autopilot"] and autopilot and isinstance(actor, carla.Vehicle):
                 actor.set_autopilot(autopilot, CarlaDataProvider._traffic_manager_port)
