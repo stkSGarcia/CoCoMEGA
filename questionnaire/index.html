@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assessing the Practical Value of Scenario Rules for ADS Testing</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            margin: 20px;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-case {
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .information {
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .video-row {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .video-container {
+            flex: 1;
+            box-sizing: border-box;
+            text-align: center;
+            background: #f0f0f0;
+            padding: 5px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 5px;
+            border: 2px solid #ddd;
+        }
+
+        img {
+            display: block;
+            margin: 10px auto;
+            max-width: 100%;
+            border-radius: 10px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #007bff;
+        }
+
+        h2, h3 {
+            color: #0056b3;
+            text-align: center;
+        }
+
+        h4 {
+            color: #0056b3;
+        }
+
+        p {
+            line-height: 1.5;
+            text-align: justify;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        label {
+            display: block;
+            margin: 5px 0;
+            cursor: pointer;
+        }
+
+        button {
+            display: block;
+            width: 200px;
+            margin: 20px auto;
+            padding: 10px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+<h1>🚗 Assessing the Practical Value of Scenario Rules for ADS Testing</h1>
+
+<!-- Explanation Section -->
+<div class="container">
+    <h2>Understanding the Questionnaire</h2>
+    <div class="information" id="infobox">
+        <p><strong>Thank you for participating in this evaluation.</strong></p>
+        <p>
+            The goal of this questionnaire is to assess the practical value of a set of automatically generated rules (conditions) for understanding the results of testing autonomous driving systems (ADS).
+        </p>
+        <p>
+            These rules were derived from a large-scale simulation study comparing two versions of an ADS, for example, a baseline and an updated version.
+            We automatically generated test scenarios using a strategy known as “metamorphic testing” (MT) to analyze how two ADS versions differ in terms of expected properties (metamorphic relations or MRs).
+            Intuitively, with MT, a test scenario (original scenario) is modified (follow-up scenario) so that the change in ADS behavior can be determined and verified.
+            The rules describe specific combinations of environmental and dynamic conditions (e.g., lighting, weather, traffic configuration, pedestrian positions) under which the two ADS versions diverge in their behavior, along with the direction (worse or better) and magnitude of that divergence.
+            These rules aim to help testers analyze improvements and regressions across ADS versions.
+        </p>
+
+        <h3>How to read the rules</h3>
+        <p>
+            Each rule describes a set of driving conditions and scenarios under which the two ADS versions behave differently.
+            For each rule, we provide:
+        </p>
+        <ul>
+            <li><strong>Conditions Under Which the Two ADS Versions Differ:</strong> A plain-language description of conditions under which the two versions diverge.</li>
+            <li><strong>Observed Behavioral Discrepancy:</strong> The direction and magnitude of the difference, whether the updated system performs better or worse, and by how much.</li>
+            <li><strong>Occurrence Frequency:</strong> How often the described conditions appear among all detected behavioral discrepancies.</li>
+            <li><strong>An Example Scenario Where This Rule Applies:</strong> Side-by-side recordings of how Version 1.0 and Version 2.0 execute the follow-up scenario under the described conditions.</li>
+        </ul>
+
+        <h3>Your role in this evaluation</h3>
+        <p>
+            Imagine you are a test engineer responsible for validating a software update to an autonomous driving system.
+            You receive these automatically generated rules as a starting point, not as final test scripts, but as patterns that may highlight where the two system versions behave differently.
+            We ask you to evaluate each rule from a practical perspective.
+        </p>
+        <p>Specifically, you will assess each rule across four dimensions:</p>
+        <ul>
+            <li><strong>Interpretability:</strong> How easy is it to understand the conditions described by the rule?</li>
+            <li><strong>Test Prioritization:</strong> Does the rule help you narrow down which types of conditions to focus your testing efforts on?</li>
+            <li><strong>Diagnostic Direction:</strong> Does the rule point you toward a specific area of the system to investigate further?</li>
+            <li><strong>Non-Obviousness:</strong> Does the rule reveal a condition that you would not have thought to test on your own?</li>
+        </ul>
+
+        <h3>Metamorphic relations used</h3>
+        <p>The test cases are based on the following MRs, which define expected behavioral adaptations of the ego
+            vehicle. Each test case violates at least one of these MRs:</p>
+        <ul>
+            <li>🚶 If a pedestrian appears on the roadside, the ego vehicle should slow down.</li>
+            <li>🌙 If driving time changes to night, the ego vehicle should slow down.</li>
+            <li>🚗 If a vehicle is added in front of the ego vehicle, its speed should decrease.</li>
+            <li>🚶‍♂️ If a pedestrian appears in front of the ego vehicle, its speed should decrease.</li>
+            <li>🌧️ If the weather changes from sunny to rainy, the ego vehicle should decrease its speed.</li>
+        </ul>
+
+        <!-- <h3>🎥 Scenario Videos</h3>
+        <p>Each test case includes two videos to compare how the ego vehicle behaves before and after the MR
+            transformations:</p>
+        <ul>
+            <li>📌 <strong>Top Video</strong> → Represents the <strong>source scenario</strong> (before the MR changes).
+            </li>
+            <li>📌 <strong>Bottom Video</strong> → Represents the <strong>follow-up scenario</strong> (after the MR
+                changes).
+            </li>
+            <li>Note that the follow-up scenario can be derived from one or <strong>Several</strong> MR changes.</li>
+        </ul> -->
+
+        <!-- <h3>📈 Violation Diagrams</h3>
+        <p>Each test case includes a set of diagrams that visualize how the ego vehicle's velocity changes over
+            time:</p>
+        <ul>
+            <li>🔵 <strong>Blue Curve</strong> → Source scenario velocity curve.</li>
+            <li>🟠 <strong>Orange Curve</strong> → Follow-up scenario velocity curve.</li>
+            <li>🟢 <strong>Green Curve</strong> → The difference of the velocity between follow-up and source curves (<strong>follow-up
+                - source</strong>).
+            </li>
+        </ul>
+        <h4>📊 Understanding the Charts:</h4>
+        <ul>
+            <li>📌 <strong>Top Chart</strong> → Shows how timestamps in both scenarios are matched for comparison.</li>
+            <li>📌 <strong>Bottom Chart</strong> → Displays the aligned velocity curves with <strong>red sections
+                highlighting when the MR violation occurs</strong>.
+            </li>
+        </ul> -->
+    </div>
+</div>
+
+<!-- Questionnaire Section -->
+<div class="container">
+    <h2>🚦 Questionnaire</h2>
+
+    <form id="questionnaireForm">
+        <div id="testCasesContainer"></div>
+        <button type="button" onclick="saveResponses()">💾 Save Responses</button>
+    </form>
+</div>
+
+<script src="rules.js"></script>
+<script>
+    const testCaseFolders = [
+        "gawa-1771590353173-gawa-f33e4f-9",
+        "ccea-1772306083018-ccea-9ec8ed-6",
+        "gawa-1771885459668-gawa-1fdaf7-2",
+        "ccea-c-1770141244797-ccea-fa1b37-12",
+        "ccea-1772422653593-ccea-d50407-1",
+        "gawa-1771590353173-gawa-f33e4f-1",
+        "ga-1772094754060-ga-454e34-2",
+        "gawa-1771847400348-gawa-d467bb-3",
+        "ccea-c-1770141244797-ccea-fa1b37-6",
+        "rs-1770606205619-rs-495169-1",
+        "gawa-1771807317092-gawa-b8fefe-3",
+        "ccea-1772547983441-ccea-2dcdad-4",
+        "ccea-1772422653593-ccea-d50407-11",
+        "ccea-c-1770313923351-ccea-9edc67-1",
+        "ga-1772140130107-ga-69f752-5",
+        "ccea-c-1770252820518-ccea-b98a0b-3",
+        "ccea-c-1770113743657-ccea-c0df4b-1",
+        "ga-1772140130107-ga-69f752-34",
+        "ccea-c-1770285314059-ccea-4bee83-7",
+        "ccea-c-1770313923351-ccea-9edc67-2",
+        "gawa-1771590353173-gawa-f33e4f-14",
+        "ccea-1772306083018-ccea-9ec8ed-2",
+        "ccea-c-1770083186673-ccea-866794-7",
+        "ccea-1772306083018-ccea-9ec8ed-7",
+        "ga-1772262575421-ga-606a97-2",
+    ];
+
+    function generateTestCases() {
+        let container = document.getElementById("testCasesContainer");
+        testCaseFolders.forEach((folder, index) => {
+            let rule = rules[index];
+            let testCaseHTML = `
+                <div class="test-case" id="rule_${index+1}">
+                    <h2>Rule ${index+1}</h2>
+
+                    <h4>Conditions Under Which the Two ADS Versions Differ:</h4>
+                    <p>${rule.condition}</p>
+
+                    <h4>Observed Behavioral Discrepancy:</h4>
+                    <p>${rule.diff}</p>
+
+                    <h4>Occurrence Frequency:</h4>
+                    <p>This rule describes ${(rule.support * 100).toFixed(2)}% of all detected behavioral discrepancies.</p>
+
+                    <h4>An Example Scenario Where This Rule Applies:</h4>
+                    <div class="video-row">
+                        <div class="video-container">
+                            <h4>Version 1.0</h4>
+                            <div class="video-placeholder" data-src="test_cases/${folder}/v1/follow-up/follow-up-fixed.mp4"></div>
+                        </div>
+
+                        <div class="video-container">
+                            <h4>Version 2.0</h4>
+                            <div class="video-placeholder" data-src="test_cases/${folder}/v2/follow-up/follow-up-fixed.mp4"></div>
+                        </div>
+                    </div>
+
+                    <!-- Question 1 -->
+                    <h4>1. How easy is it to understand the conditions described by this rule?</h4>
+                    <label><input type="radio" name="q1_${index+1}" value="1"> Very difficult to understand</label>
+                    <label><input type="radio" name="q1_${index+1}" value="2"> Difficult</label>
+                    <label><input type="radio" name="q1_${index+1}" value="3"> Moderately easy</label>
+                    <label><input type="radio" name="q1_${index+1}" value="4"> Easy</label>
+                    <label><input type="radio" name="q1_${index+1}" value="5"> Very easy to understand</label>
+
+
+                    <!-- Question 2 -->
+                    <h4>2. Does this rule help you narrow down which types of conditions to prioritize for testing the updated system?</h4>
+                    <label><input type="radio" name="q2_${index+1}" value="1"> Not at all</label>
+                    <label><input type="radio" name="q2_${index+1}" value="2"> Slightly</label>
+                    <label><input type="radio" name="q2_${index+1}" value="3"> Moderately</label>
+                    <label><input type="radio" name="q2_${index+1}" value="4"> Considerably</label>
+                    <label><input type="radio" name="q2_${index+1}" value="5"> Very much</label>
+
+                    <!-- Question 3 -->
+                    <h4>3. Does this rule point you toward a specific area of the system to investigate further (e.g., perception in low light, planning near pedestrians, interaction with oncoming traffic)?</h4>
+                    <label><input type="radio" name="q3_${index+1}" value="1"> No clear direction</label>
+                    <label><input type="radio" name="q3_${index+1}" value="2"> Vague direction</label>
+                    <label><input type="radio" name="q3_${index+1}" value="3"> Some direction</label>
+                    <label><input type="radio" name="q3_${index+1}" value="4"> Clear direction</label>
+                    <label><input type="radio" name="q3_${index+1}" value="5"> Very specific direction</label>
+
+                    <!-- Question 4 -->
+                    <h4>4. Does this rule reveal a condition that you would not have thought to test on your own?</h4>
+                    <label><input type="radio" name="q4_${index+1}" value="1"> Entirely obvious</label>
+                    <label><input type="radio" name="q4_${index+1}" value="2"> Mostly obvious</label>
+                    <label><input type="radio" name="q4_${index+1}" value="3"> Somewhat novel</label>
+                    <label><input type="radio" name="q4_${index+1}" value="4"> Notably novel</label>
+                    <label><input type="radio" name="q4_${index+1}" value="5"> Highly surprising</label>
+                </div>
+            `;
+            container.innerHTML += testCaseHTML;
+        });
+        setupLazyLoading();
+    }
+
+    function setupLazyLoading() {
+        document.querySelectorAll(".video-placeholder").forEach(placeholder => {
+            let videoSrc = placeholder.getAttribute("data-src");
+            let videoElement = document.createElement("video");
+            videoElement.setAttribute("controls", "");
+            videoElement.style.width = "100%";
+            videoElement.innerHTML = `<source src="${videoSrc}" type="video/mp4">`;
+            placeholder.replaceWith(videoElement);
+        });
+    }
+
+     function saveResponses() {
+        let responses = [["Rule Index", "Rule Name", "Q1", "Q2", "Q3", "Q4"]];
+
+        testCaseFolders.forEach((folder, index) => {
+            let q1 = document.querySelector(`input[name="q1_${index+1}"]:checked`);
+            let q2 = document.querySelector(`input[name="q2_${index+1}"]:checked`);
+            let q3 = document.querySelector(`input[name="q3_${index+1}"]:checked`);
+            let q4 = document.querySelector(`input[name="q4_${index+1}"]:checked`);
+
+            let q1Value = q1 ? q1.value : "Not Answered";
+            let q2Value = q2 ? q2.value : "Not Answered";
+            let q3Value = q3 ? q3.value : "Not Answered";
+            let q4Value = q4 ? q4.value : "Not Answered";
+
+            responses.push([`Test Case ${index+1}`, folder, q1Value, q2Value, q3Value, q4Value]);
+        });
+
+        let csvContent = responses.map(e => e.join(",")).join("\n");
+
+        let blob = new Blob([csvContent], { type: "text/csv" });
+        let link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "test_case_responses.csv";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    window.onload = generateTestCases;
+</script>
+
+</body>
+</html>

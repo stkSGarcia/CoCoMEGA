@@ -3,6 +3,7 @@
 *.yaml
 /conf/*.pth.tar
 test/exp.ipynb
+/questionnaire/test_cases
 
 ### VisualStudioCode template
 .vscode/*
