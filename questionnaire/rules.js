@@ -1,3 +1,61 @@
+const pagecontent = `
+
+
+
+
+<p><strong>Thank you for participating in this evaluation.</strong></p>
+        <p>
+            The goal of this questionnaire is to assess the practical value of a set of automatically generated rules (conditions) for understanding the results of testing autonomous driving systems (ADS).
+        </p>
+        <p>
+            These rules were derived from a large-scale simulation study comparing two versions of an ADS, for example, a baseline and an updated version.
+            We automatically generated test scenarios using a strategy known as “metamorphic testing” (MT) to analyze how two ADS versions differ in terms of expected properties (metamorphic relations or MRs).
+            Intuitively, with MT, a test scenario (original scenario) is modified (follow-up scenario) so that the change in ADS behavior can be determined and verified.
+            The rules describe specific combinations of environmental and dynamic conditions (e.g., lighting, weather, traffic configuration, pedestrian positions) under which the two ADS versions diverge in their behavior, along with the direction (worse or better) and magnitude of that divergence.
+            These rules aim to help testers analyze improvements and regressions across ADS versions.
+        </p>
+
+        <h3>How to read the rules</h3>
+        <p>
+            Each rule describes a set of driving conditions and scenarios under which the two ADS versions behave differently.
+            For each rule, we provide:
+        </p>
+        <ul>
+            <li><strong>Conditions Under Which the Two ADS Versions Differ:</strong> A plain-language description of conditions under which the two versions diverge.</li>
+            <li><strong>Observed Behavioral Discrepancy:</strong> The direction and magnitude of the difference, whether the updated system performs better or worse, and by how much.</li>
+            <li><strong>Occurrence Frequency:</strong> How often the described conditions appear among all detected behavioral discrepancies.</li>
+            <li><strong>An Example Scenario Where This Rule Applies:</strong> Side-by-side recordings of how Version 1.0 and Version 2.0 execute the follow-up scenario under the described conditions.</li>
+        </ul>
+
+        <h3>Your role in this evaluation</h3>
+        <p>
+            Imagine you are a test engineer responsible for validating a software update to an autonomous driving system.
+            You receive these automatically generated rules as a starting point, not as final test scripts, but as patterns that may highlight where the two system versions behave differently.
+            We ask you to evaluate each rule from a practical perspective.
+        </p>
+        <p>Specifically, you will assess each rule across four dimensions:</p>
+        <ul>
+            <li><strong>Interpretability:</strong> How easy is it to understand the conditions described by the rule?</li>
+            <li><strong>Test Prioritization:</strong> Does the rule help you narrow down which types of conditions to focus your testing efforts on?</li>
+            <li><strong>Diagnostic Direction:</strong> Does the rule point you toward a specific area of the system to investigate further?</li>
+            <li><strong>Non-Obviousness:</strong> Does the rule reveal a condition that you would not have thought to test on your own?</li>
+        </ul>
+
+        <h3>Metamorphic relations used</h3>
+        <p>The test cases are based on the following MRs, which define expected behavioral adaptations of the ego
+            vehicle. Each test case violates at least one of these MRs:</p>
+        <ul>
+            <li>🚶 If a pedestrian appears on the roadside, the ego vehicle should slow down.</li>
+            <li>🌙 If driving time changes to night, the ego vehicle should slow down.</li>
+            <li>🚗 If a vehicle is added in front of the ego vehicle, its speed should decrease.</li>
+            <li>🚶‍♂️ If a pedestrian appears in front of the ego vehicle, its speed should decrease.</li>
+            <li>🌧️ If the weather changes from sunny to rainy, the ego vehicle should decrease its speed.</li>
+        </ul>
+
+
+
+
+`;
 const rules = [
    {
       "rule": "source_static_focus_yaw_min_sin <= 0.17505 and follow_up_traj_middle_angle_cos > 0.46432",
@@ -200,3 +258,4 @@ const rules = [
       "importance": 0.030123171
    }
 ];
+

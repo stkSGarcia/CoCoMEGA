@@ -11,6 +11,7 @@
             color: #333;
             margin: 20px;
             padding: 20px;
+            padding-bottom: 120px;
         }
 
         .container {
@@ -19,7 +20,7 @@
             background: #ffffff;
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
         }
 
         .test-case {
@@ -27,7 +28,7 @@
             border-radius: 10px;
             padding: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
         }
 
         .information {
@@ -116,6 +117,44 @@
         button:hover {
             background-color: #0056b3;
         }
+
+        .fixed-update-bar {
+            position: fixed;
+            right: 24px;
+            bottom: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0px;
+        }
+
+        .fixed-update-button {
+            min-width: 220px;
+            padding: 10px 28px;
+            font-size: 24px;
+            font-weight: bold;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 14px;
+            box-shadow: 0px 8px 18px rgba(0, 0, 0, 0.22);
+            cursor: pointer;
+        }
+
+        .fixed-update-button:hover {
+            background: #0056b3;
+        }
+
+        .save-status {
+            background: rgba(255,255,255,0.95);
+            padding: 10px 14px;
+            border-radius: 10px;
+            box-shadow: 0px 2px 8px rgba(0,0,0,0.12);
+            font-size: 14px;
+            color: #333;
+            max-width: 280px;
+        }
     </style>
 </head>
 <body>
@@ -126,84 +165,7 @@
 <div class="container">
     <h2>Understanding the Questionnaire</h2>
     <div class="information" id="infobox">
-        <p><strong>Thank you for participating in this evaluation.</strong></p>
-        <p>
-            The goal of this questionnaire is to assess the practical value of a set of automatically generated rules (conditions) for understanding the results of testing autonomous driving systems (ADS).
-        </p>
-        <p>
-            These rules were derived from a large-scale simulation study comparing two versions of an ADS, for example, a baseline and an updated version.
-            We automatically generated test scenarios using a strategy known as “metamorphic testing” (MT) to analyze how two ADS versions differ in terms of expected properties (metamorphic relations or MRs).
-            Intuitively, with MT, a test scenario (original scenario) is modified (follow-up scenario) so that the change in ADS behavior can be determined and verified.
-            The rules describe specific combinations of environmental and dynamic conditions (e.g., lighting, weather, traffic configuration, pedestrian positions) under which the two ADS versions diverge in their behavior, along with the direction (worse or better) and magnitude of that divergence.
-            These rules aim to help testers analyze improvements and regressions across ADS versions.
-        </p>
 
-        <h3>How to read the rules</h3>
-        <p>
-            Each rule describes a set of driving conditions and scenarios under which the two ADS versions behave differently.
-            For each rule, we provide:
-        </p>
-        <ul>
-            <li><strong>Conditions Under Which the Two ADS Versions Differ:</strong> A plain-language description of conditions under which the two versions diverge.</li>
-            <li><strong>Observed Behavioral Discrepancy:</strong> The direction and magnitude of the difference, whether the updated system performs better or worse, and by how much.</li>
-            <li><strong>Occurrence Frequency:</strong> How often the described conditions appear among all detected behavioral discrepancies.</li>
-            <li><strong>An Example Scenario Where This Rule Applies:</strong> Side-by-side recordings of how Version 1.0 and Version 2.0 execute the follow-up scenario under the described conditions.</li>
-        </ul>
-
-        <h3>Your role in this evaluation</h3>
-        <p>
-            Imagine you are a test engineer responsible for validating a software update to an autonomous driving system.
-            You receive these automatically generated rules as a starting point, not as final test scripts, but as patterns that may highlight where the two system versions behave differently.
-            We ask you to evaluate each rule from a practical perspective.
-        </p>
-        <p>Specifically, you will assess each rule across four dimensions:</p>
-        <ul>
-            <li><strong>Interpretability:</strong> How easy is it to understand the conditions described by the rule?</li>
-            <li><strong>Test Prioritization:</strong> Does the rule help you narrow down which types of conditions to focus your testing efforts on?</li>
-            <li><strong>Diagnostic Direction:</strong> Does the rule point you toward a specific area of the system to investigate further?</li>
-            <li><strong>Non-Obviousness:</strong> Does the rule reveal a condition that you would not have thought to test on your own?</li>
-        </ul>
-
-        <h3>Metamorphic relations used</h3>
-        <p>The test cases are based on the following MRs, which define expected behavioral adaptations of the ego
-            vehicle. Each test case violates at least one of these MRs:</p>
-        <ul>
-            <li>🚶 If a pedestrian appears on the roadside, the ego vehicle should slow down.</li>
-            <li>🌙 If driving time changes to night, the ego vehicle should slow down.</li>
-            <li>🚗 If a vehicle is added in front of the ego vehicle, its speed should decrease.</li>
-            <li>🚶‍♂️ If a pedestrian appears in front of the ego vehicle, its speed should decrease.</li>
-            <li>🌧️ If the weather changes from sunny to rainy, the ego vehicle should decrease its speed.</li>
-        </ul>
-
-        <!-- <h3>🎥 Scenario Videos</h3>
-        <p>Each test case includes two videos to compare how the ego vehicle behaves before and after the MR
-            transformations:</p>
-        <ul>
-            <li>📌 <strong>Top Video</strong> → Represents the <strong>source scenario</strong> (before the MR changes).
-            </li>
-            <li>📌 <strong>Bottom Video</strong> → Represents the <strong>follow-up scenario</strong> (after the MR
-                changes).
-            </li>
-            <li>Note that the follow-up scenario can be derived from one or <strong>Several</strong> MR changes.</li>
-        </ul> -->
-
-        <!-- <h3>📈 Violation Diagrams</h3>
-        <p>Each test case includes a set of diagrams that visualize how the ego vehicle's velocity changes over
-            time:</p>
-        <ul>
-            <li>🔵 <strong>Blue Curve</strong> → Source scenario velocity curve.</li>
-            <li>🟠 <strong>Orange Curve</strong> → Follow-up scenario velocity curve.</li>
-            <li>🟢 <strong>Green Curve</strong> → The difference of the velocity between follow-up and source curves (<strong>follow-up
-                - source</strong>).
-            </li>
-        </ul>
-        <h4>📊 Understanding the Charts:</h4>
-        <ul>
-            <li>📌 <strong>Top Chart</strong> → Shows how timestamps in both scenarios are matched for comparison.</li>
-            <li>📌 <strong>Bottom Chart</strong> → Displays the aligned velocity curves with <strong>red sections
-                highlighting when the MR violation occurs</strong>.
-            </li>
-        </ul> -->
     </div>
 </div>
 
@@ -217,8 +179,20 @@
     </form>
 </div>
 
+<div id="updateBar" class="fixed-update-bar">
+    <div id="saveStatus" class="save-status">Ready</div>
+    <button id="updateRulesButton" class="fixed-update-button" type="button">UPDATE RULES.js</button>
+</div>
+
 <script src="rules.js"></script>
 <script>
+    const EDIT_MODE = true;
+
+    const updateButton = document.getElementById("updateBar");
+    if (!EDIT_MODE) {
+        updateButton.style.display = "none";
+    }
+
     const testCaseFolders = [
         "gawa-1771590353173-gawa-f33e4f-9",
         "ccea-1772306083018-ccea-9ec8ed-6",
@@ -247,19 +221,68 @@
         "ga-1772262575421-ga-606a97-2",
     ];
 
+    let rulesFileHandle = null;
+
+    function setStatus(message, isError = false) {
+        const el = document.getElementById("saveStatus");
+        el.textContent = message;
+        el.style.color = isError ? "#b00020" : "#333";
+    }
+
+    function escapeHtml(text) {
+        return String(text)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;");
+    }
+
     function generateTestCases() {
-        let container = document.getElementById("testCasesContainer");
+        document.getElementById("infobox").innerHTML = pagecontent;
+        if (EDIT_MODE) {
+            document.getElementById("infobox").contentEditable = "true";
+        }
+        const container = document.getElementById("testCasesContainer");
+        container.innerHTML = "";
+
         testCaseFolders.forEach((folder, index) => {
-            let rule = rules[index];
-            let testCaseHTML = `
+            const rule = rules[index];
+
+            const conditionField = EDIT_MODE
+                ? `
+                    <div
+                        class="editable-html"
+                        data-index="${index}"
+                        data-field="condition"
+                        contenteditable="true"
+                    >${escapeHtml(rule.condition)}</div>
+                  `
+                : `
+                    <p>${rule.condition}</p>
+                  `;
+
+            const diffField = EDIT_MODE
+                ? `
+                    <div
+                        class="editable-html"
+                        data-index="${index}"
+                        data-field="diff"
+                        contenteditable="true"
+                    >${escapeHtml(rule.diff)}</div>
+                  `
+                : `
+                    <p>${rule.diff}</p>
+                  `;
+
+            const testCaseHTML = `
                 <div class="test-case" id="rule_${index+1}">
                     <h2>Rule ${index+1}</h2>
 
                     <h4>Conditions Under Which the Two ADS Versions Differ:</h4>
-                    <p>${rule.condition}</p>
+                    ${conditionField}
 
                     <h4>Observed Behavioral Discrepancy:</h4>
-                    <p>${rule.diff}</p>
+                    ${diffField}
 
                     <h4>Occurrence Frequency:</h4>
                     <p>This rule describes ${(rule.support * 100).toFixed(2)}% of all detected behavioral discrepancies.</p>
@@ -313,7 +336,25 @@
             `;
             container.innerHTML += testCaseHTML;
         });
+
+        setupEditors();
         setupLazyLoading();
+    }
+
+    function setupEditors() {
+        if (!EDIT_MODE) return;
+
+        document.querySelectorAll(".editable-html").forEach(editor => {
+            editor.addEventListener("input", (event) => {
+                const index = Number(event.target.dataset.index);
+                const field = event.target.dataset.field;
+
+                // Save edited text back into the rules array
+                rules[index][field] = event.target.textContent.trim();
+
+                setStatus("Unsaved changes");
+            });
+        });
     }
 
     function setupLazyLoading() {
@@ -326,6 +367,66 @@
             placeholder.replaceWith(videoElement);
         });
     }
+
+    async function pickRulesFileIfNeeded() {
+        if (rulesFileHandle) return rulesFileHandle;
+
+        if (!window.showOpenFilePicker) {
+            throw new Error("This browser does not support direct file writing. Use Chrome or Edge.");
+        }
+
+        const [handle] = await window.showOpenFilePicker({
+            multiple: false,
+            types: [
+                {
+                    description: "JavaScript files",
+                    accept: { "application/javascript": [".js"] }
+                }
+            ]
+        });
+
+        rulesFileHandle = handle;
+        return handle;
+    }
+
+    async function updateRulesFile() {
+        try {
+            setStatus("Opening file...");
+
+            const handle = await pickRulesFileIfNeeded();
+
+            setStatus("Collecting edited content...");
+
+            const infobox = document.getElementById("infobox");
+            let updatedPageContent = pagecontent;
+
+            if (infobox) {
+                updatedPageContent = infobox.innerHTML;
+            }
+
+            setStatus("Writing to rules.js...");
+
+            const escapedPageContent = updatedPageContent
+                .replaceAll("\\", "\\\\")
+                .replaceAll("`", "\\`")
+                .replaceAll("${", "\\${");
+
+            const fileContent =
+            "const pagecontent = `\n" + escapedPageContent + "\n`;\n" +
+            "const rules = " + JSON.stringify(rules, null, 3) + ";\n\n";
+
+            const writable = await handle.createWritable();
+            await writable.write(fileContent);
+            await writable.close();
+
+            setStatus("rules.js updated");
+        } catch (error) {
+            console.error(error);
+            setStatus("Update failed: " + error.message, true);
+        }
+    }
+
+    document.getElementById("updateRulesButton").addEventListener("click", updateRulesFile);
 
      function saveResponses() {
         let responses = [["Rule Index", "Rule Name", "Q1", "Q2", "Q3", "Q4"]];
@@ -357,6 +458,5 @@
 
     window.onload = generateTestCases;
 </script>
-
 </body>
 </html>
