@@ -147,10 +147,10 @@
         }
 
         .save-status {
-            background: rgba(255,255,255,0.95);
+            background: rgba(255, 255, 255, 0.95);
             padding: 10px 14px;
             border-radius: 10px;
-            box-shadow: 0px 2px 8px rgba(0,0,0,0.12);
+            box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.12);
             font-size: 14px;
             color: #333;
             max-width: 280px;
@@ -165,14 +165,12 @@
 <div class="container">
     <h2>Understanding the Questionnaire</h2>
     <div class="information" id="infobox">
-
     </div>
 </div>
 
 <!-- Questionnaire Section -->
 <div class="container">
     <h2>🚦 Questionnaire</h2>
-
     <form id="questionnaireForm">
         <div id="testCasesContainer"></div>
         <button type="button" onclick="saveResponses()">💾 Save Responses</button>
@@ -181,7 +179,7 @@
 
 <div id="updateBar" class="fixed-update-bar">
     <div id="saveStatus" class="save-status">Ready</div>
-    <button id="updateRulesButton" class="fixed-update-button" type="button">UPDATE RULES.js</button>
+    <button id="updateRulesButton" class="fixed-update-button" type="button">UPDATE RULES</button>
 </div>
 
 <script src="rules.js"></script>
@@ -274,15 +272,24 @@
                     <p>${rule.diff}</p>
                   `;
 
+            const ruleField = EDIT_MODE
+                ? `
+                    <h4>Rule and Coefficient:</h4>
+                    <p>Rule: ${rule.rule}</p>
+                    <p>Coefficient: ${rule.coef}</p>
+                ` : null;
+
             const testCaseHTML = `
-                <div class="test-case" id="rule_${index+1}">
-                    <h2>Rule ${index+1}</h2>
+                <div class="test-case" id="rule_${index + 1}">
+                    <h2>Rule ${index + 1}</h2>
 
                     <h4>Conditions Under Which the Two ADS Versions Differ:</h4>
                     ${conditionField}
 
                     <h4>Observed Behavioral Discrepancy:</h4>
                     ${diffField}
+
+                    ${ruleField}
 
                     <h4>Occurrence Frequency:</h4>
                     <p>This rule describes ${(rule.support * 100).toFixed(2)}% of all detected behavioral discrepancies.</p>
@@ -302,36 +309,36 @@
 
                     <!-- Question 1 -->
                     <h4>1. How easy is it to understand the conditions described by this rule?</h4>
-                    <label><input type="radio" name="q1_${index+1}" value="1"> Very difficult to understand</label>
-                    <label><input type="radio" name="q1_${index+1}" value="2"> Difficult</label>
-                    <label><input type="radio" name="q1_${index+1}" value="3"> Moderately easy</label>
-                    <label><input type="radio" name="q1_${index+1}" value="4"> Easy</label>
-                    <label><input type="radio" name="q1_${index+1}" value="5"> Very easy to understand</label>
+                    <label><input type="radio" name="q1_${index + 1}" value="1"> Very difficult to understand</label>
+                    <label><input type="radio" name="q1_${index + 1}" value="2"> Difficult</label>
+                    <label><input type="radio" name="q1_${index + 1}" value="3"> Moderately easy</label>
+                    <label><input type="radio" name="q1_${index + 1}" value="4"> Easy</label>
+                    <label><input type="radio" name="q1_${index + 1}" value="5"> Very easy to understand</label>
 
 
                     <!-- Question 2 -->
                     <h4>2. Does this rule help you narrow down which types of conditions to prioritize for testing the updated system?</h4>
-                    <label><input type="radio" name="q2_${index+1}" value="1"> Not at all</label>
-                    <label><input type="radio" name="q2_${index+1}" value="2"> Slightly</label>
-                    <label><input type="radio" name="q2_${index+1}" value="3"> Moderately</label>
-                    <label><input type="radio" name="q2_${index+1}" value="4"> Considerably</label>
-                    <label><input type="radio" name="q2_${index+1}" value="5"> Very much</label>
+                    <label><input type="radio" name="q2_${index + 1}" value="1"> Not at all</label>
+                    <label><input type="radio" name="q2_${index + 1}" value="2"> Slightly</label>
+                    <label><input type="radio" name="q2_${index + 1}" value="3"> Moderately</label>
+                    <label><input type="radio" name="q2_${index + 1}" value="4"> Considerably</label>
+                    <label><input type="radio" name="q2_${index + 1}" value="5"> Very much</label>
 
                     <!-- Question 3 -->
                     <h4>3. Does this rule point you toward a specific area of the system to investigate further (e.g., perception in low light, planning near pedestrians, interaction with oncoming traffic)?</h4>
-                    <label><input type="radio" name="q3_${index+1}" value="1"> No clear direction</label>
-                    <label><input type="radio" name="q3_${index+1}" value="2"> Vague direction</label>
-                    <label><input type="radio" name="q3_${index+1}" value="3"> Some direction</label>
-                    <label><input type="radio" name="q3_${index+1}" value="4"> Clear direction</label>
-                    <label><input type="radio" name="q3_${index+1}" value="5"> Very specific direction</label>
+                    <label><input type="radio" name="q3_${index + 1}" value="1"> No clear direction</label>
+                    <label><input type="radio" name="q3_${index + 1}" value="2"> Vague direction</label>
+                    <label><input type="radio" name="q3_${index + 1}" value="3"> Some direction</label>
+                    <label><input type="radio" name="q3_${index + 1}" value="4"> Clear direction</label>
+                    <label><input type="radio" name="q3_${index + 1}" value="5"> Very specific direction</label>
 
                     <!-- Question 4 -->
                     <h4>4. Does this rule reveal a condition that you would not have thought to test on your own?</h4>
-                    <label><input type="radio" name="q4_${index+1}" value="1"> Entirely obvious</label>
-                    <label><input type="radio" name="q4_${index+1}" value="2"> Mostly obvious</label>
-                    <label><input type="radio" name="q4_${index+1}" value="3"> Somewhat novel</label>
-                    <label><input type="radio" name="q4_${index+1}" value="4"> Notably novel</label>
-                    <label><input type="radio" name="q4_${index+1}" value="5"> Highly surprising</label>
+                    <label><input type="radio" name="q4_${index + 1}" value="1"> Entirely obvious</label>
+                    <label><input type="radio" name="q4_${index + 1}" value="2"> Mostly obvious</label>
+                    <label><input type="radio" name="q4_${index + 1}" value="3"> Somewhat novel</label>
+                    <label><input type="radio" name="q4_${index + 1}" value="4"> Notably novel</label>
+                    <label><input type="radio" name="q4_${index + 1}" value="5"> Highly surprising</label>
                 </div>
             `;
             container.innerHTML += testCaseHTML;
@@ -380,7 +387,7 @@
             types: [
                 {
                     description: "JavaScript files",
-                    accept: { "application/javascript": [".js"] }
+                    accept: {"application/javascript": [".js"]}
                 }
             ]
         });
@@ -407,13 +414,14 @@
             setStatus("Writing to rules.js...");
 
             const escapedPageContent = updatedPageContent
+                .trim()
                 .replaceAll("\\", "\\\\")
                 .replaceAll("`", "\\`")
                 .replaceAll("${", "\\${");
 
             const fileContent =
-            "const pagecontent = `\n" + escapedPageContent + "\n`;\n" +
-            "const rules = " + JSON.stringify(rules, null, 3) + ";\n\n";
+                "const pagecontent = `\n" + escapedPageContent + "\n`;\n\n" +
+                "const rules = " + JSON.stringify(rules, null, 4) + ";\n\n";
 
             const writable = await handle.createWritable();
             await writable.write(fileContent);
@@ -428,26 +436,26 @@
 
     document.getElementById("updateRulesButton").addEventListener("click", updateRulesFile);
 
-     function saveResponses() {
+    function saveResponses() {
         let responses = [["Rule Index", "Rule Name", "Q1", "Q2", "Q3", "Q4"]];
 
         testCaseFolders.forEach((folder, index) => {
-            let q1 = document.querySelector(`input[name="q1_${index+1}"]:checked`);
-            let q2 = document.querySelector(`input[name="q2_${index+1}"]:checked`);
-            let q3 = document.querySelector(`input[name="q3_${index+1}"]:checked`);
-            let q4 = document.querySelector(`input[name="q4_${index+1}"]:checked`);
+            let q1 = document.querySelector(`input[name="q1_${index + 1}"]:checked`);
+            let q2 = document.querySelector(`input[name="q2_${index + 1}"]:checked`);
+            let q3 = document.querySelector(`input[name="q3_${index + 1}"]:checked`);
+            let q4 = document.querySelector(`input[name="q4_${index + 1}"]:checked`);
 
             let q1Value = q1 ? q1.value : "Not Answered";
             let q2Value = q2 ? q2.value : "Not Answered";
             let q3Value = q3 ? q3.value : "Not Answered";
             let q4Value = q4 ? q4.value : "Not Answered";
 
-            responses.push([`Test Case ${index+1}`, folder, q1Value, q2Value, q3Value, q4Value]);
+            responses.push([`Test Case ${index + 1}`, folder, q1Value, q2Value, q3Value, q4Value]);
         });
 
         let csvContent = responses.map(e => e.join(",")).join("\n");
 
-        let blob = new Blob([csvContent], { type: "text/csv" });
+        let blob = new Blob([csvContent], {type: "text/csv"});
         let link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
         link.download = "test_case_responses.csv";
