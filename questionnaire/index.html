@@ -193,7 +193,6 @@
     }
 
     const testCaseFolders = [
-        "gawa-1771885459668-gawa-1fdaf7-3",
         "ccea-1772306083018-ccea-9ec8ed-6",
         "gawa-1771885459668-gawa-1fdaf7-2",
         "ccea-c-1770141244797-ccea-fa1b37-12",
@@ -208,16 +207,11 @@
         "ccea-1772422653593-ccea-d50407-11",
         "ccea-c-1770313923351-ccea-9edc67-1",
         "ga-1772140130107-ga-69f752-5",
-        "ccea-c-1770252820518-ccea-b98a0b-3",
         "ccea-c-1770113743657-ccea-c0df4b-1",
         "ga-1772140130107-ga-69f752-34",
-        "ccea-c-1770285314059-ccea-4bee83-7",
         "ccea-c-1770313923351-ccea-9edc67-2",
         "gawa-1771590353173-gawa-f33e4f-1",
-        "ccea-1772306083018-ccea-9ec8ed-2",
         "ccea-c-1770285314059-ccea-4bee83-7",
-        "ccea-1772306083018-ccea-9ec8ed-7",
-        "ccea-c-1770170873331-ccea-36ba25-4",
     ];
 
     let rulesFileHandle = null;
@@ -286,6 +280,7 @@
 
                     <h4>Conditions Under Which the Two ADS Versions Differ:</h4>
                     ${conditionField}
+                    <p style="font-size: 11px; color: brown">${rule.rule}</p>
 
                     <h4>Observed Behavioral Discrepancy:</h4>
                     ${diffField}
