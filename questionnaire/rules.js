@@ -29,12 +29,11 @@ const pagecontent = `
         You receive these automatically generated rules as a starting point, not as final test scripts, but as patterns that may highlight where the two system versions behave differently.
         We ask you to evaluate each rule from a practical perspective.
     </p>
-    <p>Specifically, you will assess each rule across four dimensions:</p>
+    <p>Specifically, you will assess each rule across three dimensions:</p>
     <ul>
         <li><strong>Interpretability:</strong> How easy is it to understand the conditions described by the rule?</li>
         <li><strong>Test Prioritization:</strong> Does the rule help you narrow down which types of conditions to focus your testing efforts on?</li>
         <li><strong>Diagnostic Direction:</strong> Does the rule point you toward a specific area of the system to investigate further?</li>
-        <li><strong>Non-Obviousness:</strong> Does the rule reveal a condition that you would not have thought to test on your own?</li>
     </ul>
     
     <h3>Metamorphic relations used</h3>
@@ -53,7 +52,7 @@ const rules = [
     {
         "id": 1,
         "rule": "source_static_focus_yaw_min_sin <= 0.17505 and follow_up_traj_middle_angle_cos > 0.46432",
-        "condition": "Static objects in front of the ego vehicle are facing roughly the same direction as the ego vehicle, or slightly to its left, while the planned trajectory runs mostly straight ahead through its halfway point, without steering far to either side.",
+        "condition": "At least one static object in front of the ego vehicle is not facing significantly to the right of the ego vehicle's direction, while the planned trajectory runs mostly straight ahead through its halfway point, without steering far to either side.",
         "diff": "The updated system performs worse under these conditions than the original system.",
         "coef": 0.258581066,
         "support": 0.415079674,
@@ -71,7 +70,7 @@ const rules = [
     {
         "id": 3,
         "rule": "follow_up_walker_focus_yaw_mean_sin > -0.99966 and source_static_focus_radius_max_scaled <= 0.2308",
-        "condition": "The pedestrians in front of the ego vehicle are not facing sharply to its left, while the farthest static object in front of the ego vehicle is very close to it.",
+        "condition": "The pedestrians in front of the ego vehicle are not facing sharply to the left of the ego vehicle's direction, while the farthest static object in front of the ego vehicle is still close to it.",
         "diff": "The updated system performs considerably better under these conditions than the original system.",
         "coef": -0.500068513,
         "support": 0.96618733,
@@ -89,7 +88,7 @@ const rules = [
     {
         "id": 5,
         "rule": "follow_up_vehicle_focus_angle_max_sin > -0.35114 and follow_up_vehicle_focus_radius_median_scaled > 0.20165 and follow_up_walker_focus_angle_mean_sin <= 0.00204 and source_static_focus_yaw_min_sin <= 0.99315 and source_walker_focus_yaw_mean_sin > 0.01036",
-        "condition": "The vehicles in front of the ego vehicle are at least a short distance away and positioned roughly ahead or only slightly to its left. The pedestrians in front of it are positioned straight ahead or slightly to its left, generally facing forward along the ego vehicle's direction. The static objects in front of it are facing to the right of the ego vehicle's direction.",
+        "condition": "The vehicles in front of the ego vehicle are generally a short distance away, and at least one of them is not positioned substantially to its left. The pedestrians in front of the ego vehicle are generally positioned straight ahead or to its left, generally facing forward along the ego vehicle's direction. At least one static object in front of the ego vehicle is not facing to the right of the ego vehicle's direction.",
         "diff": "The updated system performs significantly worse under these conditions than the original system.",
         "coef": 0.637415927,
         "support": 0.01399145,
@@ -98,7 +97,7 @@ const rules = [
     {
         "id": 6,
         "rule": "source_vehicle_left_speed_median_scaled <= 0.31995 and source_vehicle_focus_yaw_mean_sin > -0.95151 and source_walker_focus_yaw_mean_cos > -0.93465",
-        "condition": "The vehicles to the left of the ego vehicle are moving at a moderate speed, the vehicles in front of it are not facing sharply to its left, and the pedestrians in front of it are almost facing toward the ego vehicle.",
+        "condition": "The vehicles to the left of the ego vehicle are moving at a moderate speed, the vehicles in front of the ego vehicle are not facing sharply to the left of the ego vehicle's direction, and the pedestrians in front of the ego vehicle are generally not facing the opposite direction of the ego vehicle.",
         "diff": "The updated system performs worse under these conditions than the original system.",
         "coef": 0.164368135,
         "support": 0.719005052,
@@ -107,7 +106,7 @@ const rules = [
     {
         "id": 7,
         "rule": "follow_up_walker_focus_radius_min_scaled <= 0.17387 and follow_up_vehicle_focus_yaw_min_cos > -0.99964 and source_traj_3q_radius_scaled > 0.38766 and source_walker_left_radius_median_scaled <= 0.20719",
-        "condition": "The closest pedestrian in front of the ego vehicle is very close to it, the vehicles in front of it are not facing toward the ego vehicle, and the pedestrians to its left are also very close.",
+        "condition": "The closest pedestrian in front of the ego vehicle is close to it, the vehicles in front of the ego vehicle are not facing the opposite direction of the ego vehicle, and the pedestrians to the left of the ego vehicle are also close. The planned trajectory extends at least a moderate distance.",
         "diff": "The updated system performs slightly better under these conditions than the original system.",
         "coef": -0.150872087,
         "support": 0.6618733,
@@ -116,7 +115,7 @@ const rules = [
     {
         "id": 8,
         "rule": "source_walker_focus_speed_min_scaled <= 0.03111 and follow_up_vehicle_left_yaw_mean_sin > -0.64657 and follow_up_vehicle_focus_yaw_min_cos > -0.99948 and follow_up_brightness <= 1.5",
-        "condition": "The slowest pedestrian in front of the ego vehicle is nearly stationary. The vehicles to its left are not facing sharply to the left, the vehicles in front of it are not facing toward the ego vehicle, and the lighting is very dark, either deep nighttime or late twilight.",
+        "condition": "The slowest pedestrian in front of the ego vehicle is nearly stationary, the vehicles to the left of the ego vehicle are generally not facing sharply to the left of the ego vehicle's direction, and the vehicles in front of the ego vehicle are not facing the opposite direction of the ego vehicle. The lighting is very dark, either deep nighttime or late twilight.",
         "diff": "The updated system performs slightly better under these conditions than the original system.",
         "coef": -0.149535756,
         "support": 0.321803342,
@@ -125,7 +124,7 @@ const rules = [
     {
         "id": 9,
         "rule": "follow_up_traj_3q_angle_sin <= 0.05425 and follow_up_vehicle_focus_yaw_max_sin > 0.281 and follow_up_walker_left_yaw_median_sin <= 0.99996 and follow_up_vehicle_focus_yaw_min_cos <= -0.89161",
-        "condition": "The planned trajectory runs nearly straight ahead through most of its length. At least one vehicle in front of the ego vehicle is facing moderately to its right, and the pedestrians to its left are not facing extremely far to the right.",
+        "condition": "The planned trajectory runs nearly straight ahead through most of its length. At least one vehicle in front of the ego vehicle is facing moderately to the right of the ego vehicle's direction, and the pedestrians to the left of the ego vehicle are not facing extremely to the right of the ego vehicle's direction.",
         "diff": "The updated system performs moderately better under these conditions than the original system.",
         "coef": -0.341031025,
         "support": 0.040031092,
@@ -134,7 +133,7 @@ const rules = [
     {
         "id": 10,
         "rule": "follow_up_vehicle_focus_angle_max_sin <= 0.09145 and follow_up_walker_left_yaw_min_cos > -0.16847",
-        "condition": "The vehicles in front of the ego vehicle are all positioned nearly straight ahead, and the pedestrians to its left are not facing strongly away from the ego vehicle's direction.",
+        "condition": "The vehicles in front of the ego vehicle are all positioned nearly straight ahead or to its left, and the pedestrians to the left of the ego vehicle are not facing any rearward direction relative to the ego vehicle.",
         "diff": "The updated system performs slightly better under these conditions than the original system.",
         "coef": -0.115610047,
         "support": 0.389428682,
@@ -143,7 +142,7 @@ const rules = [
     {
         "id": 11,
         "rule": "source_vehicle_left_yaw_min_sin <= -0.62742",
-        "condition": "At least one vehicle to the left of the ego vehicle is facing substantially to its left, roughly angled away from the ego vehicle's path.",
+        "condition": "At least one vehicle to the left of the ego vehicle is facing substantially to the left of the ego vehicle's direction.",
         "diff": "The updated system performs slightly better under these conditions than the original system.",
         "coef": -0.17977039,
         "support": 0.109211038,
@@ -152,7 +151,7 @@ const rules = [
     {
         "id": 12,
         "rule": "follow_up_vehicle_focus_speed_min_scaled <= 0.80056 and follow_up_walker_focus_speed_mean_scaled <= 0.10282",
-        "condition": "The vehicles in front of the ego vehicle are not all moving at high speed, and the pedestrians in front of it are moving very slowly or nearly stationary.",
+        "condition": "The vehicles in front of the ego vehicle are not all moving at high speed, and the pedestrians in front of the ego vehicle are moving very slowly or nearly stationary.",
         "diff": "The updated system performs slightly better under these conditions than the original system.",
         "coef": -0.124176161,
         "support": 0.761368053,
@@ -161,7 +160,7 @@ const rules = [
     {
         "id": 13,
         "rule": "follow_up_walker_focus_angle_mean_sin <= -0.02592 and follow_up_walker_left_yaw_mean_cos <= -0.61443 and source_traj_3q_radius_scaled <= 0.43656 and source_vehicle_left_radius_max_scaled <= 0.22353",
-        "condition": "The pedestrians in front of the ego vehicle are positioned slightly to its left, the pedestrians to its left are facing roughly backward, and the vehicles to its left are close to it. The planned trajectory is relatively short.",
+        "condition": "The pedestrians in front of the ego vehicle are positioned slightly to its left, the pedestrians to the left of the ego vehicle are generally facing roughly rearward, and the vehicles to the left of the ego vehicle are close to it. The planned trajectory is relatively short.",
         "diff": "The updated system performs moderately worse under these conditions than the original system.",
         "coef": 0.344217256,
         "support": 0.01982122,
@@ -188,7 +187,7 @@ const rules = [
     {
         "id": 16,
         "rule": "follow_up_walker_focus_yaw_median_sin <= 0.22232 and source_vehicle_right_yaw_max_cos > -0.99261",
-        "condition": "The pedestrians in front of the ego vehicle are facing roughly forward or slightly to its left, and no vehicle to its right is facing almost directly away from the ego vehicle.",
+        "condition": "The pedestrians in front of the ego vehicle are generally not facing to the right of the ego vehicle's direction, and at least one vehicle to the right of the ego vehicle is not facing directly opposite to the ego vehicle's direction.",
         "diff": "The updated system performs very slightly worse under these conditions than the original system.",
         "coef": 0.085922556,
         "support": 0.626117373,
@@ -197,7 +196,7 @@ const rules = [
     {
         "id": 17,
         "rule": "follow_up_walker_focus_yaw_max_sin <= 0.21236 and source_walker_focus_yaw_mean_cos <= -0.51682 and source_walker_left_radius_min_scaled <= 0.14545",
-        "condition": "The most rightward-facing pedestrian in front of the ego vehicle is still facing roughly forward or only slightly to its right, while the pedestrians in front of it are on average facing substantially away from the ego vehicle. The pedestrians to its left are very close to it.",
+        "condition": "None of the pedestrians in front of the ego vehicle are facing substantially to the right of the ego vehicle, while one of them in front of the ego vehicle is facing substantially the opposite direction of the ego vehicle. The pedestrians to the left of the ego vehicle are very close to it.",
         "diff": "The updated system performs slightly worse under these conditions than the original system.",
         "coef": 0.157894319,
         "support": 0.06490478,
@@ -206,7 +205,7 @@ const rules = [
     {
         "id": 18,
         "rule": "source_ego_speed_scaled <= 0.03473 and follow_up_walker_left_radius_min_scaled > 0.09264",
-        "condition": "The ego vehicle is traveling at a very low speed, nearly stopped. The closest pedestrian to its left is at least a short distance away, not extremely close.",
+        "condition": "The ego vehicle is traveling at a very low speed, nearly stopped. The closest pedestrian to the left of the ego vehicle is at least a short distance away, not extremely close.",
         "diff": "The updated system performs slightly better under these conditions than the original system.",
         "coef": -0.114928211,
         "support": 0.112320249,
@@ -215,7 +214,7 @@ const rules = [
     {
         "id": 19,
         "rule": "follow_up_walker_left_yaw_mean_sin <= 0.22708",
-        "condition": "The pedestrians to the left of the ego vehicle are facing roughly forward or to its left.",
+        "condition": "The pedestrians to the left of the ego vehicle are generally not facing to the right of the ego vehicle's direction.",
         "diff": "The updated system performs very slightly worse under these conditions than the original system.",
         "coef": 0.071716766,
         "support": 0.621064905,
@@ -224,7 +223,7 @@ const rules = [
     {
         "id": 20,
         "rule": "follow_up_walker_focus_angle_max_sin > -0.49641 and follow_up_walker_right_yaw_median_sin > -0.89303 and source_traj_middle_angle_cos > -0.99758 and follow_up_weather_3 <= 0.5 and source_walker_left_radius_mean_scaled <= 0.19399",
-        "condition": "The pedestrians in front of the ego vehicle are not positioned far to its left, the pedestrians to its right are not facing sharply to its left, and the pedestrians to its left are very close to it. The weather is dry, with no significant rain or wet ground. The planned trajectory runs mostly straight ahead through its halfway point.",
+        "condition": "At least one pedestrian in front of the ego vehicle is not positioned extremely  far to its left, the pedestrians to the right of the ego vehicle are not facing sharply to the left of ego vehicle's direction, and the pedestrians to the left of the ego vehicle are generally close to it. The weather is dry, with no significant rain or wet ground. The planned trajectory runs mostly straight ahead through its halfway point.",
         "diff": "The updated system performs very slightly worse under these conditions than the original system.",
         "coef": 0.082320053,
         "support": 0.773416246,
@@ -242,7 +241,7 @@ const rules = [
     {
         "id": 22,
         "rule": "follow_up_vehicle_focus_yaw_min_sin > -0.99998 and source_traj_1q_angle_sin > -0.86979 and source_brightness > 4.5",
-        "condition": "The vehicles in front of the ego vehicle are not all facing sharply to its left. The planned trajectory begins without a strong leftward turn early on. The lighting of the source scenario is bright, at least moderately sunny.",
+        "condition": "No vehicle in front of the ego vehicle is facing sharply to the left of the ego vehicle's direction. The planned trajectory begins without a strong leftward turn early on. The lighting is very dark, either deep nighttime or late twilight, despite originally being bright and at least moderately sunny.",
         "diff": "The updated system performs very slightly worse under these conditions than the original system.",
         "coef": 0.066136609,
         "support": 0.396035756,
@@ -260,7 +259,7 @@ const rules = [
     {
         "id": 24,
         "rule": "follow_up_static_focus_yaw_max_sin <= 0.98623 and follow_up_walker_focus_yaw_max_sin <= 0.19634 and follow_up_walker_focus_yaw_max_sin > -0.99966 and follow_up_walker_left_yaw_min_cos > -0.94251 and source_walker_focus_yaw_max_cos > -0.99675",
-        "condition": "The static objects in front of the ego vehicle are not facing sharply to its right. The pedestrians in front of it are facing roughly forward, to its left, or partially backward to its left. The pedestrians to its left are not facing strongly away from the ego vehicle.",
+        "condition": "No static object in front of the ego vehicle is facing sharply to the right of the ego vehicle's direction, the pedestrians in front of the ego vehicle are facing to the left of the ego vehicle's direction, and the pedestrians to the left of the ego vehicle are not facing directly the opposite of the ego vehicle's direction.",
         "diff": "The updated system performs very slightly worse under these conditions than the original system.",
         "coef": 0.06259293,
         "support": 0.503303537,
@@ -269,11 +268,10 @@ const rules = [
     {
         "id": 25,
         "rule": "follow_up_walker_right_yaw_median_cos <= 0.10409 and source_walker_focus_yaw_max_cos > -0.99629 and source_walker_right_yaw_max_cos > -0.9999",
-        "condition": "The pedestrians in front of the ego vehicle are not facing almost directly away from it, and the pedestrians to its right are facing sideways or backward.",
+        "condition": "At least one pedestrian in front of the ego vehicle is not facing the opposite direction of the ego vehicle, and the pedestrians to the right of the ego vehicle are facing sideways or rearward.",
         "diff": "The updated system performs very slightly worse under these conditions than the original system.",
         "coef": 0.060821457,
         "support": 0.431403031,
         "importance": 0.030123171
     }
 ];
-

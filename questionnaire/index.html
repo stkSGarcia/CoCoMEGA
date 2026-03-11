@@ -185,6 +185,7 @@
 <script src="rules.js"></script>
 <script>
     const EDIT_MODE = true;
+    const showRule = new URLSearchParams(window.location.search).has("debug");
 
     const updateButton = document.getElementById("updateBar");
     if (!EDIT_MODE) {
@@ -289,7 +290,9 @@
                     <h4>Observed Behavioral Discrepancy:</h4>
                     ${diffField}
 
-                    ${ruleField}
+                    <div style="display: ${showRule ? 'block' : 'none'};">
+                        ${ruleField}
+                    </div>
 
                     <h4>Occurrence Frequency:</h4>
                     <p>This rule describes ${(rule.support * 100).toFixed(2)}% of all detected behavioral discrepancies.</p>
@@ -333,12 +336,12 @@
                     <label><input type="radio" name="q3_${index + 1}" value="5"> Very specific direction</label>
 
                     <!-- Question 4 -->
-                    <h4>4. Does this rule reveal a condition that you would not have thought to test on your own?</h4>
+                    <!-- <h4>4. Does this rule reveal a condition that you would not have thought to test on your own?</h4>
                     <label><input type="radio" name="q4_${index + 1}" value="1"> Entirely obvious</label>
                     <label><input type="radio" name="q4_${index + 1}" value="2"> Mostly obvious</label>
                     <label><input type="radio" name="q4_${index + 1}" value="3"> Somewhat novel</label>
                     <label><input type="radio" name="q4_${index + 1}" value="4"> Notably novel</label>
-                    <label><input type="radio" name="q4_${index + 1}" value="5"> Highly surprising</label>
+                    <label><input type="radio" name="q4_${index + 1}" value="5"> Highly surprising</label> -->
                 </div>
             `;
             container.innerHTML += testCaseHTML;
@@ -437,20 +440,20 @@
     document.getElementById("updateRulesButton").addEventListener("click", updateRulesFile);
 
     function saveResponses() {
-        let responses = [["Rule Index", "Rule Name", "Q1", "Q2", "Q3", "Q4"]];
+        let responses = [["Rule Index", "Rule Name", "Q1", "Q2", "Q3"]];
 
         testCaseFolders.forEach((folder, index) => {
             let q1 = document.querySelector(`input[name="q1_${index + 1}"]:checked`);
             let q2 = document.querySelector(`input[name="q2_${index + 1}"]:checked`);
             let q3 = document.querySelector(`input[name="q3_${index + 1}"]:checked`);
-            let q4 = document.querySelector(`input[name="q4_${index + 1}"]:checked`);
+            // let q4 = document.querySelector(`input[name="q4_${index + 1}"]:checked`);
 
             let q1Value = q1 ? q1.value : "Not Answered";
             let q2Value = q2 ? q2.value : "Not Answered";
             let q3Value = q3 ? q3.value : "Not Answered";
-            let q4Value = q4 ? q4.value : "Not Answered";
+            // let q4Value = q4 ? q4.value : "Not Answered";
 
-            responses.push([`Test Case ${index + 1}`, folder, q1Value, q2Value, q3Value, q4Value]);
+            responses.push([`Test Case ${index + 1}`, folder, q1Value, q2Value, q3Value]);
         });
 
         let csvContent = responses.map(e => e.join(",")).join("\n");
