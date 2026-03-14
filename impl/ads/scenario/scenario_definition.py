@@ -811,6 +811,62 @@ class ScenarioDefinition(AbstractScenarioDefinition):
 
         return df
 
+    def vectorize4rulefit(self, prefix: str, fill_empty=0.0):
+        """Vectorize the scenario.
+
+        :param prefix: The string added before the feature names.
+        :param fill_empty: The value used to fill empty statistics when no actor is present in a region (default: :data:`0.0`).
+        :return: A :class:`DataFrame` representing the vector.
+        """
+        # Vectorize global attributes.
+        df = pd.DataFrame({f"{prefix}_{attr}": [getattr(self, attr, None)] for attr in self.ATTRIBUTES})
+
+        # Vectorize the ego vehicle.
+        df = df.join(self.ego_vehicle.vectorize(prefix=f"{prefix}_ego", exclude=["angle", "radius", "yaw"]))
+
+        # Vectorize the trajectory.
+        df = df.join(pd.DataFrame({f"{prefix}_traj_direction": [self.trajectory["direction"]]}))
+
+        # Vectorize actors.
+        for category in self.DYNAMIC:
+            actors = getattr(self, f"{category}s")
+            regions = {k: list(v) for k, v in
+                       groupby(actors, lambda x: x.region.name.lower() if x.region else "none")}
+            for region in list(Boundary.Region) + [None]:
+                region_name = region.name.lower() if region else "none"
+                actor_list = regions.get(region_name, [])
+                df = df.join(pd.DataFrame({f"{prefix}_{category}_{region_name}_num": [len(actor_list)]}))
+                if len(actor_list) > 0:
+                    actor_df = pd.concat(
+                        [self._convert_yaw(actor.vectorize(prefix=f"{prefix}_{category}_{region_name}"))
+                         for actor in actor_list])
+                    stats = {}
+                    for col in actor_df.columns:
+                        if "model" in col: continue
+                        stats.update({
+                            f"{col}_min": [actor_df[col].min()],
+                            f"{col}_max": [actor_df[col].max()],
+                            f"{col}_mean": [actor_df[col].mean()],
+                            f"{col}_median": [actor_df[col].median()],
+                            f"{col}_std": [actor_df[col].std() if len(actor_df) > 1 else 0],
+                        })
+                    df = df.join(pd.DataFrame(stats))
+                else:
+                    cls = getattr(sys.modules[__name__], category.capitalize())
+                    empty_df = cls.vectorize_padding(prefix=f"{prefix}_{category}_{region_name}")
+                    stats = {}
+                    for col in empty_df.columns:
+                        if "model" in col: continue
+                        stats.update({
+                            f"{col}_min": [fill_empty],
+                            f"{col}_max": [fill_empty],
+                            f"{col}_mean": [fill_empty],
+                            f"{col}_median": [fill_empty],
+                            f"{col}_std": [fill_empty],
+                        })
+                    df = df.join(pd.DataFrame(stats))
+        return df
+
     def _convert_yaw(self, df):
         """
         Convert absolute yaw values to relative yaw based on the ego vehicle's orientation.
