@@ -5,8 +5,8 @@ from copy import deepcopy
 
 import numpy as np
 import pandas as pd
-from sklearn.compose import ColumnTransformer
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.compose import ColumnTransformer
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 from sklearn.model_selection import cross_val_score, RandomizedSearchCV
 from sklearn.model_selection import train_test_split
@@ -124,11 +124,12 @@ def vectorize(solutions, mode="stats", fill_empty=0.0):
         ], axis=1) for source, follow_up in zip(source_scens, follow_up_scens)]
     else:
         vector_dfs = [pd.concat([
-            source.vectorize(max_actors, prefix="source", mode="stats", fill_empty=fill_empty),
-            follow_up.vectorize(max_actors, prefix="follow_up", mode="stats", fill_empty=fill_empty),
+            source.vectorize4rulefit(prefix="source", fill_empty=fill_empty),
+            follow_up.vectorize4rulefit(prefix="follow_up", fill_empty=fill_empty),
         ], axis=1) for source, follow_up in zip(source_scens, follow_up_scens)]
     raw_vectors = pd.concat(vector_dfs, ignore_index=True)
     vectors, features, _ = _preprocess_vectors(raw_vectors)
+    vectors, features = _add_diff_features(vectors, features)
     return vectors, fitnesses, fitnesses_v1, fitnesses_v2, features
 
 
@@ -183,8 +184,37 @@ def _preprocess_vectors(raw_vectors):
 
     transformed_array = preprocessor.fit_transform(raw_vectors)
     features = preprocessor.get_feature_names_out()
-    vectors = pd.DataFrame(transformed_array, columns=features)#.fillna(-999)
+    vectors = pd.DataFrame(transformed_array, columns=features)  # .fillna(-999)
     return vectors, features, block_sizes
+
+
+def _add_diff_features(dataframe, features):
+    """Add cross-version diff features (follow_up - source) to DataFrame."""
+    agents = ["walker", "vehicle", "static"]
+    regions = ["focus", "left", "right"]
+    attr_stats = {
+        "radius_{stat}_scaled": ["min", "mean"],
+        "speed_{stat}_scaled": ["max", "mean"],
+        "yaw_{stat}_cos": ["mean"],
+        "yaw_{stat}_sin": ["mean"],
+    }
+
+    new_cols = []
+    for agent in agents:
+        for region in regions:
+            for attr_template, stats in attr_stats.items():
+                for stat in stats:
+                    attr = attr_template.format(stat=stat)
+                    source_col = f"source_{agent}_{region}_{attr}"
+                    followup_col = f"follow_up_{agent}_{region}_{attr}"
+                    diff_col = f"diff_{agent}_{region}_{attr}"
+
+                    if source_col in dataframe.columns and followup_col in dataframe.columns:
+                        dataframe[diff_col] = dataframe[followup_col] - dataframe[source_col]
+                        new_cols.append(diff_col)
+
+    features = np.concatenate([features, np.array(new_cols)])
+    return dataframe, features
 
 
 def model_fit(X, y):
@@ -352,7 +382,7 @@ def model_fit(X, y):
     return best_model
 
 
-def generate_rules(X, y, features, base_model=None, max_rules=10):
+def generate_rules(X, y, features, base_model=None, max_rules=30, **kwargs):
     """Train the rule model.
 
     :param X: Vectors.
@@ -364,8 +394,8 @@ def generate_rules(X, y, features, base_model=None, max_rules=10):
     """
     # Lazy import to avoid requiring imodels unless used
     from imodels import RuleFitRegressor
-    model = RuleFitRegressor(max_rules=max_rules, tree_generator=base_model, exp_rand_tree_size=False) \
-        if base_model else RuleFitRegressor(max_rules=max_rules)
+    model = RuleFitRegressor(max_rules=max_rules, tree_generator=base_model, **kwargs) \
+        if base_model else RuleFitRegressor(max_rules=max_rules, **kwargs)
     model.fit(X, y, feature_names=features)
     return model
 
