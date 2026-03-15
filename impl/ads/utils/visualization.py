@@ -27,6 +27,7 @@ from deap import creator
 
 from impl import config as cfg
 from impl.ads.mr.mr import Relation
+from impl.ads.scenario.runtime import load_runtime_scenarios
 from impl.ads.utils.math_utils import calculate_auc_improvements, area_under_curve, calculate_ds_improvements
 from impl.ads.utils.math_utils import calculate_improvements, polar_to_cartesian
 from impl.ads.utils.metrics import metrics, pairwise_distance, avg_pw_from_matrix
@@ -1202,9 +1203,7 @@ def visualize_aed(projects, save_path=None, show=False):
     height = 4
     title_size, text_size, tick_size = height * 5, height * 4, height * 3
 
-    runtime_scenarios = []
-    for data_path in cfg.CONFIG["workspace"]["runtime_scenario"].rglob("*.*"):
-        runtime_scenarios += pickle.loads(data_path.read_bytes())
+    runtime_scenarios = load_runtime_scenarios()
     runtime_scenarios = [creator.Scenario(scenario) for scenario in runtime_scenarios]
     similarities = {}
     for alg, project_list in projects.items():
