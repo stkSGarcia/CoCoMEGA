@@ -353,7 +353,7 @@ def run_solutions(alg, project, mr_set, top: int = -1, verbose=True, agent_names
             json.dump(fitness_data, f, indent=4)
 
 
-def already_recorded(solution_path, agent_names):
+def already_recorded(solution_path, agent_names, follow_up_only=False):
     """
     Check if a recording already exists for a given solution path.
 
@@ -363,9 +363,13 @@ def already_recorded(solution_path, agent_names):
     recorded = True
     for agent in agent_names:
         try:
-            if not (len(os.listdir(solution_path / agent / "source")) > 0 and len(
-                    os.listdir(solution_path / agent / "follow-up")) > 0):
-                recorded = False
+            if follow_up_only:
+                if not len(os.listdir(solution_path / agent / "follow-up")) > 0:
+                    recorded = False
+            else:
+                if not (len(os.listdir(solution_path / agent / "source")) > 0 and len(
+                        os.listdir(solution_path / agent / "follow-up")) > 0):
+                    recorded = False
         except FileNotFoundError:
             recorded = False
     return recorded
