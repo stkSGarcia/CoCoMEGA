@@ -194,7 +194,7 @@ def calculate_improvements(data, comparison_algs, metric_name, higher_is_better=
     alg_pairs = [(alg, baseline) for alg in algs for baseline in baselines]
 
     for alg, baseline in alg_pairs:
-        stat, pval = mannwhitneyu(data[alg], data[baseline], alternative="greater" if higher_is_better else "less")
+        stat, pval = mannwhitneyu(data[alg], data[baseline], alternative="greater" if (np.mean(data[alg]) > np.mean(data[baseline])) else "less")
         improvement = (np.mean(data[alg]) - np.mean(data[baseline])) / np.mean(data[baseline]) * 100
         if not higher_is_better:
             improvement = -improvement
