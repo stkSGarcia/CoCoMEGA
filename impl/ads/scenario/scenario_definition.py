@@ -584,9 +584,9 @@ class ScenarioDefinition(AbstractScenarioDefinition):
                      self.trajectory["route"],
                      self.trajectory["start"]["is_junction"]
                      ) = self._build_trajectory({
-                        "start": {"x": x, "y": y, "z": z},
-                        "direction": self.trajectory["direction"]}
-                    )
+                        "start": {"x": x, "y": y, "z": z, "speed": self.ego_vehicle.speed},
+                        "direction": self.trajectory["direction"],
+                    })
                     self.trajectory["start"]["x"], self.trajectory["start"]["y"], self.trajectory["start"][
                         "z"] = x, y, z
                 except InvalidScenarioDefinitionError:
