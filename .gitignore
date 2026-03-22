@@ -4,6 +4,8 @@
 /conf/*.pth.tar
 test/exp.ipynb
 /questionnaire/test_cases*
+*.png
+*.pdf
 
 ### VisualStudioCode template
 .vscode/*
