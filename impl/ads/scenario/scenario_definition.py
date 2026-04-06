@@ -430,10 +430,11 @@ class ScenarioDefinition(AbstractScenarioDefinition):
                 waypoint = waypoint.next(1)[0]
         else:
             if direction and direction != "forward":
-                logger.warning(
-                    f"The trajectory direction is '{trajectory_def['direction']}' but the vehicle is far"
-                    f" from a junction! Set to \"forward\"."
-                )
+                pass
+                # logger.warning(
+                #     f"The trajectory direction is '{trajectory_def['direction']}' but the vehicle is far"
+                #     f" from a junction! Set to \"forward\"."
+                # )
                 trajectory_def["direction"] = "forward"
             waypoint = CarlaDataProvider.get_map().get_waypoint(trajectory[-1].location)
             for _ in range(remaining_length):
