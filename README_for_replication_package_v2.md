@@ -70,11 +70,6 @@ an Interpretability Framework* by Hossein Yousefizadeh, Shenghui Gu, Lionel C. B
    pip install -r requirements.txt
    ```
 
-5. Download pretrained model
-
-   The model can be downloaded at [here](http://43.159.60.142/s/p2CN) and needs to be moved
-   to `conf`.
-
 ## Usage
 
 1. Build docker image
