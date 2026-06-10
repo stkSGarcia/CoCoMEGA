@@ -8,11 +8,11 @@ import time
 import subprocess
 
 import pandas as pd
-import test
+from impl import config as cfg
 
 from impl.ads.utils.visualization import Visualizer
 
-config = test.CONFIG
+config = cfg.CONFIG
 logger = logging.getLogger("impl")
 
 
@@ -67,10 +67,11 @@ class TestPertBoundary:
             with open('config.yaml', 'w') as file:
                 yaml.safe_dump(data, file)
 
-            process = subprocess.run([
-                f".venv/bin/python -m impl srch"
-            ],
-                shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = subprocess.run(
+                [sys.executable, "-m", "impl", "search"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
             if process.returncode == 0:
                 logger.info("Boundary test completed.")
             else:

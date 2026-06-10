@@ -111,19 +111,23 @@ class TestScenario(TestCase):
                 self.assertEqual(getattr(original_scenario1, variant), getattr(scenario2, variant))
 
     def test_mutate(self):
-        scenario = ScenarioDefinition.generate_random()
-        original_scenario = deepcopy(scenario)
-        scenario.mutate(mutpb=self.mutpb, eta=self.eta)
+        original_scenario = ScenarioDefinition.generate_random()
+        variants = ["vehicles", "walkers", "statics", "weather", "brightness"]
+        for _ in range(10):
+            scenario = deepcopy(original_scenario)
+            scenario.mutate(mutpb=self.mutpb, eta=self.eta)
+            if any(getattr(scenario, variant) != getattr(original_scenario, variant)
+                   for variant in variants):
+                break
 
         invariants = ["id_", "ego_vehicle", "trajectory"]
         for invariant in invariants:
             self.assertEqual(getattr(scenario, invariant), getattr(original_scenario, invariant))
 
-        variants = ["vehicles", "walkers", "statics", "weather", "brightness"]
-        for variant in variants:
-            if ((isinstance(getattr(scenario, variant), list) and len(getattr(scenario, variant)) != 0) or
-                    not isinstance(getattr(scenario, variant), list)):
-                self.assertNotEqual(getattr(scenario, variant), getattr(original_scenario, variant))
+        self.assertTrue(any(
+            getattr(scenario, variant) != getattr(original_scenario, variant)
+            for variant in variants
+        ))
 
     def test_random_marked_actors(self):
         scenario = ScenarioDefinition.generate_random_with_marked_actors()

@@ -4,7 +4,7 @@ from unittest import TestCase
 
 from impl.ads.mr.mr import PerturbationFactory, Operation, Decreasing
 from impl.core.mr.base_mr import MRSet, MR
-from impl.ads.scenario.scenario_definition import Boundary
+from impl.ads.scenario.scenario_definition import Boundary, ScenarioDefinition
 
 
 class TestPerturbation(TestCase):
@@ -113,11 +113,11 @@ class TestPerturbations(TestCase):
                 PerturbationFactory(("vehicle", "model"), Boundary({"model": [0, 22]})),
                 PerturbationFactory(("vehicle", "speed"), Boundary({"speed": [0.0, 35.0]})),
             ], relation),
-        ])
+        ], source_gen_func=ScenarioDefinition.generate_random)
 
     def test_mate(self):
-        sequence1 = self.mr_set.initialize()
-        sequence2 = self.mr_set.initialize()
+        sequence1 = self.mr_set.generate_perturbation()
+        sequence2 = self.mr_set.generate_perturbation()
         original_sequence1 = deepcopy(sequence1)
         original_sequence2 = deepcopy(sequence2)
         sequence1.mate(sequence2, cxpb=self.cxpb)
@@ -125,20 +125,20 @@ class TestPerturbations(TestCase):
         self.assertEqual(sequence2, original_sequence1)
 
     def test_mutate(self):
-        sequence = self.mr_set.initialize()
+        sequence = self.mr_set.generate_perturbation()
         original_sequence = deepcopy(sequence)
         sequence.mutate(mutpb=self.mutpb, eta=self.eta)
         self.assertNotEqual(sequence, original_sequence)
 
     def test_dist(self):
         # Different sequences.
-        sequence1 = self.mr_set.initialize()
-        sequence2 = self.mr_set.initialize()
+        sequence1 = self.mr_set.generate_perturbation()
+        sequence2 = self.mr_set.generate_perturbation()
         dist = sequence1.dist(sequence2)
         self.assertNotEqual(dist, 0.0)
 
         # Same sequences.
-        sequence1 = self.mr_set.initialize()
+        sequence1 = self.mr_set.generate_perturbation()
         sequence2 = deepcopy(sequence1)
         dist = sequence1.dist(sequence2)
         self.assertEqual(dist, 0.0)

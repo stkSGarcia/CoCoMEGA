@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-import test
+from impl import config as cfg
 import os
 import time
 import pandas as pd
@@ -11,7 +11,7 @@ from impl.ads.utils.carla_utils import initialize_carla
 from impl.ads.scenario.scenario_definition import Boundary, ScenarioDefinition
 from impl.ads.utils.trajectory import single_trajectory_score
 
-config = test.CONFIG
+config = cfg.CONFIG
 
 
 class TestTrajectoryScore:

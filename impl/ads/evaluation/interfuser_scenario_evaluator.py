@@ -187,7 +187,8 @@ class ScenarioEvaluator(object):
                 else:
                     raise e
 
-        self.world.tick()
+        if getattr(self, "world", None) is not None:
+            self.world.tick()
 
         CarlaDataProvider._actor_velocity_map.clear()
         CarlaDataProvider._actor_location_map.clear()

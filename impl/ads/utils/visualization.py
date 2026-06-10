@@ -32,6 +32,7 @@ from impl.ads.utils.math_utils import calculate_auc_improvements, area_under_cur
 from impl.ads.utils.math_utils import calculate_improvements, polar_to_cartesian
 from impl.ads.utils.metrics import metrics, pairwise_distance, avg_pw_from_matrix
 from impl.config import init_project_directory
+from impl.ads.utils.figure_export import save_publication_figure
 
 logger = logging.getLogger(__name__)
 
@@ -378,7 +379,7 @@ def visualize_in_one(project, plot_nan=True, verbose=False, save_path=None, show
 
     fig.supxlabel("Generation", fontsize=text_size)
     fig.tight_layout()
-    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visual"] / f"{stat_file.stem}.png"))
+    save_publication_figure(fig,save_path if save_path else (cfg.CONFIG["workspace"]["visual"] / f"{stat_file.stem}.png"))
     if show: plt.show()
 
 
@@ -487,7 +488,7 @@ def visualize_comparison(projects: Dict[str, List[str]], max_percentile=0.75,
     ax1.legend(handles=legend_elements.values(), fontsize=text_size)
     fig.supxlabel("#simulations", fontsize=text_size)
     fig.tight_layout()
-    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "comparison.png"))
+    save_publication_figure(fig,save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "comparison.png"))
     if show: plt.show()
 
 
@@ -572,7 +573,7 @@ def visualize_violation(source, follow_up, mr_set, offset=3, verbose=False, save
 
     fig.tight_layout()
     if save_path: os.makedirs(save_path.parent, exist_ok=True)
-    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "violation.png"))
+    save_publication_figure(fig,save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "violation.png"))
     if show: plt.show()
 
 
@@ -625,7 +626,7 @@ def visualize_diversity(projects: Dict[str, List[str]], save_path=None, show=Fal
         ax.grid()
 
     fig.tight_layout()
-    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "diversity.png"))
+    save_publication_figure(fig,save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "diversity.png"))
     if show: plt.show()
 
 
@@ -654,7 +655,7 @@ def visualize_diversity_distribution(project, save_path=None, show=False):
     ax.scatter3D(out[:, 0], out[:, 1], out[:, 2])
     ax.set_box_aspect((np.ptp(out[:, 0]), np.ptp(out[:, 1]), np.ptp(out[:, 2])))
     fig.tight_layout()
-    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visual"] / f"{solution_file.stem}-diversity.png"))
+    save_publication_figure(fig,save_path if save_path else (cfg.CONFIG["workspace"]["visual"] / f"{solution_file.stem}-diversity.png"))
     if show: plt.show()
 
 
@@ -724,7 +725,7 @@ def visualize_archived_distinct_solutions(projects: Dict[str, List[str]], fitnes
     calculate_ds_improvements(data, mean_df, comparisons)
 
     fig.tight_layout()
-    fig.savefig(save_path if save_path else
+    save_publication_figure(fig,save_path if save_path else
                 (cfg.CONFIG["workspace"]["visualization"] / "archived_distinct_solutions.pdf"))
     if show: plt.show()
     return data
@@ -820,7 +821,7 @@ def visualize_distinct_solution_over_simulations(projects: Dict[str, List[str]],
     calculate_auc_improvements(auc_df, {"algs": ["ccea"], "baselines": ["ga", "rs"]})
 
     fig.tight_layout()
-    fig.savefig(save_path if save_path else
+    save_publication_figure(fig,save_path if save_path else
                 (cfg.CONFIG["workspace"]["visualization"] / "distinct_solutions_over_simulations.pdf"))
     if show: plt.show()
 
@@ -915,7 +916,7 @@ def visualize_archived_solutions_by_gen(projects: Dict[str, List[str]], generati
             ax.grid()
 
     fig.tight_layout()
-    fig.savefig(save_path if save_path else
+    save_publication_figure(fig,save_path if save_path else
                 (cfg.CONFIG["workspace"]["visualization"] / f"archived_{metric_name}_by_gen{generation_num}.png"))
     if show: plt.show()
 
@@ -1004,7 +1005,7 @@ def visualize_archive_solution_over_generations(projects: Dict[str, List[str]], 
             ax.grid()
 
     fig.tight_layout()
-    fig.savefig(save_path if save_path else
+    save_publication_figure(fig,save_path if save_path else
                 (cfg.CONFIG["workspace"]["visualization"] / f"archived_{metric_name}_over_generetations.pdf"))
     if show: plt.show()
 
@@ -1048,7 +1049,7 @@ def visualize_computational_efficiency(log_file: str, projects: Dict[str, List[s
     plt.tight_layout()
 
     fig.tight_layout()
-    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "computational_efficiency.png"))
+    save_publication_figure(fig,save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "computational_efficiency.png"))
     if show: plt.show()
 
 
@@ -1120,7 +1121,7 @@ def visualize_computational_efficiency_v2(projects: Dict[str, List[str]], save_p
                                color="w", alpha=0.7, linestyle="None", label="Mean value")], fontsize=text_size)
     plt.tight_layout()
     fig.tight_layout()
-    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "computational_efficiency.pdf"))
+    save_publication_figure(fig,save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "computational_efficiency.pdf"))
     if show: plt.show()
 
 
@@ -1173,7 +1174,7 @@ def visualize_fitness_distribution(projects, comparisons, vis_name="fitness_boxp
     plt.legend(handles=[Line2D([0], [0], marker='D', markerfacecolor='black', markeredgecolor='black',
                                color='w', alpha=0.7, linestyle='None', label='Mean value')], fontsize=text_size)
     fig.tight_layout()
-    fig.savefig(save_path if save_path else cfg.CONFIG["workspace"]["visualization"] / vis_name)
+    save_publication_figure(fig,save_path if save_path else cfg.CONFIG["workspace"]["visualization"] / vis_name)
     if show:
         plt.show()
 
@@ -1244,7 +1245,7 @@ def visualize_aed(projects, save_path=None, show=False):
     plt.legend(handles=[Line2D([0], [0], marker='D', markerfacecolor='black', markeredgecolor='black',
                                color='w', alpha=0.7, linestyle='None', label='Mean value')], fontsize=text_size)
     fig.tight_layout()
-    fig.savefig(save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "avg_distance_to_runtime.pdf"))
+    save_publication_figure(fig,save_path if save_path else (cfg.CONFIG["workspace"]["visualization"] / "avg_distance_to_runtime.pdf"))
     if show: plt.show()
 
     return similarities

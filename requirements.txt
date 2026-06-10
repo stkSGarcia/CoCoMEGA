@@ -11,6 +11,7 @@ shap>=0.42.1
 xgboost>=1.6.2
 imodels>=1.4.1
 dppy>=0.3.3
+Jinja2==3.0.3
 sphinx
 sphinx-rtd-theme
 scikit-learn>=1.0.2

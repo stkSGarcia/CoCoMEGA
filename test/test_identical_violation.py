@@ -8,10 +8,10 @@ from unittest import TestCase
 import pandas as pd
 
 from impl import config as cfg
-from impl.problem import _fitness, mr_set, toolbox
-from impl.scenario.scenario_definition import ScenarioDefinition
-from impl.scenario.simulation_runner import run_scenarios
-from impl.utils.visualization import Visualizer
+from impl.ads.evaluation.simulation_runner import ADSEvaluator
+from impl.ads.scenario.scenario_definition import ScenarioDefinition
+from impl.ads.utils.visualization import Visualizer
+from impl.problem import mr_set, toolbox
 
 logger = logging.getLogger("impl")
 
@@ -51,6 +51,7 @@ class TestIdenticalViolation:
         return violation_rate
 
     def _test(self):
+        evaluator = ADSEvaluator(mr_set=self.mr_set)
         i = 0
         meta = []
         fitnesses = []
@@ -62,11 +63,11 @@ class TestIdenticalViolation:
                 follow_up = toolbox.clone(source)
                 follow_up.assign_new_id()
                 scenarios += [source, follow_up]
-            results, sim_num = run_scenarios(scenarios, rerun=True)
+            results, sim_num = evaluator.run_scenarios(scenarios, rerun=True)
             for source, follow_up, source_scenario, follow_up_scenario in zip(results[::2], results[1::2],
                                                                               scenarios[::2], scenarios[1::2]):
                 if source is not None and follow_up is not None:
-                    is_violated, fitness_value = _fitness(source, follow_up, mr_set=self.mr_set)
+                    is_violated, fitness_value = evaluator.fitness(source, follow_up)
                     fitnesses.append(fitness_value[0])
                     violations.append(is_violated)
                     meta.append({

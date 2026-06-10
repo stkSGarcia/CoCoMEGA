@@ -2,9 +2,9 @@ from deap import creator
 
 import impl.config as cfg
 from impl.core.mr.base_mr import Perturbations
+from impl.domain_template.evaluation.domain_evaluation import DomainEvaluator
 from impl.domain_template.mr.domain_predefined import mr_set
 from impl.domain_template.scenario.domain_scenario import ScenarioDefinition
-from impl.sorting.evaluation.sorting_evaluation import SortEvaluator
 
 #: Define :const:`mr_set`.
 mr_set = mr_set
@@ -31,7 +31,7 @@ DOMAIN_REGISTRY = {
     "ScenarioInit": _pop_scenario,
     "Perturbation": Perturbations,
     "PerturbationInit": _pop_perturbation,
-    "Evaluation": SortEvaluator,
+    "Evaluation": DomainEvaluator,
     "MRSet": mr_set,
     "Config": "config.yaml",
 }
